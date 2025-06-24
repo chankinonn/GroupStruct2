@@ -9,7 +9,6 @@ source("global.R", local = TRUE)
 
 app_ui <- function(request) {
   tagList(
-    golem_add_external_resources(),  # Keep this for favicon, www, etc.
     fluidPage(
       titlePanel("GroupStruct2"),
       useShinyjs(),
