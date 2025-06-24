@@ -9,6 +9,26 @@ required_packages <- c(
   "htmltools", "stringr", "ggpubr", "ggrepel"
 )
 
+# Source Meristic modules
+source("modules/meristic/mod_data.R")
+source("modules/meristic/mod_summary.R")
+source("modules/meristic/mod_stats.R")
+source("modules/meristic/mod_visual.R")
+
+# Source Morphometric modules
+source("modules/morphometric/mod_data_morphometric.R")
+source("modules/morphometric/mod_summary_morphometric.R")
+source("modules/morphometric/mod_allometry_morphometric.R")
+source("modules/morphometric/mod_stats_morphometric.R")
+source("modules/morphometric/mod_visual_morphometric.R")
+
+# Source Combined modules
+source("modules/combined/mod_data_combined.R")
+source("modules/combined/mod_summary_combined.R")
+source("modules/combined/mod_allometry_combined.R")
+source("modules/combined/mod_visual_combined.R")
+source("modules/combined/mod_mfa.R")
+
 # Function to check for and install missing packages
 check_and_install_packages <- function(packages) {
   for (pkg in packages) {
