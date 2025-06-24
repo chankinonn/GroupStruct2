@@ -1,0 +1,626 @@
+
+mod_visual_ui_meristic <- function(id) {
+  ns <- NS(id)
+  tagList(
+    h3("Data Visualization"),
+    hr(),
+    tabsetPanel(id = ns("visual_tab"),
+                tabPanel("Scatterplot",
+                         fluidRow(
+                           column(9,
+                                  plotOutput(ns("plot_scatter"))
+                           ),
+                           column(3,
+                                  br(),
+                                  numericInput(ns("plot_scatter_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                  numericInput(ns("plot_scatter_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                  uiOutput(ns("scatter_controls")),
+                                  hr(),
+                                  checkboxInput(ns("scatter_show_labels"), "Show Individual Labels", value = FALSE),
+                                  checkboxInput(ns("scatter_show_lm"), "Show Regression Line", value = TRUE),
+                                  checkboxInput(ns("scatter_show_lm_se"), "Show Confidence Interval", value = TRUE),
+                                  hr(),
+                                  downloadButton(ns("download_scatter_pdf"), "Download PDF"),
+                                  br(),
+                                  downloadButton(ns("download_scatter_jpeg"), "Download JPEG"),
+                                  hr()
+                           )
+                         )
+                ),
+                tabPanel("Boxplot",
+                         fluidRow(
+                           column(9,
+                                  plotOutput(ns("plot_box"))
+                           ),
+                           column(3,
+                                  br(),
+                                  numericInput(ns("plot_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                  numericInput(ns("plot_box_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                  hr(),
+                                  uiOutput(ns("box_variable_selector")),
+                                  uiOutput(ns("box_group_selector")),
+                                  hr(),
+                                  downloadButton(ns("download_box_pdf"), "Download PDF"),
+                                  br(),
+                                  downloadButton(ns("download_box_jpeg"), "Download JPEG"),
+                                  hr(),
+                           )
+                         )
+                ),
+                tabPanel("Violin Plot",
+                         fluidRow(
+                           column(9,
+                                  plotOutput(ns("plot_violin"))
+                           ),
+                           column(3,
+                                  br(),
+                                  numericInput(ns("plot_violin_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                  numericInput(ns("plot_violin_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                  hr(),
+                                  uiOutput(ns("violin_variable_selector")),
+                                  uiOutput(ns("violin_group_selector")),
+                                  hr(),
+                                  downloadButton(ns("download_violin_pdf"), "Download PDF"),
+                                  br(),
+                                  downloadButton(ns("download_violin_jpeg"), "Download JPEG"),
+                                  hr()
+                           )
+                         )
+                ),
+                tabPanel("PCA",
+                         fluidRow(
+                           column(9,
+                                  plotOutput(ns("plot_pca"))
+                           ),
+                           column(3,
+                                  br(),
+                                  numericInput(ns("plot_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                  numericInput(ns("plot_pca_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                  hr(),
+                                  numericInput(ns("pca_point_size"), "Point Size:", value = 3, min = 1, max = 10),
+                                  selectInput(ns("pca_point_shape"), "Point Shape:",
+                                              choices = c("Circle" = 19, "Square" = 15, "Triangle" = 17, "Diamond" = 18),
+                                              selected = 19),
+                                  checkboxInput(ns("pca_ellipse"), "Show 95% Confidence Ellipses", value = FALSE),
+                                  checkboxInput(ns("pca_convex"), "Show Convex Hulls", value = FALSE),
+                                  checkboxInput(ns("pca_centroids"), "Show Group Centroids", value = FALSE),
+                                  #sliderInput(ns("pca_alpha_ellipse"), "Hull Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
+                                  sliderInput(ns("pca_alpha_ellipse"), "Hull/Ellipse Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
+                                  hr(),
+                                  downloadButton(ns("download_pca_pdf"), "Download PDF"),
+                                  br(),
+                                  downloadButton(ns("download_pca_jpeg"), "Download JPEG"),
+                                  hr(),
+                           )
+                         )
+                ),
+                tabPanel("DAPC",
+                         fluidRow(
+                           column(9,
+                                  plotOutput(ns("plot_dapc"))
+                           ),
+                           column(3,
+                                  br(),
+                                  numericInput(ns("plot_dapc_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                  numericInput(ns("plot_dapc_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                  hr(),
+                                  numericInput(ns("dapc_point_size"), "Point Size:", value = 3, min = 1, max = 10),
+                                  selectInput(ns("dapc_point_shape"), "Point Shape:",
+                                              choices = c("Circle" = 19, "Square" = 15, "Triangle" = 17, "Diamond" = 18),
+                                              selected = 19),
+                                  uiOutput(ns("n_pca_dapc_ui")),
+                                  sliderInput(ns("n_da_dapc"), "Number of Discriminant Axes (n.da):", min = 1, max = 5, value = 2, step = 1),
+                                  checkboxInput(ns("dapc_ellipse"), "Show 67% Confidence Ellipses (following adegenet)", value = TRUE),
+                                  checkboxInput(ns("dapc_convex"), "Show Convex Hulls", value = FALSE),
+                                  checkboxInput(ns("dapc_centroids"), "Show Group Centroids", value = FALSE),
+                                  sliderInput(ns("dapc_alpha_ellipse"), "Hull/Ellipse Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
+                                  #sliderInput(ns("dapc_alpha_ellipse"), "Hull Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
+                                  hr(),
+                                  downloadButton(ns("download_dapc_pdf"), "Download PDF"),
+                                  br(),
+                                  downloadButton(ns("download_dapc_jpeg"), "Download JPEG"),
+                                  hr()
+                           )
+                         )
+                )
+    )
+  )
+}
+
+mod_visual_server_meristic <- function(id, dataset,
+                                       plot_palette, plot_axis_text_size,
+                                       plot_axis_label_size, plot_x_angle, plot_facet_size,
+                                       legend_text_size, legend_title_size,
+                                       manual_colors_r) {
+  
+  moduleServer(id, function(input, output, session) {
+    ns <- session$ns
+    
+    
+    output$scatter_controls <- renderUI({
+      req(dataset())
+      df <- dataset()
+      traits <- names(df)[-1]
+      groups <- unique(df[[1]])
+      
+      tagList(
+        selectInput(ns("scatter_xvar"), "X Variable", choices = traits, selected = traits[1], width = '150px'),
+        selectInput(ns("scatter_yvar"), "Y Variable", choices = traits, selected = traits[2], width = '150px'),
+        checkboxGroupInput(ns("scatter_group_filter"), "Filter by Group", choices = groups, selected = groups)
+      )
+    })
+    
+    # Dynamically set max for n.pca based on number of traits
+    output$n_pca_dapc_ui <- renderUI({
+      req(dataset())
+      n_traits <- ncol(dataset()) - 1
+      sliderInput(ns("n_pca_dapc"), "Number of PCA Components (n.pca):",
+                  min = 1, max = n_traits, value = min(5, n_traits), step = 1)
+    })
+    
+    # Add variable selection for box and violin plots
+    output$box_variable_selector <- renderUI({
+      req(dataset())
+      traits <- names(dataset())[-1]
+      checkboxGroupInput(ns("selected_box_traits"), "Select Traits to Plot:", 
+                         choices = traits, selected = traits)
+    })
+    
+    output$box_group_selector <- renderUI({
+      req(dataset())
+      groups <- unique(dataset()[[1]])
+      checkboxGroupInput(ns("selected_box_groups"), "Select Groups to Plot:", 
+                         choices = groups, selected = groups)
+    })
+    
+    
+    output$violin_variable_selector <- renderUI({
+      req(dataset())
+      traits <- names(dataset())[-1]
+      checkboxGroupInput(ns("selected_violin_traits"), "Select Traits to Plot:", 
+                         choices = traits, selected = traits)
+    })
+    
+    output$violin_group_selector <- renderUI({
+      req(dataset())
+      groups <- unique(dataset()[[1]])
+      checkboxGroupInput(ns("selected_violin_groups"), "Select Groups to Plot:", 
+                         choices = groups, selected = groups)
+    })
+    
+
+    # Get manual colors from the passed reactive
+    get_manual_colors <- function() {
+      req(manual_colors_r())
+      manual_colors_r()
+    }
+    
+    # Choose fill scale
+    get_fill_scale <- function(palette) {
+      if (is.null(palette) || length(palette) == 0) {
+        return(ggplot2::scale_fill_viridis_d())
+      }
+      
+      if (palette == "manual") {
+        req(manual_colors_r())
+        return(ggplot2::scale_fill_manual(values = manual_colors_r()))
+      }
+      
+      if (startsWith(palette, "viridis:")) {
+        option <- strsplit(palette, ":")[[1]][2]
+        return(ggplot2::scale_fill_viridis_d(option = option))
+      }
+      
+      if (startsWith(palette, "brewer:")) {
+        brewer_pal <- strsplit(palette, ":")[[1]][2]
+        return(ggplot2::scale_fill_brewer(palette = brewer_pal))
+      }
+      
+      if (palette == "ggthemes:colorblind") {
+        return(ggplot2::scale_fill_manual(values = ggthemes::colorblind_pal()(8)))
+      }
+      
+      if (startsWith(palette, "colorblind:")) {
+        brewer_pal <- strsplit(palette, ":")[[1]][2]
+        return(ggplot2::scale_fill_brewer(palette = brewer_pal))
+      }
+      
+      return(ggplot2::scale_fill_viridis_d())  # fallback
+    }
+    
+    # Choose color scale
+    get_color_scale <- function(palette) {
+      if (is.null(palette) || length(palette) == 0) {
+        return(ggplot2::scale_color_viridis_d())
+      }
+      
+      if (palette == "manual") {
+        req(manual_colors_r())
+        return(ggplot2::scale_color_manual(values = manual_colors_r()))
+      }
+      
+      if (startsWith(palette, "viridis:")) {
+        option <- strsplit(palette, ":")[[1]][2]
+        return(ggplot2::scale_color_viridis_d(option = option))
+      }
+      
+      if (startsWith(palette, "brewer:")) {
+        brewer_pal <- strsplit(palette, ":")[[1]][2]
+        return(ggplot2::scale_color_brewer(palette = brewer_pal))
+      }
+      
+      if (palette == "ggthemes:colorblind") {
+        return(ggplot2::scale_color_manual(values = ggthemes::colorblind_pal()(8)))
+      }
+      
+      if (startsWith(palette, "colorblind:")) {
+        brewer_pal <- strsplit(palette, ":")[[1]][2]
+        return(ggplot2::scale_color_brewer(palette = brewer_pal))
+      }
+      
+      return(ggplot2::scale_color_viridis_d())  # fallback
+    }
+    
+    
+  
+    
+    # Theme generator (always classic, adjusted for x-axis label angle)
+    get_custom_theme <- function(axis_text_size, axis_label_size, x_angle, facet_size,
+                                 legend_text_size, legend_title_size) {
+      
+      # Adjust vjust and hjust for x-axis text based on angle
+      x_vjust <- 0.5
+      x_hjust <- 0.5
+      if (x_angle == 45) {
+        x_hjust <- 1
+        x_vjust <- 1
+      } else if (x_angle == 90) {
+        x_hjust <- 1
+        x_vjust <- 0.5
+      }
+      
+      theme_base <- ggplot2::theme_classic()
+      
+      theme_elements <- list(
+        axis.text.x = ggplot2::element_text(size = axis_text_size, angle = as.numeric(x_angle),
+                                            vjust = x_vjust, hjust = x_hjust),
+        axis.text.y = ggplot2::element_text(size = axis_text_size), # Y-axis text not angled
+        axis.title = ggplot2::element_text(size = axis_label_size),
+        strip.text = ggplot2::element_text(size = facet_size),
+        
+        # Legend elements are always included now
+        legend.position = "right",
+        legend.text = ggplot2::element_text(size = legend_text_size()),
+        legend.title = ggplot2::element_text(size = legend_title_size(), face = "bold")
+      )
+      
+      theme_base + do.call(ggplot2::theme, theme_elements)
+    }
+    
+    # Reactive to check if all common plot inputs are ready
+    common_plot_inputs_ready <- reactive({
+      req(plot_palette(), plot_axis_text_size(), plot_axis_label_size(),
+          plot_x_angle(), plot_facet_size(),
+          legend_text_size(), legend_title_size())
+      
+      # If manual palette is selected, ensure manual_colors_r is also ready
+      if (plot_palette() == "manual") {
+        req(manual_colors_r())
+      }
+      TRUE
+    })
+    
+    # Reactive plot objects
+    plot_scatter_obj <- reactive({
+      req(dataset(), input$scatter_xvar, input$scatter_yvar, input$scatter_group_filter)
+      
+      df <- dataset()
+      group_col <- names(df)[1]
+      df <- df[df[[group_col]] %in% input$scatter_group_filter, ]
+      
+      p <- ggplot(df, aes_string(x = input$scatter_xvar, y = input$scatter_yvar, color = group_col)) +
+        geom_point(size = 3, alpha = 0.8)
+      
+      if (input$scatter_show_lm) {
+        p <- p + geom_smooth(method = "lm", 
+                             se = isTRUE(input$scatter_show_lm_se), 
+                             linetype = "solid")
+      }
+      
+      if (input$scatter_show_labels) {
+        p <- p + geom_text(aes(label = rownames(df)), 
+                           hjust = 1.1, vjust = 1.1, 
+                           size = 3, check_overlap = TRUE)
+      }
+      
+      p + get_color_scale(plot_palette()) +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 
+                         plot_x_angle(), plot_facet_size(), 
+                         legend_text_size(), legend_title_size())
+    })
+    
+    
+    plot_box_obj <- reactive({
+      req(dataset(), common_plot_inputs_ready(), input$selected_box_traits)
+      df <- dataset()
+      if (!is.null(input$selected_box_groups)) {
+        df <- df[df[[1]] %in% input$selected_box_groups, ]
+      }
+      traits_to_plot <- input$selected_box_traits
+      req(length(traits_to_plot) > 0)
+      
+      df_long <- tidyr::pivot_longer(df, cols = all_of(traits_to_plot), names_to = "Trait", values_to = "Value")
+      
+      ggplot2::ggplot(df_long, ggplot2::aes_string(x = names(df)[1], y = "Value", fill = names(df)[1])) +
+        ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+        ggplot2::facet_wrap(~Trait, scales = "free_y") +
+        get_fill_scale(plot_palette()) + # Removed prefix
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
+                         plot_x_angle(), plot_facet_size(),
+                         legend_text_size(), legend_title_size())
+    })
+    
+    plot_violin_obj <- reactive({
+      req(dataset(), common_plot_inputs_ready(), input$selected_violin_traits)
+      df <- dataset()
+      if (!is.null(input$selected_violin_groups)) {
+        df <- df[df[[1]] %in% input$selected_violin_groups, ]
+      }
+      traits_to_plot <- input$selected_violin_traits
+      req(length(traits_to_plot) > 0)
+      
+      df_long <- tidyr::pivot_longer(df, cols = all_of(traits_to_plot), names_to = "Trait", values_to = "Value")
+      
+      ggplot2::ggplot(df_long, ggplot2::aes_string(x = names(df)[1], y = "Value", fill = names(df)[1])) +
+        ggplot2::geom_violin(width = 0.9, alpha = 0.6, color = NA) +
+        ggplot2::facet_wrap(~Trait, scales = "free_y") +
+        get_fill_scale(plot_palette()) + # Removed prefix
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
+                         plot_x_angle(), plot_facet_size(),
+                         legend_text_size(), legend_title_size())
+    })
+    
+    plot_pca_obj <- reactive({
+      req(dataset(), common_plot_inputs_ready())
+      req(input$pca_point_size, input$pca_point_shape)
+      
+      df <- dataset()
+      otu_col <- names(df)[1]
+      data_mat <- df[, -1]
+      complete_rows <- complete.cases(data_mat)
+      
+      if (sum(complete_rows) < 2 || ncol(data_mat) < 2) {
+        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
+                                                     label = "Not enough data for PCA. Need at least 2 complete rows and 2 numeric variables."))
+      }
+      
+      pca <- prcomp(data_mat[complete_rows, ], center = TRUE, scale. = TRUE)
+      pca_df <- as.data.frame(pca$x)
+      pca_df$Group <- df[[otu_col]][complete_rows]
+      
+      p <- ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2, color = Group)) +
+        ggplot2::geom_point(size = input$pca_point_size, shape = as.numeric(input$pca_point_shape))
+      
+      if (isTRUE(input$pca_ellipse)) {
+        p <- p + ggplot2::stat_ellipse(
+          aes(group = Group, fill = Group, color = Group),
+          type = "norm",
+          geom = "polygon",
+          alpha = input$pca_alpha_ellipse
+        ) +
+          get_fill_scale(plot_palette()) +
+          get_color_scale(plot_palette())
+      }
+      
+      
+      
+      if (isTRUE(input$pca_convex)) {
+        hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Group), function(df) {
+          df[chull(df$PC1, df$PC2), ]
+        }), .id = "Group")
+        
+        p <- p + ggplot2::geom_polygon(
+          data = hull_df,
+          aes(x = PC1, y = PC2, group = Group, fill = Group),
+          alpha = input$pca_alpha_ellipse,
+          color = NA,
+          inherit.aes = FALSE
+        ) + get_fill_scale(plot_palette())
+      }
+      
+      if (isTRUE(input$pca_centroids)) {
+        centroids <- pca_df %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(PC1 = mean(PC1), PC2 = mean(PC2), .groups = "drop")
+        
+        p <- p + ggplot2::geom_point(data = centroids,
+                                     aes(x = PC1, y = PC2),
+                                     shape = 8, size = 4, color = "black", fill = "white", stroke = 1,
+                                     inherit.aes = FALSE)
+      }
+      
+      p +
+        get_color_scale(plot_palette()) +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                         legend_text_size(), legend_title_size())
+    })
+    
+    
+    plot_dapc_obj <- reactive({
+      req(dataset())
+      req(input$n_pca_dapc, input$n_da_dapc, input$dapc_point_size, input$dapc_point_shape,
+          common_plot_inputs_ready())
+      
+      df <- dataset()
+      otu_col <- names(df)[1]
+      data_mat <- df[, -1]
+      complete_rows <- complete.cases(data_mat)
+      
+      if (sum(complete_rows) < 2 || ncol(data_mat) < 2 || dplyr::n_distinct(df[[otu_col]]) < 2) {
+        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
+                                                     label = "Not enough data or groups for DAPC. Need at least 2 complete rows, 2 numeric variables, and 2 groups."))
+      }
+      
+      data_for_dapc <- as.data.frame(data_mat[complete_rows, ])
+      group_for_dapc <- as.factor(df[[otu_col]][complete_rows])
+      
+      dapc_res <- tryCatch({
+        adegenet::dapc(data_for_dapc, group_for_dapc,
+                       n.pca = input$n_pca_dapc, n.da = input$n_da_dapc)
+      }, error = function(e) {
+        warning("DAPC error: ", e$message)
+        NULL
+      })
+      
+      if (is.null(dapc_res)) {
+        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
+                                                     label = "DAPC could not be performed. Check data and parameters."))
+      }
+      
+      if (ncol(dapc_res$ind.coord) < 2) {
+        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
+                                                     label = "DAPC did not produce enough discriminant axes (LD1, LD2). Try reducing n.da or increasing groups."))
+      }
+      
+      dapc_df <- as.data.frame(dapc_res$ind.coord)
+      dapc_df$Group <- dapc_res$grp
+      
+      p <- ggplot2::ggplot(dapc_df, ggplot2::aes(x = LD1, y = LD2, color = Group)) +
+        ggplot2::geom_point(size = input$dapc_point_size, shape = as.numeric(input$dapc_point_shape))
+      
+      if (isTRUE(input$dapc_ellipse)) {
+        p <- p + ggplot2::stat_ellipse(
+          aes(group = Group, fill = Group, color = Group),
+          type = "norm",
+          level = 0.67,
+          geom = "polygon",
+          alpha = input$dapc_alpha_ellipse
+        ) +
+          get_fill_scale(plot_palette()) +
+          get_color_scale(plot_palette())
+      }
+      
+      
+      
+      if (isTRUE(input$dapc_convex)) {
+        hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(df) {
+          df[chull(df$LD1, df$LD2), ]
+        }), .id = "Group")
+        
+        p <- p + ggplot2::geom_polygon(
+          data = hull_df,
+          aes(x = LD1, y = LD2, group = Group, fill = Group),
+          alpha = input$dapc_alpha_ellipse,
+          color = NA,
+          inherit.aes = FALSE
+        ) + get_fill_scale(plot_palette())
+      }
+      
+      if (isTRUE(input$dapc_centroids)) {
+        centroids <- dapc_df %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
+        
+        p <- p + ggplot2::geom_point(data = centroids,
+                                     aes(x = LD1, y = LD2),
+                                     shape = 8, size = 4, color = "black", fill = "white", stroke = 1,
+                                     inherit.aes = FALSE)
+      }
+      
+      p +
+        get_color_scale(plot_palette()) +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                         legend_text_size(), legend_title_size())
+    })
+    
+    
+    # Render plots with dynamic height and width
+    output$plot_scatter <- renderPlot({
+      plot_scatter_obj()
+    }, height = function() input$plot_scatter_height,
+    width = function() input$plot_scatter_width)
+    
+    
+    output$plot_box <- renderPlot(
+      { plot_box_obj() },
+      height = function() input$plot_box_height,
+      width = function() input$plot_box_width 
+    )
+    output$plot_violin <- renderPlot(
+      { plot_violin_obj() },
+      height = function() input$plot_violin_height,
+      width = function() input$plot_violin_width 
+    )
+    
+    output$plot_pca <- renderPlot(
+      { plot_pca_obj() },
+      height = function() input$plot_pca_height,
+      width = function() input$plot_pca_width 
+    )
+    output$plot_dapc <- renderPlot(
+      { plot_dapc_obj() },
+      height = function() input$plot_dapc_height,
+      width = function() input$plot_dapc_width 
+    )
+    
+    # Default download dimensions (in inches)
+    DEFAULT_DOWNLOAD_WIDTH <- 10
+    DEFAULT_DOWNLOAD_HEIGHT <- 8 # This will mostly be overridden by user input now
+    
+    # The download function for all plots
+    create_download_handler <- function(plot_obj_reactive, filename_prefix, type = "pdf", height_input_id, width_input_id) { # Added width_input_id
+      downloadHandler(
+        filename = function() { paste0(filename_prefix, "_", Sys.Date(), ".", type) },
+        content = function(file) {
+          # Get user-specified height and width from the numericInputs
+          # Use ns() because the input ID is namespaced within the module
+          plot_height_val_px <- input[[height_input_id]]
+          plot_width_val_px <- input[[width_input_id]] # GET WIDTH INPUT
+          
+          # Convert pixels to inches for ggsave (assuming 96 dpi for web display)
+          plot_height_val_in <- if (!is.null(plot_height_val_px) && plot_height_val_px > 0) {
+            plot_height_val_px / 96
+          } else {
+            DEFAULT_DOWNLOAD_HEIGHT # Fallback if input is null or zero
+          }
+          
+          plot_width_val_in <- if (!is.null(plot_width_val_px) && plot_width_val_px > 0) {
+            plot_width_val_px / 96
+          } else {
+            # Fallback to a default or current rendered width if input is null or zero
+            # For download, it's better to explicitly use the input or a fixed default
+            DEFAULT_DOWNLOAD_WIDTH
+          }
+          
+          tryCatch({
+            if (type == "pdf") {
+              ggplot2::ggsave(file, plot = plot_obj_reactive(), device = "pdf",
+                              width = plot_width_val_in, height = plot_height_val_in, units = "in")
+            } else if (type == "jpeg") {
+              ggplot2::ggsave(file, plot = plot_obj_reactive(), device = "jpeg",
+                              width = plot_width_val_in, height = plot_height_val_in, units = "in", dpi = 300)
+            }
+          }, error = function(e) {
+            message("Error saving ", type, " for ", filename_prefix, ": ", e$message)
+            stop(e)
+          })
+        }
+      )
+    }
+    
+    # Assign download handlers, passing the corresponding height AND width input IDs
+    output$download_scatter_pdf <- create_download_handler(plot_scatter_obj, "scatterplot_meristic", "pdf", "plot_scatter_height", "plot_scatter_width")
+    output$download_scatter_jpeg <- create_download_handler(plot_scatter_obj, "scatterplot_meristic", "jpeg", "plot_scatter_height", "plot_scatter_width")
+    
+    output$download_box_pdf <- create_download_handler(plot_box_obj, "boxplot_meristic", "pdf", "plot_box_height", "plot_box_width")
+    output$download_box_jpeg <- create_download_handler(plot_box_obj, "boxplot_meristic", "jpeg", "plot_box_height", "plot_box_width")
+    output$download_violin_pdf <- create_download_handler(plot_violin_obj, "violinplot_meristic", "pdf", "plot_violin_height", "plot_violin_width")
+    output$download_violin_jpeg <- create_download_handler(plot_violin_obj, "violinplot_meristic", "jpeg", "plot_violin_height", "plot_violin_width")
+    
+    output$download_pca_pdf <- create_download_handler(plot_pca_obj, "pca_meristic", "pdf", "plot_pca_height", "plot_pca_width")
+    output$download_pca_jpeg <- create_download_handler(plot_pca_obj, "pca_meristic", "jpeg", "plot_pca_height", "plot_pca_width")
+    
+    output$download_dapc_pdf <- create_download_handler(plot_dapc_obj, "dapc_meristic", "pdf", "plot_dapc_height", "plot_dapc_width")
+    output$download_dapc_jpeg <- create_download_handler(plot_dapc_obj, "dapc_meristic", "jpeg", "plot_dapc_height", "plot_dapc_width")
+  })
+}
