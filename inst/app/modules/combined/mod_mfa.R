@@ -661,21 +661,6 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       }
     )
     
-    # Add print statements to the reactives returned
-    observe({
-      if (!is.null(mfa_results_r())) {
-        message("mod_mfa_server: mfa_results_r() is NOT NULL.")
-
-      } else {
-        message("mod_mfa_server: mfa_results_r() IS NULL.")
-      }
-      if (!is.null(trait_group_df_r())) {
-        message("mod_mfa_server: trait_group_df_r() is NOT NULL. Head:")
-        print(head(trait_group_df_r()))
-      } else {
-        message("mod_mfa_server: trait_group_df_r() IS NULL.")
-      }
-    })
     
     return(list(
       mfa_results_r = mfa_results_r,

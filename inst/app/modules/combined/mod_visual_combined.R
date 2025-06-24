@@ -536,8 +536,7 @@ mod_visual_server_combined <- function(id, dataset_r,
     })
     
     mfa_var_contrib_hist_obj <- reactive({
-      message("--- Entering mfa_var_contrib_hist_obj reactive ---")
-      
+
       req(mfa_results_r())
       req(trait_group_df_r())
       req(common_plot_inputs_ready())
