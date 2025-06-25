@@ -1,3 +1,8 @@
+#' Home UI for Meristic Data
+#'
+#' @param id Namespace ID
+#' @return Shiny UI for meristic home screen
+#' @export
 mod_home_ui_meristic <- function(id) {
   ns <- NS(id)
   tagList(
@@ -11,6 +16,11 @@ mod_home_ui_meristic <- function(id) {
   )
 }
 
+#' Home UI for Morphometric Data
+#'
+#' @param id Namespace ID
+#' @return Shiny UI for morphometric home screen
+#' @export
 mod_home_ui_morphometric <- function(id) {
   ns <- NS(id)
   tagList(
@@ -25,6 +35,11 @@ mod_home_ui_morphometric <- function(id) {
   )
 }
 
+#' Home UI for Combined Data
+#'
+#' @param id Namespace ID
+#' @return Shiny UI for combined/mixed data home screen
+#' @export
 mod_home_ui_combined <- function(id) {
   ns <- NS(id)
   tagList(
