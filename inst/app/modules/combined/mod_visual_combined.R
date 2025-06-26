@@ -772,7 +772,6 @@ mod_visual_server_combined <- function(id, dataset_r,
         ggplot2::labs(
           x = paste0("Dim 1 (", round(mfa_res$eig[1,2], 2), "%)"),
           y = paste0("Dim 2 (", round(mfa_res$eig[2,2], 2), "%)"),
-          title = "MFA: Individuals Factor Map",
           fill = str_to_title(group_col_name), # Dynamic legend title
           color = str_to_title(group_col_name) # Ensure color legend also titled
         ) +
