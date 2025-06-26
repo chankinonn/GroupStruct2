@@ -909,5 +909,8 @@ mod_visual_server_combined <- function(id, dataset_r,
     output$download_mfa_var_contrib_pdf <- create_download_handler(mfa_var_contrib_hist_obj, "mfa_var_contributions", "pdf", "mfa_var_contrib_hist_height", "mfa_var_contrib_hist_width")
     output$download_mfa_var_contrib_jpeg <- create_download_handler(mfa_var_contrib_hist_obj, "mfa_var_contributions", "jpeg", "mfa_var_contrib_hist_height", "mfa_var_contrib_hist_width")
     
+    output$download_mfa_group_contrib_pdf <- create_download_handler(mfa_group_contrib_hist_obj, "mfa_group_contributions", "pdf", "mfa_group_contrib_hist_height", "mfa_group_contrib_hist_width")
+    output$download_mfa_group_contrib_jpeg <- create_download_handler(mfa_group_contrib_hist_obj, "mfa_group_contributions", "jpeg", "mfa_group_contrib_hist_height", "mfa_group_contrib_hist_width")
+
   }) # End moduleServer
 } # End mod_visual_server_combined
