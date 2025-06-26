@@ -398,8 +398,15 @@ mod_visual_server_meristic <- function(id, dataset,
       pca_df <- as.data.frame(pca$x)
       pca_df$Group <- df[[otu_col]][complete_rows]
       
+      # Calculate % variance explained
+      var_explained <- round(100 * (pca$sdev^2 / sum(pca$sdev^2)), 1)
+      pc1_label <- paste0("PC1 (", var_explained[1], "%)")
+      pc2_label <- paste0("PC2 (", var_explained[2], "%)")
+      
       p <- ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2, color = Group)) +
-        ggplot2::geom_point(size = input$pca_point_size, shape = as.numeric(input$pca_point_shape))
+        ggplot2::geom_point(size = input$pca_point_size, shape = as.numeric(input$pca_point_shape)) +
+        ggplot2::xlab(pc1_label) +
+        ggplot2::ylab(pc2_label)
       
       if (isTRUE(input$pca_ellipse)) {
         p <- p + ggplot2::stat_ellipse(
@@ -485,8 +492,16 @@ mod_visual_server_meristic <- function(id, dataset,
       dapc_df <- as.data.frame(dapc_res$ind.coord)
       dapc_df$Group <- dapc_res$grp
       
+      # Calculate % variance explained for LD1 and LD2
+      eig <- dapc_res$eig
+      eig_percent <- round(100 * eig / sum(eig), 1)
+      ld1_label <- paste0("LD1 (", eig_percent[1], "%)")
+      ld2_label <- paste0("LD2 (", eig_percent[2], "%)")
+      
       p <- ggplot2::ggplot(dapc_df, ggplot2::aes(x = LD1, y = LD2, color = Group)) +
-        ggplot2::geom_point(size = input$dapc_point_size, shape = as.numeric(input$dapc_point_shape))
+        ggplot2::geom_point(size = input$dapc_point_size, shape = as.numeric(input$dapc_point_shape)) +
+        ggplot2::xlab(ld1_label) +
+        ggplot2::ylab(ld2_label)
       
       if (isTRUE(input$dapc_ellipse)) {
         p <- p + ggplot2::stat_ellipse(
