@@ -9,8 +9,6 @@ required_packages <- c(
   "htmltools", "stringr", "ggpubr", "ggrepel"
 )
 
-source("R/mod_home_ui.R")
-
 # Source Meristic modules
 source("modules/meristic/mod_data.R")
 source("modules/meristic/mod_summary.R")
