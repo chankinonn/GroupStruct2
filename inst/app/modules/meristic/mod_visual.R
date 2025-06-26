@@ -111,7 +111,7 @@ mod_visual_ui_meristic <- function(id) {
                                               choices = c("Circle" = 19, "Square" = 15, "Triangle" = 17, "Diamond" = 18),
                                               selected = 19),
                                   uiOutput(ns("n_pca_dapc_ui")),
-                                  sliderInput(ns("n_da_dapc"), "Number of Discriminant Axes (n.da):", min = 1, max = 5, value = 2, step = 1),
+                                  sliderInput(ns("n_da_dapc"), "Number of Discriminant Axes (n.da). Download the PCA summary table from the PCA tab and retain the number of PCs that explain 80-90% of total variance :", min = 1, max = 5, value = 2, step = 1),
                                   checkboxInput(ns("dapc_ellipse"), "Show 67% Confidence Ellipses (following adegenet)", value = TRUE),
                                   checkboxInput(ns("dapc_convex"), "Show Convex Hulls", value = FALSE),
                                   checkboxInput(ns("dapc_centroids"), "Show Group Centroids", value = FALSE),
