@@ -64,7 +64,7 @@ mod_inferential_ui_meristic <- function(id) {
                 # PCAtest Tab 
                 tabPanel("PCA",
                          br(), 
-                         h4("PCAtest Analysis"),
+                         h4("PCAtest Analysis (Camargo (2022))"),
                          numericInput(ns("pcatest_permutations"), "Number of Permutations:", value = 1000, min = 100, step = 100),
                          actionButton(ns("run_pcatest"), "Run PCAtest"),
                          br(), br(),
