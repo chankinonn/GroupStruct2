@@ -156,7 +156,7 @@ mod_visual_server_meristic <- function(id, dataset,
     output$n_pca_dapc_ui <- renderUI({
       req(dataset())
       n_traits <- ncol(dataset()) - 1
-      sliderInput(ns("n_pca_dapc"), "Number of PCA Components (n.pca). Download the PCA summary table from the PCA tab and retain the number of PCs that explain 80-90% of total variance:",
+      sliderInput(ns("n_pca_dapc"), "Number of PCA Components (n.pca). Download the PCA summary table from the PCA tab in Inferential Statstics and retain the number of PCs that explain 80-90% of total variance:",
                   min = 1, max = n_traits, value = min(5, n_traits), step = 1)
     })
     
