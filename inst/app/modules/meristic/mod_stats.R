@@ -62,7 +62,7 @@ mod_inferential_ui_meristic <- function(id) {
                 ),
                 
                 # PCAtest Tab 
-                tabPanel("PCA test",
+                tabPanel("PCA",
                          br(), 
                          h4("PCAtest Analysis"),
                          numericInput(ns("pcatest_permutations"), "Number of Permutations:", value = 1000, min = 100, step = 100),
@@ -70,7 +70,8 @@ mod_inferential_ui_meristic <- function(id) {
                          br(), br(),
                          h5("Main PCAtest Results:"),
                          verbatimTextOutput(ns("pcatest_main_results")),
-                         downloadButton(ns("download_pcatest_main"), "Download Main Results"),
+                         downloadButton(ns("download_pca_summary"), "Download PCA Summary"),
+                         downloadButton(ns("download_pcatest_main"), "Download PCAtest Results"),
                          hr(),
                 )
     )
@@ -789,7 +790,7 @@ mod_inferential_server_meristic <- function(id, data_r) {
     
     # PCAtest 
     observeEvent(input$main_tabs, {
-      if (input$main_tabs == "PCA test") {
+      if (input$main_tabs == "PCA") {
         
         # Observe for PCAtest button click
         observeEvent(input$run_pcatest, {
@@ -939,6 +940,94 @@ mod_inferential_server_meristic <- function(id, data_r) {
             } else {
               writeLines("No trait contributions data available.", file)
             }
+          }
+        )
+        
+        # Reactive for PCA results
+        pca_results_r <- reactive({
+          df <- data_r()
+          # Ensure data_mat is numeric and has no NA values for PCA
+          data_mat_numeric <- as.data.frame(lapply(df[, -1], as.numeric))
+          complete_rows <- complete.cases(data_mat_numeric)
+          
+          if (sum(complete_rows) < 2 || ncol(data_mat_numeric) < 2) {
+            return(NULL) # Return NULL if data is insufficient
+          }
+          
+          prcomp(data_mat_numeric[complete_rows, ], center = TRUE, scale. = TRUE)
+        })
+        
+        # Reactive for PCA summary results table
+        pca_summary_results_r <- reactive({
+          pca <- pca_results_r()
+          req(pca)
+          
+          # Eigenvalues
+          eigenvalues <- pca$sdev^2
+          eigen_df <- data.frame(
+            Metric = "Eigenvalue",
+            t(as.data.frame(eigenvalues))
+          )
+          colnames(eigen_df)[-1] <- paste0("PC", 1:length(eigenvalues))
+          
+          # Variance explained
+          variance_explained <- summary(pca)$importance[2, ]
+          variance_df <- data.frame(
+            Metric = "Proportion of Variance",
+            t(as.data.frame(variance_explained))
+          )
+          colnames(variance_df)[-1] <- paste0("PC", 1:length(variance_explained))
+          
+          # Cumulative variance
+          cumulative_variance <- summary(pca)$importance[3, ]
+          cumulative_df <- data.frame(
+            Metric = "Cumulative Proportion",
+            t(as.data.frame(cumulative_variance))
+          )
+          colnames(cumulative_df)[-1] <- paste0("PC", 1:length(cumulative_variance))
+          
+          # Loadings
+          loadings_df <- as.data.frame(pca$rotation) %>%
+            rownames_to_column("Trait_Loading")
+          
+          # Combine all into one data frame
+          all_pc_cols <- unique(c(colnames(eigen_df)[-1], colnames(loadings_df)[-1]))
+          
+          # Function to ensure data frame has all required PC columns
+          ensure_pc_cols <- function(df, cols) {
+            missing_cols <- setdiff(cols, colnames(df))
+            if (length(missing_cols) > 0) {
+              for (mc in missing_cols) {
+                df[[mc]] <- NA
+              }
+            }
+            # Order PC columns numerically
+            ordered_pc_cols <- cols[order(as.numeric(gsub("PC", "", cols)))]
+            df %>% dplyr::select(Metric, all_of(ordered_pc_cols))
+            
+          }
+          
+          combined_df <- bind_rows(
+            eigen_df %>% ensure_pc_cols(all_pc_cols),
+            variance_df %>% ensure_pc_cols(all_pc_cols),
+            cumulative_df %>% ensure_pc_cols(all_pc_cols),
+            loadings_df %>% rename(Metric = Trait_Loading) # Rename for consistent binding
+          )
+          
+          # Format numeric columns to 4 decimal places for display/download
+          numeric_cols <- names(combined_df)[sapply(combined_df, is.numeric)]
+          combined_df[numeric_cols] <- lapply(combined_df[numeric_cols], function(x) round(x, 4))
+          
+          return(combined_df)
+        })
+        
+        output$download_pca_summary <- downloadHandler(
+          filename = function() {
+            paste0("pca_summary_meristic_", Sys.Date(), ".csv")
+          },
+          content = function(file) {
+            req(pca_summary_results_r())
+            write.csv(pca_summary_results_r(), file, row.names = FALSE)
           }
         )
       }
