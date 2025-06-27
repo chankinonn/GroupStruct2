@@ -61,16 +61,15 @@ mod_inferential_ui_meristic <- function(id) {
                 ),
                 
                 # PCAtest Tab 
-                tabPanel("PCA",
+                tabPanel("PCA test",
                          br(), 
-                         h4("PCAtest Analysis (Camargo (2022))"),
+                         h4("PCAtest Analysis"),
                          numericInput(ns("pcatest_permutations"), "Number of Permutations:", value = 1000, min = 100, step = 100),
                          actionButton(ns("run_pcatest"), "Run PCAtest"),
                          br(), br(),
                          h5("Main PCAtest Results:"),
                          verbatimTextOutput(ns("pcatest_main_results")),
-                         downloadButton(ns("download_pca_summary"), "Download PCA Summary"),
-                         downloadButton(ns("download_pcatest_main"), "Download PCAtest Results")
+                         downloadButton(ns("download_pcatest_main"), "Download Main Results")
                 )
     )
   )
@@ -786,8 +785,6 @@ mod_inferential_server_meristic <- function(id, data_r) {
       } # End of PERMANOVA tab conditional
     }) # End of observeEvent for main_tabs
     
-
-    
     # PCAtest 
     observeEvent(input$main_tabs, {
       if (input$main_tabs == "PCA test") {
@@ -903,7 +900,6 @@ mod_inferential_server_meristic <- function(id, data_r) {
           
           shinyjs::removeClass(id = "run_pcatest", class = "module-active")
         })
-        
         
         # Render captured PCAtest output
         output$pcatest_main_results <- renderPrint({
