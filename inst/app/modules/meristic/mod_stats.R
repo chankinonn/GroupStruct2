@@ -57,7 +57,8 @@ mod_inferential_ui_meristic <- function(id) {
                          br(),
                          h5("Pairwise PERMANOVA Results:"),
                          DTOutput(ns("permanova_pairwise_results")),
-                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results")
+                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results"),
+                         hr(),
                 ),
                 
                 # PCAtest Tab 
@@ -69,7 +70,8 @@ mod_inferential_ui_meristic <- function(id) {
                          br(), br(),
                          h5("Main PCAtest Results:"),
                          verbatimTextOutput(ns("pcatest_main_results")),
-                         downloadButton(ns("download_pcatest_main"), "Download Main Results")
+                         downloadButton(ns("download_pcatest_main"), "Download Main Results"),
+                         hr(),
                 )
     )
   )

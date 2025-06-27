@@ -56,7 +56,8 @@ mod_inferential_ui_morphometric <- function(id) {
                          br(),
                          h5("Pairwise PERMANOVA Results:"),
                          DTOutput(ns("permanova_pairwise_results")),
-                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results")
+                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results"),
+                         hr(),
                 ),
                 
                 # PCAtest Tab 
@@ -69,10 +70,7 @@ mod_inferential_ui_morphometric <- function(id) {
                          h5("Main PCAtest Results:"),
                          verbatimTextOutput(ns("pcatest_main_results")),
                          downloadButton(ns("download_pcatest_main"), "Download Main Results"),
-                         br(),
-                         br(),
-                         br(),
-                     
+                         hr(),
                 )
     )
   )
