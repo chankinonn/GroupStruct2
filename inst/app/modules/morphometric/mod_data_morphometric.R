@@ -3,7 +3,7 @@ mod_data_ui_morphometric <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Input Morphometric Data"),
-    p("The first column should be Group/OTU names (e.g., species or population) and the second column should be body-size measurement (e.g., snout-vent length). Other traits should be in the 3rd column onwards"),
+    p("The first column must be Group/OTU names (e.g., species or population). Other traits should be in the 3rd column onwards"),
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),

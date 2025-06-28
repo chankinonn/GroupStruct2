@@ -4,7 +4,7 @@ mod_data_combined_ui <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Input Mixed Data (Meristic, Morphological, Categorical)"),
-    p("The first column should be Group/OTU names (e.g., species or population). If morphometric data is included, the second column must be body-size measurement (e.g., snout-vent length)."),
+    p("The first column must be Group/OTU names (e.g., species or population)."),
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file_upload"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
