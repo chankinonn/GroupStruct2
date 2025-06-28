@@ -70,6 +70,9 @@ mod_inferential_ui_morphometric <- function(id) {
                          br(), br(),
                          h5("Main PCAtest Results:"),
                          verbatimTextOutput(ns("pcatest_main_results")),
+                         br(),
+                         p("Caveat: The PCAtest can be overly conservative and misleading if a disproportionately large amount of variation is captured in the first few PCs, as is common in phenotypic data. For the DAPC plot, we recommend using the number of PCs that capture 80-90% of variation instead of the number of significant PCs inferred from the PCAtest. We encourage users to compare results using different methods and strategies"),
+                         br(),
                          downloadButton(ns("download_pca_summary"), "Download PCA Summary"),
                          downloadButton(ns("download_pcatest_main"), "Download PCAtest Results"),
                          hr(),
@@ -1018,7 +1021,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
         
         output$download_pca_summary <- downloadHandler(
           filename = function() {
-            paste0("pca_summary_meristic_", Sys.Date(), ".csv")
+            paste0("pca_summary_morphometric_", Sys.Date(), ".csv")
           },
           content = function(file) {
             req(pca_summary_results_r())
