@@ -19,7 +19,7 @@ remotes::install_github("chankinonn/GroupStruct2")
 # Run GroupStruct2
 remotes::install_github("chankinonn/GroupStruct2")
 library(GroupStruct2)
-run_app()
+groupstruct2()
 
 # In case you run into any problems installing dependencies, here is the list:
 required_packages <- c("shiny", "DT", "dplyr", "ggplot2", "tidyr", "vegan", "viridis",
