@@ -4,7 +4,7 @@ mod_data_combined_ui <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Input Mixed Data (Meristic, Morphological, Categorical)"),
-    p("The first column must be Group/OTU names (e.g., species or population)."),
+    p("The first column should be Group/OTU names (e.g., species or population)."),
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file_upload"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
@@ -38,9 +38,9 @@ mod_data_combined_server <- function(id) {
       df_raw <- tryCatch({
         ext <- tolower(tools::file_ext(file_name))
         if (ext == "csv") {
-          read_csv(file_path, show_col_types = FALSE)
+          readr::read_csv(file_path, show_col_types = FALSE)
         } else if (ext == "tsv") {
-          read_tsv(file_path, show_col_types = FALSE)
+          readr::read_tsv(file_path, show_col_types = FALSE)
         } else {
           stop("Unsupported file type. Please upload a .csv or .tsv file.")
         }
@@ -58,7 +58,7 @@ mod_data_combined_server <- function(id) {
       }
       
       if (ncol(df_raw) < 2) {
-        msg <- "Error: Data must have at least two columns (Group/OTU and Body Size)."
+        msg <- "Error: Data must have at least two columns (Group/OTU and at least one trait)."
         showNotification(msg, type = "error", duration = 8)
         output$upload_status_message <- renderUI({
           tags$div(class = "alert alert-danger", msg)
@@ -68,7 +68,6 @@ mod_data_combined_server <- function(id) {
       }
       
       group_col_name <- names(df_raw)[1]
-      size_col_name <- names(df_raw)[2]
       
       if (all(is.na(df_raw[[group_col_name]]) | df_raw[[group_col_name]] == "")) {
         msg <- paste0("Error: The first column ('", group_col_name, "', Group/OTU) cannot be empty or contain only missing values.")
@@ -80,33 +79,9 @@ mod_data_combined_server <- function(id) {
         return()
       }
       
-      df_raw[[group_col_name]] <- factor(df_raw[[group_col_name]])
+      df_raw[[group_col_name]] <- as.factor(df_raw[[group_col_name]])
       
-      if (!is.numeric(df_raw[[size_col_name]])) {
-        suppressWarnings({ converted_size <- as.numeric(df_raw[[size_col_name]]) })
-        if (any(is.na(converted_size) & !is.na(df_raw[[size_col_name]]))) {
-          msg <- paste0("Error: The second column ('", size_col_name, "', Body Size) contains non-numeric values that cannot be converted. It must be a numeric trait.")
-          showNotification(msg, type = "error", duration = 8)
-          output$upload_status_message <- renderUI({
-            tags$div(class = "alert alert-danger", msg)
-          })
-          processed_combined_data_r(NULL)
-          return()
-        }
-        df_raw[[size_col_name]] <- converted_size
-        showNotification("Warning: Body Size column was not numeric and was converted. Please verify values.", type = "warning")
-      }
-      if (any(is.na(df_raw[[size_col_name]]))) {
-        msg <- paste0("Error: The Body Size column ('", size_col_name, "') contains missing values (NA). This column must be complete for allometric correction.")
-        showNotification(msg, type = "error", duration = 8)
-        output$upload_status_message <- renderUI({
-          tags$div(class = "alert alert-danger", msg)
-        })
-        processed_combined_data_r(NULL)
-        return()
-      }
-      
-      trait_cols <- names(df_raw)[3:ncol(df_raw)]
+      trait_cols <- names(df_raw)[-1]
       categorical_cols_found <- c()
       
       if (length(trait_cols) > 0) {
@@ -121,7 +96,7 @@ mod_data_combined_server <- function(id) {
           }
         }
       } else {
-        msg <- "Warning: No additional trait columns detected beyond Group/OTU and Body Size. You may need to add more columns for meaningful analysis."
+        msg <- "Warning: No trait columns detected beyond Group/OTU. You may need to add more columns for meaningful analysis."
         showNotification(msg, type = "warning", duration = 8)
         output$upload_status_message <- renderUI({
           tags$div(class = "alert alert-warning", msg)
@@ -131,7 +106,6 @@ mod_data_combined_server <- function(id) {
       processed_combined_data_r(list(
         data = df_raw,
         group_col = group_col_name,
-        size_col = size_col_name,
         categorical_cols = categorical_cols_found
       ))
       
@@ -144,7 +118,7 @@ mod_data_combined_server <- function(id) {
       req(processed_combined_data_r())
       df <- processed_combined_data_r()$data
       group_col <- processed_combined_data_r()$group_col
-      method <- "iqr"  # <- hardcoded
+      method <- "iqr"  # hardcoded
       
       numeric_traits <- df[, sapply(df, is.numeric), drop = FALSE]
       flagged <- list()
