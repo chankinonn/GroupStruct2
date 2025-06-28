@@ -2,7 +2,7 @@
 #'
 #' This function launches the Shiny app from the package.
 #' @export
-run_app <- function() {
+groupstruct2 <- function() {
   app_dir <- system.file("app", package = "GroupStruct2")
   if (app_dir == "") {
     stop("Could not find app directory. Try re-installing the package.", call. = FALSE)
