@@ -1,21 +1,17 @@
-
 mod_inferential_ui_meristic <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Inferential Statistics"),
     hr(),
-    p(strong("Univariate")),
-    p("Perform univariate analyses to determine which traits are (or are not) statistically different between groups. This module automatically detects the number of groups, tests for assumptions of normality and homogeneity of variance, and selects the appropriate statistical tests (t-test or Wilcoxon/Mann-Whitney if only two groups are detected, ANOVA or Kruskal-Wallis if >2 groups, followed by the appropriate ad hoc tests)."),
-    p(strong("Multivariate (PERMANOVA)")),
-    p("The PERMANOVA analysis tests for significant differences among group centroids in multivariate trait space. You can choose to perform this on the original data or on PCA scores. Performing PERMANOVA on PCA scores is recommended to accompany a PCA."),
-    p(strong("PCAtest")),
-    p("The PCAtest performs permutation-based statistical tests to evaluate the overall significance of a PCA, the significance of each PC axis, and the contributions of each trait to the significant axes. This analysis aids in the interpretation of the PCA results and determines which axes are informative for downstream analysis. If you use PCAtest, please cite:"),
-    p(em("Camargo, A. (2022). PCAtest: testing the statistical significance of Principal Component Analysis in R. PeerJ, 10:e12967. https://doi.org/10.7717/peerj.12967")),
     br(),
     
     tabsetPanel(id = ns("main_tabs"), 
                 # Univariate Tests Tab
                 tabPanel("Univariate",
+                         br(),
+                         h4("Univariate Analysis"),
+                         p("Perform univariate analyses to determine which traits are (or are not) statistically different between groups. This module automatically detects the number of groups, tests for assumptions of normality and homogeneity of variance, and selects the appropriate statistical tests (t-test or Wilcoxon/Mann-Whitney if only two groups are detected, ANOVA or Kruskal-Wallis if >2 groups, followed by the appropriate ad hoc tests)."),
+                         
                          br(), 
                          div(style = "white-space: nowrap;",
                              checkboxInput(ns("force_parametric"),
@@ -36,6 +32,7 @@ mod_inferential_ui_meristic <- function(id) {
                 tabPanel("Multivariate (PERMANOVA)",
                          br(), 
                          h4("PERMANOVA Analysis"),
+                         p("The PERMANOVA analysis tests for significant differences among group centroids in multivariate trait space. You can choose to perform this on the original data or on PCA scores. Performing PERMANOVA on PCA scores is recommended to accompany a PCA."),
                          
                          fluidRow(
                            column(6, numericInput(ns("permanova_permutations"), "Number of Permutations:", value = 50000, min = 100, step = 100)),
@@ -57,21 +54,23 @@ mod_inferential_ui_meristic <- function(id) {
                          br(),
                          h5("Pairwise PERMANOVA Results:"),
                          DTOutput(ns("permanova_pairwise_results")),
-                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results"),
-                         hr(),
+                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results")
                 ),
                 
                 # PCAtest Tab 
                 tabPanel("PCA",
                          br(), 
                          h4("PCAtest Analysis (Camargo (2022))"),
+                         p("The PCAtest performs permutation-based statistical tests to evaluate the overall significance of a PCA, the significance of each PC axis, and the contributions of each trait to the significant axes. This analysis aids in the interpretation of the PCA results and determines which axes are informative for downstream analysis. If you use PCAtest, please cite:"),
+                         p(em("Camargo, A. (2022). PCAtest: testing the statistical significance of Principal Component Analysis in R. PeerJ, 10:e12967. https://doi.org/10.7717/peerj.12967")),
+                         
                          numericInput(ns("pcatest_permutations"), "Number of Permutations:", value = 1000, min = 100, step = 100),
                          actionButton(ns("run_pcatest"), "Run PCAtest"),
                          br(), br(),
                          h5("Main PCAtest Results:"),
                          verbatimTextOutput(ns("pcatest_main_results")),
                          downloadButton(ns("download_pca_summary"), "Download PCA Summary"),
-                         downloadButton(ns("download_pcatest_main"), "Download PCAtest Results"),
+                         downloadButton(ns("download_pcatest_main"), "Download PCATest Results"),
                          hr(),
                 )
     )
