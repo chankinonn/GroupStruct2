@@ -1,4 +1,3 @@
-# modules/combined/mod_allometry_combined.R
 
 get_color_scale <- function(palette_choices) {
   if (is.null(palette_choices)) {
@@ -19,12 +18,15 @@ mod_allometry_ui_combined <- function(id) {
     h3("Allometric Correction and Log Transformation"),
     hr(),
     p("This module allows you to perform allometric size correction on the morphometric traits within your combined dataset."),
-    p(strong("Important:"), "The first column must be Group/OTU names (e.g., species or population) and the second column must be body-size measurement (e.g., snout-vent length). Avoid special characters in trait names."),
+    p(strong("Important:"), "The first column must be Group/OTU names (e.g., species or population). Avoid special characters in trait names."),
     p("Each Group/OTU must be represented by more than two individuals (to calculate mean) and missing data is not allowed. This adjustment should also be performed separately on different sexes to account for possible sexual dimorphism."),
     p(strong("Note: Allometric correction should only performed on morphometric data and not on meristic, categorical, or other non-morphemtric data."),style="color:red"),
     p("Use the multispecies option if your dataset includes more than one species. Use the multipopulation option if your dataset includes more than one population from only ONE species."),
     p("If you use this function, please cite the original paper: Chan, K. O., & Grismer, L. L. (2022). GroupStruct: An R package for allometric size correction. Zootaxa, 5124(4), 471–482."), 
     
+    hr(),
+    uiOutput(ns("body_size_selector_ui")),
+    p(strong("Important:"), "Make sure you select the variable that represents body size (e.g., snout-vent-length). It is crucial to select the correct variable because the allometric function scales morphometric traits to this body-size variable. Selecting a variable that is not representative of overall body size will cause severe errors"),
     hr(),
     h4("Select Morphometric Traits for Correction"),
     p("Select which of your numeric traits are morphometric and should be corrected for body-size variation. Do not select meristic, categorical, or other non-morphometric traits."),
@@ -44,7 +46,7 @@ mod_allometry_ui_combined <- function(id) {
                  selected = "species",
                  inline = TRUE
     ),
-
+    
     br(),
     h4("Combined Data Preview (Size-corrected Morphometric + All Other Traits)"),
     DTOutput(ns("adjusted_data_preview")),
@@ -71,12 +73,35 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
     
     adjusted_data_output_r <- reactiveVal(NULL)
     
-    output$morphometric_traits_selector <- renderUI({
+    # Step 1: UI for body size column
+    output$body_size_selector_ui <- renderUI({
       req(raw_combined_data_r())
       df <- raw_combined_data_r()$data
       group_col <- raw_combined_data_r()$group_col
       
-      trait_cols <- setdiff(names(df), c(group_col, names(df)[2]))
+      candidate_cols <- setdiff(names(df), group_col)
+      numeric_vars <- candidate_cols[sapply(df[, candidate_cols, drop = FALSE], is.numeric)]
+      
+      if (length(numeric_vars) == 0) {
+        return(p("No numeric variables available for body size selection."))
+      }
+      
+      radioButtons(
+        inputId = ns("body_size_col"),
+        label = "Select Body Size Variable:",
+        choices = numeric_vars,
+        selected = numeric_vars[1],
+        inline = TRUE
+      )
+    })
+    
+    # Step 2: Morphometric trait selector (excluding selected body size)
+    output$morphometric_traits_selector <- renderUI({
+      req(raw_combined_data_r(), input$body_size_col)
+      df <- raw_combined_data_r()$data
+      group_col <- raw_combined_data_r()$group_col
+      
+      trait_cols <- setdiff(names(df), c(group_col, input$body_size_col))
       numeric_traits <- trait_cols[sapply(df[, trait_cols, drop = FALSE], is.numeric)]
       
       if (length(numeric_traits) == 0) {
@@ -84,7 +109,6 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       }
       
       tagList(
-        #HTML("<p style='color:red; font-weight:bold; font-size:14px;'>Allometric correction should only be performed on MORPHOMETRIC traits. Do not select meristic or categorical traits.</p>"),
         fluidRow(
           column(12,
                  HTML("<label><strong>Choose morphometric traits (select multiple if needed):</strong></label>"),
@@ -97,15 +121,9 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       )
     })
     
-    
+    # Correction function
     allom_modified <- function(data_subset, type, group_col_name, body_size_col_name, trait_col_names) {
-      if (type == "none") {
-        return(data_subset)  
-      }
-      
-      if (length(trait_col_names) == 0) {
-        return(data_subset)  
-      }
+      if (type == "none" || length(trait_col_names) == 0) return(data_subset)
       
       adjusted_df_output <- data_subset
       adjusted_df_output[[body_size_col_name]] <- log10(data_subset[[body_size_col_name]])
@@ -123,11 +141,10 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
           log_z_mean <- log10(z_mean)
           
           for (trait in trait_col_names) {
-            if (nrow(sub_log) > 1) {
-              #beta <- coef(lm(as.formula(paste(trait, "~", body_size_col_name)), data = sub_log))[2]
-              beta <- coef(lm(as.formula(paste0("`", trait, "` ~ `", body_size_col_name, "`")), data = sub_log))[2]
+            beta <- if (nrow(sub_log) > 1) {
+              coef(lm(as.formula(paste0("`", trait, "` ~ `", body_size_col_name, "`")), data = sub_log))[2]
             } else {
-              beta <- 0
+              0
             }
             
             idx <- which(data_subset[[group_col_name]] == otu)
@@ -137,7 +154,6 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
         }
       } else if (type == "population1") {
         for (trait in trait_col_names) {
-          #beta <- coef(lm(as.formula(paste("log10(", trait, ") ~ log10(", body_size_col_name, ")")), data = data_subset))[2]
           beta <- coef(lm(as.formula(paste0("log10(`", trait, "`) ~ log10(`", body_size_col_name, "`)")), data = data_subset))[2]
           
           for (otu in unique(data_subset[[group_col_name]])) {
@@ -149,15 +165,17 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
           }
         }
       }
+      
       return(adjusted_df_output)
     }
     
+    # Apply correction
     observe({
-      req(raw_combined_data_r(), input$correction_type, input$morphometric_traits_to_correct)
+      req(raw_combined_data_r(), input$correction_type, input$morphometric_traits_to_correct, input$body_size_col)
       
       df_raw_full <- raw_combined_data_r()$data
       group_col_name <- raw_combined_data_r()$group_col
-      body_size_col_name <- names(df_raw_full)[2]
+      body_size_col_name <- input$body_size_col
       selected_morph_traits <- input$morphometric_traits_to_correct
       
       if (input$correction_type == "none") {
@@ -165,7 +183,6 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
         showNotification("No correction applied. Raw data returned.", type = "message")
         return()
       }
-      
       
       non_numeric <- selected_morph_traits[!sapply(df_raw_full[, selected_morph_traits, drop = FALSE], is.numeric)]
       if (length(non_numeric) > 0) {
@@ -198,7 +215,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       })
     })
     
-    
+    # Display preview
     output$adjusted_data_preview <- renderDT({
       data_to_display <- adjusted_data_output_r()
       if (is.null(data_to_display)) {
@@ -208,6 +225,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       }
     })
     
+    # Download
     output$download_adjusted_data_csv <- downloadHandler(
       filename = function() {
         paste0("combined_adjusted_data_", input$correction_type, "_", Sys.Date(), ".csv")
