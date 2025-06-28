@@ -3,4 +3,4 @@
 export(mod_home_ui_combined)
 export(mod_home_ui_meristic)
 export(mod_home_ui_morphometric)
-export(run_app)
+export(groupstruct2)
