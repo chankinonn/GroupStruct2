@@ -63,6 +63,12 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    observeEvent(input$correction_type, {
+      if (input$correction_type == "none") {
+        updateCheckboxGroupInput(session, "morphometric_traits_to_correct", selected = character(0))
+      }
+    })
+    
     adjusted_data_output_r <- reactiveVal(NULL)
     
     output$morphometric_traits_selector <- renderUI({
@@ -93,9 +99,12 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
     
     
     allom_modified <- function(data_subset, type, group_col_name, body_size_col_name, trait_col_names) {
-      if (length(trait_col_names) == 0 || type == "none") {
-        data_subset[[body_size_col_name]] <- log10(data_subset[[body_size_col_name]])
-        return(data_subset)
+      if (type == "none") {
+        return(data_subset)  
+      }
+      
+      if (length(trait_col_names) == 0) {
+        return(data_subset)  
       }
       
       adjusted_df_output <- data_subset
@@ -151,11 +160,9 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       body_size_col_name <- names(df_raw_full)[2]
       selected_morph_traits <- input$morphometric_traits_to_correct
       
-      if (is.null(selected_morph_traits) || length(selected_morph_traits) == 0) {
-        df_body_only <- df_raw_full
-        df_body_only[[body_size_col_name]] <- log10(df_body_only[[body_size_col_name]])
-        adjusted_data_output_r(df_body_only)
-        showNotification("No morphometric traits selected. Only Body Size log-transformed.", type = "message")
+      if (input$correction_type == "none") {
+        adjusted_data_output_r(df_raw_full)
+        showNotification("No correction applied. Raw data returned.", type = "message")
         return()
       }
       
