@@ -73,7 +73,12 @@ mod_inferential_ui_morphometric <- function(id) {
                 tabPanel("PCAtest",
                          br(), 
                          h4("PCAtest Analysis sensu Camargo (2022)"),
-                         p("The PCAtest performs permutation-based statistical tests to evaluate the overall significance of a PCA, the significance of each PC axis, and the contributions of each trait to the significant axes. This analysis aids in the interpretation of the PCA results and determines which axes are informative for downstream analysis. If you use PCAtest, please cite:"),
+                         p("The PCAtest performs permutation-based statistical tests to evaluate the overall significance of a PCA, the significance of each PC axis, and the contributions of each trait to the significant axes. This analysis aids in the interpretation of the PCA results and determines which axes are informative for downstream analysis."),
+                         tags$p(
+                           style = "color: red; font-weight: bold;",
+                           "Caveat: The PCAtest can be overly conservative and misleading if a disproportionately large amount of variation is captured in the first few PCs, as is common in phenotypic data. For the DAPC plot, we recommend using the number of PCs that capture 80–90% of variation instead of the number of significant PCs inferred from the PCAtest. We encourage users to compare results using different methods and strategies."
+                         ),
+                         p("If you use PCAtest, please cite:"),
                          p(em("Camargo, A. (2022). PCAtest: testing the statistical significance of Principal Component Analysis in R. PeerJ, 10:e12967. https://doi.org/10.7717/peerj.12967")),
                          
                          numericInput(ns("pcatest_permutations"), "Number of Permutations:", value = 1000, min = 100, step = 100),
