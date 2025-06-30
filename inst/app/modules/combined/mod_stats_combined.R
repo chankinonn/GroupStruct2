@@ -52,25 +52,44 @@ mod_inferential_server_combined <- function(id, data_r) {
       if (input$main_tabs == "Univariate") {
         
         output$trait_buttons <- renderUI({
-          req(data_r())
-          df_source <- data_r()
-          req(df_source)
-          df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+          # Get the data with proper validation
+          df <- tryCatch({
+            df_source <- data_r()
+            if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+          }, error = function(e) NULL)
           
+          # Validate data exists and has rows
           if (is.null(df) || nrow(df) == 0) {
-            return(p("Please upload data and perform allometric correction in the 'Allometric Correction' module first."))
+            return(p("Please upload data and perform allometric correction first."))
           }
           
-          traits <- names(df)[sapply(df, is.numeric)]
-          traits <- setdiff(traits, names(df)[1])
+          # Safely get numeric traits excluding first column
+          traits <- tryCatch({
+            num_cols <- sapply(df, is.numeric)
+            if (any(num_cols)) {
+              setdiff(names(df)[num_cols], names(df)[1])
+            } else {
+              NULL
+            }
+          }, error = function(e) NULL)
           
-          if (length(traits) == 0) return(p("No numeric traits found in the adjusted data."))
+          # Handle case where no traits found
+          if (is.null(traits) || length(traits) == 0) {
+            return(p("No numeric traits found in the data."))
+          }
           
+          # Create buttons safely
           btns <- lapply(traits, function(trait) {
-            active <- !is.null(selected_trait()) && selected_trait() == trait
+            active <- isTRUE(!is.null(selected_trait()) && selected_trait() == trait)
             style <- if (active) "background-color: #337ab7; color: white;" else ""
-            actionButton(ns(paste0("btn_", trait)), label = trait, width = "150px", style = style)
+            actionButton(
+              ns(paste0("btn_", trait)), 
+              label = trait, 
+              width = "150px", 
+              style = style
+            )
           })
+          
           do.call(tagList, btns)
         })
         
