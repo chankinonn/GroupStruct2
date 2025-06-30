@@ -26,7 +26,7 @@ source("modules/morphometric/mod_visual_morphometric.R")
 source("modules/combined/mod_data_combined.R")
 source("modules/combined/mod_summary_combined.R")
 source("modules/combined/mod_allometry_combined.R")
-#source("modules/combined/mod_stats_combined.R")
+source("modules/combined/mod_stats_combined.R")
 source("modules/combined/mod_visual_combined.R")
 source("modules/combined/mod_mfa.R")
 
