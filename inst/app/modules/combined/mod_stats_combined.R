@@ -64,7 +64,7 @@ mod_inferential_server_combined <- function(id, data_r) {
           if (length(traits) == 0) return(p("No numeric traits found in the adjusted data."))
           
           btns <- lapply(traits, function(trait) {
-            active <- !is.null(selected_trait()) && selected_trait() == trait
+            active <- isTRUE(selected_trait() == trait)
             style <- if (active) "background-color: #337ab7; color: white;" else ""
             actionButton(ns(paste0("btn_", trait)), label = trait, width = "150px", style = style)
           })
