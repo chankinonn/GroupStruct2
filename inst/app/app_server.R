@@ -128,8 +128,6 @@ app_server <- function(input, output, session) {
     removeModal()
   })
 
-
-
   # Initialize manual colors for OTUs when active_raw_dataset_for_colors_r changes
   observeEvent(active_raw_dataset_for_colors_r(), {
     df <- active_raw_dataset_for_colors_r()
@@ -404,7 +402,7 @@ app_server <- function(input, output, session) {
                              data = mod_data_combined_ui("data_ui_1_combined"),
                              summary = mod_summary_ui_combined("summary_ui_1_combined"),
                              allometry = mod_allometry_ui_combined("allometry_ui_1_combined"),
-                             #stats = mod_inferential_ui_combined("inferential_ui_1_combined"),
+                             stats = mod_inferential_ui_combined("inferential_ui_1_combined"),
                              mfa = mod_mfa_ui("mfa_ui_1_combined"),
                              visual = mod_visual_ui_combined("visual_ui_1_combined")))
   })
