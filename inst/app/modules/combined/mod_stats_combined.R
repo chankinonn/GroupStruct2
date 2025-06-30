@@ -46,52 +46,36 @@ mod_inferential_server_combined <- function(id, data_r) {
     #pcatest_results_r <- reactiveVal(NULL) # New reactive value for PCAtest results
     
     # Univariate Tests 
-    observeEvent(input$main_tabs, {
-      # Corrected tab name to match UI: "Univariate"
-      req(input$main_tabs)
-      if (input$main_tabs == "Univariate") {
-        
-        output$trait_buttons <- renderUI({
-          # Safely access data with validation
-          df <- tryCatch({
-            ds <- data_r()
-            if (is.null(ds)) return(NULL)
-            if (is.reactive(ds)) ds() else if (inherits(ds, "reactiveVal")) ds() else ds
-          }, error = function(e) NULL)
-          
-          # Validate data - FIXED VERSION
-          if (is.null(df) || !is.data.frame(df)) return(p("Data not available"))
-          if (nrow(df) == 0) return(p("Data is empty"))
-          
-          # Safely identify numeric traits
-          traits <- tryCatch({
-            num_cols <- vapply(df, function(x) is.numeric(x) && !all(is.na(x)), logical(1))
-            if (!any(num_cols)) return(NULL)
-            setdiff(names(df)[num_cols], names(df)[1])
-          }, error = function(e) NULL)
-          
-          # Handle no traits case
-          if (is.null(traits) || length(traits) == 0) {
-            return(p("No numeric traits available."))
-          }
-          
-          # Create buttons with bulletproof active state check
-          btns <- lapply(traits, function(trait) {
-            current_selected <- tryCatch(selected_trait(), error = function(e) NULL)
-            active <- isTRUE(!is.null(current_selected) && identical(current_selected, trait))
-            
-            actionButton(
-              ns(paste0("btn_", trait)),
-              label = trait,
-              width = "150px",
-              style = if (isTRUE(active)) "background-color: #337ab7; color: white;" else ""
-            )
-          })
-          
-          # Safely combine buttons
-          if (length(btns) == 0) return(NULL)
-          do.call(tagList, btns)  # More reliable than tagList(btns) for older Shiny versions
-        })
+    output$trait_buttons <- renderUI({
+      # Safely access data
+      df <- tryCatch({
+        ds <- data_r()
+        if (is.reactive(ds)) ds() else if (inherits(ds, "reactiveVal")) ds() else ds
+      }, error = function(e) NULL)
+      
+      # VALIDATION - SAFE VERSION
+      if (is.null(df)) return(p("Data not loaded yet"))
+      if (!is.data.frame(df)) return(p("Invalid data format"))
+      if (nrow(df) == 0) return(p("Data is empty"))  # Now safe
+      
+      # Rest of your original code...
+      traits <- names(df)[sapply(df, is.numeric)]
+      traits <- setdiff(traits, names(df)[1])
+      
+      if (length(traits) == 0) return(p("No numeric traits found"))
+      
+      btns <- lapply(traits, function(trait) {
+        active <- isTRUE(!is.null(selected_trait()) && selected_trait() == trait)
+        actionButton(
+          ns(paste0("btn_", trait)),
+          label = trait,
+          width = "150px",
+          style = if (active) "background-color: #337ab7; color: white;" else ""
+        )
+      })
+      
+      tagList(btns)
+    })
         
         output$select_trait_download <- renderUI({
           req(selected_trait())
