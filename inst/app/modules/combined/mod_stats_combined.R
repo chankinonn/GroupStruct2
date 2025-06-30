@@ -52,41 +52,45 @@ mod_inferential_server_combined <- function(id, data_r) {
       if (input$main_tabs == "Univariate") {
         
         output$trait_buttons <- renderUI({
-          # Safely access data
+          # Safely access data with validation
           df <- tryCatch({
             ds <- data_r()
+            if (is.null(ds)) return(NULL)
             if (is.reactive(ds)) ds() else if (inherits(ds, "reactiveVal")) ds() else ds
           }, error = function(e) NULL)
           
-          # Validate data (fixed missing parentheses)
-          if (is.null(df)) return(p("Data not available"))
+          # Validate data - FIXED VERSION
+          if (is.null(df) || !is.data.frame(df)) return(p("Data not available"))
           if (nrow(df) == 0) return(p("Data is empty"))
           
-          # Get traits safely
+          # Safely identify numeric traits
           traits <- tryCatch({
-            num_cols <- vapply(df, is.numeric, logical(1))
-            if (!any(num_cols)) return(p("No numeric traits"))
+            num_cols <- vapply(df, function(x) is.numeric(x) && !all(is.na(x)), logical(1))
+            if (!any(num_cols)) return(NULL)
             setdiff(names(df)[num_cols], names(df)[1])
-          }, error = function(e) character(0))
+          }, error = function(e) NULL)
           
           # Handle no traits case
-          if (length(traits) == 0) return(p("No usable traits found"))
+          if (is.null(traits) || length(traits) == 0) {
+            return(p("No numeric traits available."))
+          }
           
-          # Create buttons with safe comparison
+          # Create buttons with bulletproof active state check
           btns <- lapply(traits, function(trait) {
-            active <- tryCatch({
-              !is.null(selected_trait()) && identical(selected_trait(), trait)
-            }, error = function(e) FALSE)
+            current_selected <- tryCatch(selected_trait(), error = function(e) NULL)
+            active <- isTRUE(!is.null(current_selected) && identical(current_selected, trait))
             
             actionButton(
               ns(paste0("btn_", trait)),
               label = trait,
               width = "150px",
-              style = if (active) "background-color: #337ab7; color: white;" else ""
+              style = if (isTRUE(active)) "background-color: #337ab7; color: white;" else ""
             )
           })
           
-          tagList(btns)
+          # Safely combine buttons
+          if (length(btns) == 0) return(NULL)
+          do.call(tagList, btns)  # More reliable than tagList(btns) for older Shiny versions
         })
         
         output$select_trait_download <- renderUI({
