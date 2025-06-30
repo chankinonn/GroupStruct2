@@ -276,7 +276,7 @@ app_server <- function(input, output, session) {
 
     mod_summary_server_combined("summary_ui_1_combined", combined_data_list_r)
     
-    mod_inferential_combined_server("inferential_ui_1_combined", combined_data_list_r)
+    mod_inferential_server_combined("inferential_ui_1_combined", combined_data_list_r)
 
     if (is.null(allometry_combined_output())) {
       allometry_combined_output(mod_allometry_server_combined("allometry_ui_1_combined", combined_data_list_r))
@@ -400,6 +400,7 @@ app_server <- function(input, output, session) {
                              data = mod_data_combined_ui("data_ui_1_combined"),
                              summary = mod_summary_ui_combined("summary_ui_1_combined"),
                              allometry = mod_allometry_ui_combined("allometry_ui_1_combined"),
+                             stats = mod_inferential_ui_combined("inferential_ui_1_combined"),
                              mfa = mod_mfa_ui("mfa_ui_1_combined"),
                              visual = mod_visual_ui_combined("visual_ui_1_combined")))
   })
