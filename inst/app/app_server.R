@@ -275,6 +275,8 @@ app_server <- function(input, output, session) {
     req(combined_data_list_r()) # Ensure raw data is loaded
 
     mod_summary_server_combined("summary_ui_1_combined", combined_data_list_r)
+    
+    mod_stats_combined_server("stats_ui_1_combined", combined_data_list_r)
 
     if (is.null(allometry_combined_output())) {
       allometry_combined_output(mod_allometry_server_combined("allometry_ui_1_combined", combined_data_list_r))
