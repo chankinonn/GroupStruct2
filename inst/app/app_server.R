@@ -358,12 +358,20 @@ app_server <- function(input, output, session) {
     }
   })
 
-
   output$stats_button_ui <- renderUI({
     req(input$data_type)
-    # Show button for all data types
-    actionButton("go_stats", "Inferential Statistics", width = "100%")
+    if (input$data_type %in% c("meristic", "morphometric")) {
+      actionButton("go_stats", "Inferential Statistics", width = "100%")
+    } else {
+      NULL # Hide for combined data type
+    }
   })
+  
+  #output$stats_button_ui <- renderUI({
+  #  req(input$data_type)
+    # Show button for all data types
+  #  actionButton("go_stats", "Inferential Statistics", width = "100%")
+  #})
 
   # Conditional UI for Multiple Factor Analysis button
   output$mfa_button_ui <- renderUI({
