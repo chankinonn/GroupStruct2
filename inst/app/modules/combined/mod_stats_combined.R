@@ -47,6 +47,7 @@ mod_inferential_server_combined <- function(id, data_r) {
     
     # Univariate Tests 
     observeEvent(input$main_tabs, {
+      # Corrected tab name to match UI: "Univariate"
       if (input$main_tabs == "Univariate") {
         
         output$trait_buttons <- renderUI({
