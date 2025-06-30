@@ -724,6 +724,26 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           },
           contentType = "text/csv"
         )
+        
+        # Alpha level radio buttons
+        output$alpha_selector_ui <- renderUI({
+          radioButtons(
+            ns("alpha_level"),
+            label = strong("Select alpha level for significance"),
+            choices = c("0.05" = 0.05, "0.01" = 0.01, "0.001" = 0.001),
+            selected = 0.05,
+            inline = TRUE
+          )
+        })
+        
+        # Display of significant traits
+        output$significant_traits_ui <- renderUI({
+          verbatimTextOutput(ns("significant_traits"))
+        })
+        
+        output$significant_traits <- renderText({
+          significant_trait_summary()
+        })
 
       } 
     }) 
