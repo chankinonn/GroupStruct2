@@ -26,6 +26,10 @@ mod_inferential_ui_morphometric <- function(id) {
                          br(),
                          downloadButton(ns("download_all_summary"), "Download Summary of All Traits"),
                          hr(),
+                         h5("Significant Traits by Pairwise Comparison:"),
+                         uiOutput(ns("alpha_selector_ui")), 
+                         uiOutput(ns("significant_traits_ui")), 
+                         hr(),
                 ),
                 
                 # PERMANOVA Tab
@@ -564,6 +568,63 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           }
           
           return(results_list)
+        })
+        
+        significant_trait_summary <- reactive({
+          pairwise_list <- all_pairwise_results()
+          req(pairwise_list)
+          
+          alpha <- as.numeric(input$alpha_level)
+          if (is.null(alpha)) alpha <- 0.05
+          
+          # Combine the list of data frames into one wide data frame
+          # with columns: Comparison, Trait1_p_value, Trait1_method, Trait2_p_value, Trait2_method, ...
+          all_comparisons <- unique(unlist(lapply(pairwise_list, function(df) df$Comparison)))
+          combined_df <- data.frame(Comparison = all_comparisons, stringsAsFactors = FALSE)
+          
+          for (trait in names(pairwise_list)) {
+            df <- pairwise_list[[trait]]
+            # Rename columns to have trait prefix
+            df <- df %>% 
+              dplyr::select(Comparison, p_value, Method) %>% 
+              dplyr::rename(!!paste0(trait, "_p_value") := p_value,
+                            !!paste0(trait, "_method") := Method)
+            combined_df <- merge(combined_df, df, by = "Comparison", all.x = TRUE)
+          }
+          
+          # Now find p-value columns ending with "_p_value"
+          pval_cols <- grep("_p_value$", names(combined_df), value = TRUE)
+          if (length(pval_cols) == 0) {
+            return("No p-value columns found in the combined results.")
+          }
+          
+          # Normalize comparison strings for grouping
+          combined_df$NormComparison <- sapply(strsplit(as.character(combined_df$Comparison), "[-]|[ ]vs[ ]", perl = TRUE),
+                                               function(x) paste(sort(trimws(x)), collapse = " vs "))
+          
+          sig_list <- lapply(unique(combined_df$NormComparison), function(norm_comp) {
+            rows <- combined_df[combined_df$NormComparison == norm_comp, ]
+            sig_traits <- c()
+            for (col in pval_cols) {
+              pvals <- as.numeric(rows[[col]])
+              if (any(!is.na(pvals) & pvals < alpha)) {
+                trait <- sub("_p_value$", "", col)
+                sig_traits <- c(sig_traits, trait)
+              }
+            }
+            if (length(sig_traits) > 0) {
+              return(paste0(norm_comp, ": ", paste(sig_traits, collapse = ", ")))
+            }
+            return(NULL)
+          })
+          
+          sig_list <- sig_list[!sapply(sig_list, is.null)]
+          
+          if (length(sig_list) == 0) {
+            return("No traits are significant at the selected alpha level.")
+          } else {
+            return(paste0("List of significant traits:\n\n", paste(trimws(sig_list), collapse = "\n")))
+          }
         })
         
         

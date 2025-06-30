@@ -26,6 +26,10 @@ mod_inferential_ui_meristic <- function(id) {
                          br(),
                          downloadButton(ns("download_all_trait_summary"), "Download Summary of All Traits"),
                          hr(),
+                         h5("Significant Traits by Pairwise Comparison:"),
+                         uiOutput(ns("alpha_selector_ui")), 
+                         uiOutput(ns("significant_traits_ui")), 
+                         hr(),
                 ),
                 
                 # PERMANOVA Tab
@@ -496,6 +500,46 @@ mod_inferential_server_meristic <- function(id, data_r) {
           })
         })
         
+        significant_trait_summary <- reactive({
+          df <- all_pairwise_results()
+          req(df)
+          
+          alpha <- as.numeric(input$alpha_level)
+          if (is.null(alpha)) alpha <- 0.05
+          
+          pval_cols <- grep("_p-value$", names(df), value = TRUE)
+          req(length(pval_cols) > 0)
+          
+          # Normalize all comparisons first: split, sort, join back
+          df$NormComparison <- sapply(strsplit(as.character(df$Comparison), "[-]|[ ]vs[ ]", perl = TRUE),
+                                      function(x) paste(sort(trimws(x)), collapse = " vs "))
+          
+          # Group rows by normalized comparison, aggregate significant traits for each pair
+          sig_list <- lapply(unique(df$NormComparison), function(norm_comp) {
+            rows <- df[df$NormComparison == norm_comp, ]
+            sig_traits <- c()
+            for (col in pval_cols) {
+              pvals <- as.numeric(rows[[col]])
+              if (any(!is.na(pvals) & pvals < alpha)) {
+                trait <- sub("_p-value$", "", col)
+                sig_traits <- c(sig_traits, trait)
+              }
+            }
+            if (length(sig_traits) > 0) {
+              return(paste0(norm_comp, ": ", paste(sig_traits, collapse = ", ")))
+            }
+            return(NULL)
+          })
+          
+          sig_list <- sig_list[!sapply(sig_list, is.null)]
+          
+          if (length(sig_list) == 0) {
+            return("No traits are significant at the selected alpha level.")
+          } else {
+            return(paste0("List of significant traits:\n\n", paste(trimws(sig_list), collapse = "\n")))
+          }
+        })
+        
         output$download_all_trait_summary <- downloadHandler(
           filename = function() {
             paste0("summary_all_traits_", Sys.Date(), ".csv")
@@ -660,6 +704,27 @@ mod_inferential_server_meristic <- function(id, data_r) {
 
         observeEvent(input$run_analysis, {
         })
+        
+        # Alpha level radio buttons
+        output$alpha_selector_ui <- renderUI({
+          radioButtons(
+            ns("alpha_level"),
+            label = strong("Select alpha level for significance"),
+            choices = c("0.05" = 0.05, "0.01" = 0.01, "0.001" = 0.001),
+            selected = 0.05,
+            inline = TRUE
+          )
+        })
+        
+        # Display of significant traits
+        output$significant_traits_ui <- renderUI({
+          verbatimTextOutput(ns("significant_traits"))
+        })
+        
+        output$significant_traits <- renderText({
+          significant_trait_summary()
+        })
+        
         
       } # End of Univariate Tests tab conditional
     }) # End of observeEvent for main_tabs
