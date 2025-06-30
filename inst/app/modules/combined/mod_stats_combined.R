@@ -47,12 +47,10 @@ mod_inferential_server_combined <- function(id, data_r) {
     
     # Univariate Tests 
     observeEvent(input$main_tabs, {
-      # Corrected tab name to match UI: "Univariate"
       req(input$main_tabs)
       if (input$main_tabs == "Univariate") {
         
         output$trait_buttons <- renderUI({
-          req(input$main_tabs)
           df_source <- data_r()
           df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
           
