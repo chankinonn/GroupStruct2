@@ -52,7 +52,9 @@ mod_inferential_server_combined <- function(id, data_r) {
       if (input$main_tabs == "Univariate") {
         
         output$trait_buttons <- renderUI({
+          req(data_r())
           df_source <- data_r()
+          req(df_source)
           df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
           
           if (is.null(df) || nrow(df) == 0) {
