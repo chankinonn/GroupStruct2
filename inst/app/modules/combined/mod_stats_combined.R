@@ -46,52 +46,48 @@ mod_inferential_server_combined <- function(id, data_r) {
     #pcatest_results_r <- reactiveVal(NULL) # New reactive value for PCAtest results
     
     # Univariate Tests 
-    observeEvent(input$main_tabs, {
-      # Corrected tab name to match UI: "Univariate"
-      req(input$main_tabs)
-      if (input$main_tabs == "Univariate") {
-        
-        output$trait_buttons <- renderUI({
-          # Get the data with proper validation
-          df <- tryCatch({
-            df_source <- data_r()
-            if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
-          }, error = function(e) NULL)
-          
-          # Validate data exists and has rows
-          if (is.null(df) || nrow(df) == 0) {
-            return(p("Please upload data and perform allometric correction first."))
-          }
-          
-          # Safely get numeric traits excluding first column
-          traits <- tryCatch({
-            num_cols <- sapply(df, is.numeric)
-            if (any(num_cols)) {
-              setdiff(names(df)[num_cols], names(df)[1])
-            } else {
-              NULL
-            }
-          }, error = function(e) NULL)
-          
-          # Handle case where no traits found
-          if (is.null(traits) || length(traits) == 0) {
-            return(p("No numeric traits found in the data."))
-          }
-          
-          # Create buttons safely
-          btns <- lapply(traits, function(trait) {
-            active <- isTRUE(!is.null(selected_trait()) && selected_trait() == trait)
-            style <- if (active) "background-color: #337ab7; color: white;" else ""
-            actionButton(
-              ns(paste0("btn_", trait)), 
-              label = trait, 
-              width = "150px", 
-              style = style
-            )
-          })
-          
-          do.call(tagList, btns)
-        })
+    output$trait_buttons <- renderUI({
+      # Safely get the data
+      df <- tryCatch({
+        ds <- data_r()
+        if (is.reactive(ds)) ds() else if (inherits(ds, "reactiveVal")) ds() else ds
+      }, error = function(e) NULL)
+      
+      # Validate data exists and has rows
+      validate(
+        need(!is.null(df), "Data not loaded"),
+        need(nrow(df) > 0, "Data is empty")
+      )
+      
+      # Safely identify numeric traits
+      traits <- tryCatch({
+        num_cols <- vapply(df, is.numeric, logical(1))
+        if (any(num_cols)) {
+          setdiff(names(df)[num_cols], names(df)[1])
+        } else {
+          character(0)  # Return empty character instead of NULL
+        }
+      }, error = function(e) character(0))
+      
+      # Handle case where no traits found
+      if (length(traits) == 0) {
+        return(p("No numeric traits found in the data."))
+      }
+      
+      # Create buttons with safe active check
+      btns <- lapply(traits, function(trait) {
+        active <- !is.null(selected_trait()) && identical(selected_trait(), trait)
+        style <- if (isTRUE(active)) "background-color: #337ab7; color: white;" else ""
+        actionButton(
+          ns(paste0("btn_", trait)), 
+          label = trait, 
+          width = "150px", 
+          style = style
+        )
+      })
+      
+      tagList(btns)
+    })
         
         output$select_trait_download <- renderUI({
           req(selected_trait())
