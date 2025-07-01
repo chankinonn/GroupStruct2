@@ -99,12 +99,12 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       data_to_use <- NULL
       if (!is.null(allometry_adjusted_data_r()) && nrow(allometry_adjusted_data_r()) > 0) {
         data_to_use <- allometry_adjusted_data_r()
-        message("MFA module (data_for_mfa_source_r): Using allometry-adjusted data. Rows: ", nrow(data_to_use))
+        #message("MFA module (data_for_mfa_source_r): Using allometry-adjusted data. Rows: ", nrow(data_to_use))
       } else if (!is.null(raw_combined_data_r()) && !is.null(raw_combined_data_r()$data) && nrow(raw_combined_data_r()$data) > 0) {
         data_to_use <- raw_combined_data_r()$data
-        message("MFA module (data_for_mfa_source_r): Allometry not performed. Using raw combined data. Rows: ", nrow(data_to_use))
+        #message("MFA module (data_for_mfa_source_r): Allometry not performed. Using raw combined data. Rows: ", nrow(data_to_use))
       } else {
-        message("MFA module (data_for_mfa_source_r): No valid data (raw or adjusted) available.")
+        #message("MFA module (data_for_mfa_source_r): No valid data (raw or adjusted) available.")
       }
       return(data_to_use)
     })
@@ -114,7 +114,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       df <- data_for_mfa_source_r()
       req(df)
       col_name <- names(df)[1]
-      message("MFA module (group_col_name_r): Identified group column: ", col_name)
+      #message("MFA module (group_col_name_r): Identified group column: ", col_name)
       col_name
     })
     
@@ -142,7 +142,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       
       # Filter to only include numeric or factor/character columns
       valid_traits <- traits[sapply(df[traits], function(x) is.numeric(x) || is.factor(x) || is.character(x))]
-      message("MFA module (all_numeric_and_factor_traits_r): Found ", length(valid_traits), " potential traits.")
+      #message("MFA module (all_numeric_and_factor_traits_r): Found ", length(valid_traits), " potential traits.")
       return(valid_traits)
     })
     
@@ -245,10 +245,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       all_active_traits <- unlist(group_map)
       
       print(custom_trait_groups$groups)
-      
-      # Add diagnostic logging
-      message("All traits in group_map: ", paste(all_active_traits, collapse = ", "))
-      message("Columns in df: ", paste(names(df), collapse = ", "))
+
       
       missing_traits <- setdiff(all_active_traits, names(df))
       if (length(missing_traits) > 0) {
