@@ -293,7 +293,7 @@ mod_visual_server_morphometric <- function(id, dataset,
     
     # Theme generator (always classic, adjusted for x-axis label angle)
     get_custom_theme <- function(axis_text_size, axis_label_size, x_angle, facet_size,
-                                 legend_text_size, legend_title_size) {
+                                 legend_text_size, legend_title_size, theme_choice = "theme_classic") {
       
       # Adjust vjust and hjust for x-axis text based on angle
       x_vjust <- 0.5
@@ -306,7 +306,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         x_vjust <- 0.5
       }
       
-      theme_base <- ggplot2::theme_classic()
+      theme_base <- get_ggplot_theme(theme_choice)
       
       theme_elements <- list(
         axis.text.x = ggplot2::element_text(size = axis_text_size, angle = as.numeric(x_angle),
@@ -359,7 +359,7 @@ mod_visual_server_morphometric <- function(id, dataset,
       p + get_color_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
                          plot_x_angle(), plot_facet_size(),
-                         legend_text_size(), legend_title_size())
+                         legend_text_size(), legend_title_size(),theme_choice = input$plot_theme)
     })
     
     plot_box_obj <- reactive({
@@ -380,7 +380,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         get_fill_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
                          plot_x_angle(), plot_facet_size(),
-                         legend_text_size(), legend_title_size())
+                         legend_text_size(), legend_title_size(),theme_choice = input$plot_theme)
     })
     
     plot_violin_obj <- reactive({
@@ -402,7 +402,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         get_fill_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
                          plot_x_angle(), plot_facet_size(),
-                         legend_text_size(), legend_title_size())
+                         legend_text_size(), legend_title_size(),theme_choice = input$plot_theme)
     })
     
     # Reactive for PCA results
@@ -526,7 +526,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         p <- p + get_fill_scale(plot_palette()) + ggplot2::guides(fill = "none")
       }
       p + get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
-                           legend_text_size(), legend_title_size())
+                           legend_text_size(), legend_title_size(),theme_choice = input$plot_theme)
       
     })
     
@@ -677,7 +677,8 @@ mod_visual_server_morphometric <- function(id, dataset,
           0,
           plot_facet_size(),
           legend_text_size(),
-          legend_title_size()
+          legend_title_size(),
+          theme_choice = input$plot_theme
         )
       
     })

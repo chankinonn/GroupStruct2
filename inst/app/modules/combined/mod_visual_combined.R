@@ -341,6 +341,8 @@ mod_visual_server_combined <- function(id, dataset_r,
       legend_text_size_val <- legend_text_size()
       legend_title_size_val <- legend_title_size()
       
+      theme_choice <- input$plot_theme
+      
       # Adjust vjust and hjust for x-axis text based on angle
       x_vjust <- 0.5
       x_hjust <- 0.5
@@ -352,7 +354,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         x_vjust <- 0.5
       }
       
-      theme_base <- ggplot2::theme_classic()
+      theme_base <- get_ggplot_theme(theme_choice)
       
       theme_elements <- list(
         axis.text.x = ggplot2::element_text(size = axis_text_size_val, angle = as.numeric(x_angle_val),
@@ -373,7 +375,7 @@ mod_visual_server_combined <- function(id, dataset_r,
     common_plot_inputs_ready <- reactive({
       req(plot_axis_text_size(), plot_axis_label_size(),
           plot_x_angle(), plot_facet_size(),
-          legend_text_size(), legend_title_size())
+          legend_text_size(), legend_title_size(),input$plot_theme)
       TRUE
     })
     
