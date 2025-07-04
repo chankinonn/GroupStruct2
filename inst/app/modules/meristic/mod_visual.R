@@ -83,11 +83,25 @@ mod_visual_ui_meristic <- function(id) {
                                   hr(),
                                   numericInput(ns("pca_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
                                   checkboxInput(ns("pca_outline_points"), "Outline Points", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("pca_outline_points")),
+                                    sliderInput(ns("pca_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                  ),
+                                  checkboxInput(ns("pca_centroids"), "Group Centroids", value = FALSE),
                                   checkboxInput(ns("pca_ellipse"), "95% Confidence Ellipses", value = FALSE),
                                   checkboxInput(ns("pca_convex"), "Convex Hulls", value = FALSE),
-                                  checkboxInput(ns("pca_outline"), "Outline Ellipses/Hulls", value = FALSE),
-                                  checkboxInput(ns("pca_centroids"), "Group Centroids", value = FALSE),
-                                  sliderInput(ns("pca_alpha_ellipse"), "Ellipse/Hull Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s'] || input['%s']", ns("pca_ellipse"), ns("pca_convex")),
+                                    checkboxInput(ns("pca_outline"), "Outline Ellipses/Hulls", value = FALSE)
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("pca_outline")),
+                                    sliderInput(ns("pca_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s'] || input['%s']", ns("pca_ellipse"), ns("pca_convex")),
+                                    sliderInput(ns("pca_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
+                                  ),
                                   hr(),
                                   downloadButton(ns("download_pca_pdf"), "Download PDF"),
                                   br(),
@@ -111,13 +125,27 @@ mod_visual_ui_meristic <- function(id) {
                                   hr(),
                                   uiOutput(ns("n_pca_dapc_ui")),
                                   sliderInput(ns("n_da_dapc"), "Number of Discriminant Axes (n.da):", min = 1, max = 5, value = 2, step = 1),
-                                  numericInput(ns("dapc_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                  numericInput(ns("dapc_point_size"), "Point Size:", value = 3, min = 1, max = 10,width = '150px'),
                                   checkboxInput(ns("dapc_outline_points"), "Outline Points", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("dapc_outline_points")),
+                                    sliderInput(ns("dapc_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                  ),
+                                  checkboxInput(ns("dapc_centroids"), "Group Centroids", value = FALSE),
                                   checkboxInput(ns("dapc_ellipse"), "67% Confidence Ellipses (following adegenet)", value = FALSE),
                                   checkboxInput(ns("dapc_convex"), "Convex Hulls", value = FALSE),
-                                  checkboxInput(ns("dapc_outline"), "Outline Ellipses/Hulls", value = FALSE),
-                                  checkboxInput(ns("dapc_centroids"), "Group Centroids", value = FALSE),
-                                  sliderInput(ns("dapc_alpha_ellipse"), "Ellipse/Hull Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s'] || input['%s']", ns("dapc_ellipse"), ns("dapc_convex")),
+                                    checkboxInput(ns("dapc_outline"), "Outline Ellipses/Hulls", value = FALSE)
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("dapc_outline")),
+                                    sliderInput(ns("dapc_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                  ),                                  
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s'] || input['%s']", ns("dapc_ellipse"), ns("dapc_convex")),
+                                    sliderInput(ns("dapc_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
+                                  ),                                  
                                   hr(),
                                   downloadButton(ns("download_dapc_pdf"), "Download PDF"),
                                   br(),
@@ -429,7 +457,7 @@ mod_visual_server_meristic <- function(id, dataset,
           shape = 21,
           size = input$pca_point_size,
           color = "black",  
-          stroke = 0.5
+          stroke = input$pca_point_stroke
         )
       } else {
         p <- p + ggplot2::geom_point(
@@ -446,6 +474,7 @@ mod_visual_server_meristic <- function(id, dataset,
             type = "norm",
             geom = "polygon",
             alpha = input$pca_alpha_ellipse,
+            size = input$pca_outline_stroke,
             show.legend = FALSE
           )
         } else {
@@ -470,6 +499,7 @@ mod_visual_server_meristic <- function(id, dataset,
             data = hull_df,
             aes(x = PC1, y = PC2, group = Group, fill = Group, color = Group),
             alpha = input$pca_alpha_ellipse,
+            size = input$pca_outline_stroke,
             inherit.aes = FALSE,
             show.legend = FALSE
           )
@@ -564,7 +594,7 @@ mod_visual_server_meristic <- function(id, dataset,
           shape = 21,
           size = input$dapc_point_size,
           color = "black",
-          stroke = 0.5
+          stroke = input$dapc_point_stroke
         ) +
           get_fill_scale(plot_palette())
       } else {
@@ -585,6 +615,7 @@ mod_visual_server_meristic <- function(id, dataset,
             level = 0.67,
             geom = "polygon",
             alpha = input$dapc_alpha_ellipse,
+            size = input$dapc_outline_stroke,
             show.legend = FALSE
           )
         } else {
@@ -610,6 +641,7 @@ mod_visual_server_meristic <- function(id, dataset,
             data = hull_df,
             aes(x = LD1, y = LD2, group = Group, fill = Group, color = Group),
             alpha = input$dapc_alpha_ellipse,
+            size = input$dapc_outline_stroke,
             inherit.aes = FALSE,
             show.legend = FALSE
           )

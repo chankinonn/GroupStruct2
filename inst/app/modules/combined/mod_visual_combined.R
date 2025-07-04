@@ -100,11 +100,25 @@ mod_visual_ui_combined <- function(id) {
                                   hr(),
                                   numericInput(ns("mfa_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
                                   checkboxInput(ns("mfa_outline_points"), "Outline Points", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_outline_points")),
+                                    sliderInput(ns("mfa_point_stroke"), "Point Outline Width", min = 0, max = 5, value = 1, step = 1, width = '150px')
+                                  ),
+                                  checkboxInput(ns("mfa_centroids"), "Group Centroids", value = FALSE),
                                   checkboxInput(ns("mfa_ellipse"), "95% Confidence Ellipses", value = FALSE),
                                   checkboxInput(ns("mfa_convex_hull"), "Convex Hulls", value = FALSE),
-                                  checkboxInput(ns("mfa_outline_shapes"), "Outline Ellipse or Hull", value = FALSE),
-                                  checkboxInput(ns("mfa_centroids"), "Group Centroids", value = FALSE),
-                                  sliderInput(ns("mfa_ellipse_alpha"), "Ellipse/Hull Transparency:", min = 0, max = 1, value = 0.4, step = 0.05, width = '100%'),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_outline_shapes")),
+                                    sliderInput(ns("mfa_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 5, value = 1, step = 1, width = '150px')
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s'] || input['%s']", ns("mfa_ellipse"), ns("mfa_convex_hull")),
+                                    checkboxInput(ns("mfa_outline_shapes"), "Outline Ellipse or Hull", value = FALSE)
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s'] || input['%s']", ns("mfa_ellipse"), ns("mfa_convex_hull")),
+                                    sliderInput(ns("mfa_ellipse_alpha"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.4, step = 0.05, width = '150px')
+                                  ),
                                   downloadButton(ns("download_mfa_individuals_pdf"), "Download PDF"),
                                   br(),
                                   downloadButton(ns("download_mfa_individuals_jpeg"), "Download JPEG"),
@@ -742,7 +756,7 @@ mod_visual_server_combined <- function(id, dataset_r,
           aes(fill = Group),
           shape = 21,
           size = input$mfa_point_size,
-          stroke = 0.5,
+          stroke = input$mfa_point_stroke,
           color = "black"
         ) + get_fill_scale_otu(plot_palette())
       } else {
@@ -759,7 +773,9 @@ mod_visual_server_combined <- function(id, dataset_r,
           p <- p + stat_ellipse(
             aes(group = Group, fill = Group, color = Group),
             type = "norm", level = 0.95, geom = "polygon",
-            alpha = input$mfa_ellipse_alpha, show.legend = FALSE
+            alpha = input$mfa_ellipse_alpha, 
+            size = input$mfa_outline_stroke,
+            show.legend = FALSE
           ) + get_fill_scale_otu(plot_palette()) + get_color_scale_otu(plot_palette())
         } else {
           p <- p + stat_ellipse(
@@ -784,6 +800,7 @@ mod_visual_server_combined <- function(id, dataset_r,
             data = hull_df,
             aes(x = Dim.1, y = Dim.2, group = Group, fill = Group, color = Group),
             alpha = input$mfa_ellipse_alpha,
+            size = input$mfa_outline_stroke,
             inherit.aes = FALSE, show.legend = FALSE
           ) + get_fill_scale_otu(plot_palette()) + get_color_scale_otu(plot_palette())
         } else {
