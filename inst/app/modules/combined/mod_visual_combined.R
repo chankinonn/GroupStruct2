@@ -697,15 +697,16 @@ mod_visual_server_combined <- function(id, dataset_r,
       )
       
       req(common_plot_inputs_ready())
-      req(mfa_point_size(), mfa_point_shape())
+      req(input$mfa_point_size) # Use input$mfa_point_size directly
+      # mfa_point_shape() is not used directly for the default point, as it's either 21 or 19.
       
-      if (isTRUE(mfa_ellipse())) {
-        req(mfa_ellipse_alpha())
+      if (isTRUE(input$mfa_ellipse)) { # Use input$mfa_ellipse
+        req(input$mfa_ellipse_alpha) # Use input$mfa_ellipse_alpha
       }
       
       # Get the original data to extract the group column
-      df_original <- dataset_r() 
-      group_col_name <- group_col_name_r() 
+      df_original <- dataset_r() # This is the dataset (raw or adjusted) that was passed to visual module
+      group_col_name <- group_col_name_r() # USE THE PASSED GROUP NAME
       
       validate(
         need(group_col_name %in% names(df_original), paste0("Group column '", group_col_name, "' not found in the dataset for MFA individuals plot."))
@@ -725,7 +726,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         dplyr::mutate(Group = as.factor(Group))
       
       mfa_ind_coord <- dplyr::left_join(mfa_ind_coord, original_data_for_join, by = "Individual_ID") %>%
-        tibble::column_to_rownames(var = "Individual_ID")
+        tibble::column_to_rownames(var = "Individual_ID") # Convert back if desired
       
       
       # Validate join result
