@@ -7,18 +7,18 @@ mod_data_ui_meristic <- function(id) {
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
+    uiOutput(ns("upload_status_message")),
     hr(),
     h4("Outlier Detection"),
     p("The Boxplot IQR method is used to detect values exceeding 1.5×IQR within each OTU. Useful when comparing across species/populations with heterogeneous distributions. Requires ≥4 samples per group to work well."),
     p(strong("Outliers will be flagged but NOT REMOVED. It is up to the user to determine what to do with them."), style = "color: red;"),
-
+    
     actionButton(ns("detect_outliers"), "Detect Outliers"),
     verbatimTextOutput(ns("outlier_report")),
     hr(),
     h4("Data Preview"),
     DTOutput(ns("preview")),
     hr(),
-    uiOutput(ns("upload_status_message"))
   )
 }
 
@@ -26,6 +26,9 @@ mod_data_ui_meristic <- function(id) {
 mod_data_server_meristic <- function(id) {
   moduleServer(id, function(input, output, session) {
     data <- reactiveVal(NULL)
+    
+    # Initialize upload status message as empty UI
+    output$upload_status_message <- renderUI({ NULL })
     
     observeEvent(input$file, {
       req(input$file)
@@ -39,18 +42,27 @@ mod_data_server_meristic <- function(id) {
         } else if (ext %in% c("tsv", "txt")) {
           read.delim(file_path, stringsAsFactors = FALSE)
         } else {
-          showNotification("Unsupported file type. Please upload a .csv, .tsv, or .txt file.", type = "error")
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     "Error: Unsupported file type. Please upload a .csv, .tsv, or .txt file.")
+          })
           return(NULL)
         }
       }, error = function(e) {
-        showNotification(paste("Error reading file:", e$message), type = "error")
+        output$upload_status_message <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   paste0("Error reading file: ", e$message))
+        })
         return(NULL)
       })
       
       req(df)
       
       if (ncol(df) < 2) {
-        showNotification("Error: Meristic data must have at least two columns (OTU names + at least one trait).", type = "error")
+        output$upload_status_message <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   "Error: Meristic data must have at least two columns (OTU names + at least one trait).")
+        })
         data(NULL)
         return()
       }
@@ -59,28 +71,43 @@ mod_data_server_meristic <- function(id) {
       df[[1]] <- factor(df[[1]])
       
       trait_cols_to_check <- df[, 2:ncol(df), drop = FALSE]
-      all_numeric <- TRUE
-      for (i in 1:ncol(trait_cols_to_check)) {
+      all_valid <- TRUE
+      
+      for (i in seq_along(trait_cols_to_check)) {
         col_name <- names(trait_cols_to_check)[i]
         col_values <- trait_cols_to_check[[i]]
         
-        if (!is.numeric(col_values) && !all(is.na(as.numeric(as.character(col_values))))) {
-          showNotification(paste0("Error: Trait column '", col_name, "' contains non-numeric values that cannot be converted to numbers. All trait columns must be numeric for meristic data (missing values are allowed)."), type = "error")
-          all_numeric <- FALSE
+        if (any(is.na(col_values))) {
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Trait column '", col_name,
+                            "' contains missing values (NA). Missing values are not allowed for meristic data."))
+          })
+          all_valid <- FALSE
           break
         }
         
-        df[, names(trait_cols_to_check)[i]] <- as.numeric(col_values)
+        if (!is.numeric(col_values)) {
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Trait column '", col_name,
+                            "' is not numeric. All trait columns must be numeric for meristic data."))
+          })
+          all_valid <- FALSE
+          break
+        }
       }
       
-      if (!all_numeric) {
+      if (!all_valid) {
         data(NULL)
         return()
       }
       
+      # Passed all checks
       data(df)
       output$upload_status_message <- renderUI({
-        tags$div(class = "alert alert-success", "File uploaded and validated successfully. Proceed to the next module.")
+        tags$div(class = "alert alert-success",
+                 "File uploaded and validated successfully. Proceed to the next module.")
       })
     })
     
@@ -171,3 +198,4 @@ mod_data_server_meristic <- function(id) {
     return(data)
   })
 }
+

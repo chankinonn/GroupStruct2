@@ -3,10 +3,11 @@ mod_data_ui_morphometric <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Input Morphometric Data"),
-    p("The first column must be Group/OTU names (e.g., species or population). Other traits should be in the 3rd column onwards"),
+    p("The first column must be the Group/OTU labels (e.g., species or population). Other traits should be in the 3rd column onwards"),
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
+    uiOutput(ns("upload_status_message")),
     hr(),
     h4("Outlier Detection"),
     p("The Boxplot IQR method is used to detect values exceeding 1.5×IQR within each OTU. Useful when comparing across species/populations with heterogeneous distributions. Requires ≥4 samples per group to work well."),
@@ -17,7 +18,6 @@ mod_data_ui_morphometric <- function(id) {
     h4("Data Preview"),
     DTOutput(ns("preview")),
     hr(),
-    uiOutput(ns("upload_status_message"))
   )
 }
 
@@ -25,6 +25,9 @@ mod_data_ui_morphometric <- function(id) {
 mod_data_server_morphometric <- function(id) {
   moduleServer(id, function(input, output, session) {
     data <- reactiveVal(NULL)
+    
+    # Initialize upload status message as empty UI
+    output$upload_status_message <- renderUI({ NULL })
     
     observeEvent(input$file, {
       req(input$file)
@@ -37,18 +40,27 @@ mod_data_server_morphometric <- function(id) {
         } else if (ext %in% c("tsv", "txt")) {
           read.delim(file_path, stringsAsFactors = FALSE)
         } else {
-          showNotification("Unsupported file type. Please upload a .csv, .tsv, or .txt file.", type = "error")
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     "Error: Unsupported file type. Please upload a .csv, .tsv, or .txt file.")
+          })
           return(NULL)
         }
       }, error = function(e) {
-        showNotification(paste("Error reading file:", e$message), type = "error")
+        output$upload_status_message <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   paste0("Error reading file: ", e$message))
+        })
         return(NULL)
       })
       
       req(df)
       
       if (ncol(df) < 2) {
-        showNotification("Error: Morphometric data must have at least two columns (OTU names + at least one trait).", type = "error")
+        output$upload_status_message <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   "Error: Morphometric data must have at least two columns (OTU names + at least one trait).")
+        })
         data(NULL)
         return()
       }
@@ -58,18 +70,26 @@ mod_data_server_morphometric <- function(id) {
       
       trait_cols <- df[, 2:ncol(df), drop = FALSE]
       all_valid <- TRUE
-      for (i in 1:ncol(trait_cols)) {
+      for (i in seq_along(trait_cols)) {
         col_name <- names(trait_cols)[i]
         col_values <- trait_cols[[i]]
         
         if (any(is.na(col_values))) {
-          showNotification(paste0("Error: Trait column '", col_name, "' contains missing values (NA). Missing values are not allowed for morphometric data."), type = "error")
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Trait column '", col_name,
+                            "' contains missing values (NA). Missing values are not allowed for morphometric data."))
+          })
           all_valid <- FALSE
           break
         }
         
         if (!is.numeric(col_values)) {
-          showNotification(paste0("Error: Trait column '", col_name, "' is not numeric. All trait columns must be numeric for morphometric data."), type = "error")
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Trait column '", col_name,
+                            "' is not numeric. All trait columns must be numeric for morphometric data."))
+          })
           all_valid <- FALSE
           break
         }
@@ -80,9 +100,11 @@ mod_data_server_morphometric <- function(id) {
         return()
       }
       
+      # Passed all checks
       data(df)
       output$upload_status_message <- renderUI({
-        tags$div(class = "alert alert-success", "File uploaded and validated successfully. Proceed to the next module.")
+        tags$div(class = "alert alert-success",
+                 "File uploaded and validated successfully. Proceed to the next module.")
       })
     })
     
