@@ -1,4 +1,3 @@
-# modules/combined/mod_data_combined.R
 
 mod_data_combined_ui <- function(id) {
   ns <- NS(id)

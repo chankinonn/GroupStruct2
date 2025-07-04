@@ -1,5 +1,3 @@
-# modules/combined/mod_visual_combined.R
-
 
 mod_visual_ui_combined <- function(id) {
   ns <- NS(id)
@@ -31,7 +29,7 @@ mod_visual_ui_combined <- function(id) {
                 ),
                 
                 tabPanel("Boxplot",
-                         fluidRow( # Use a fluidRow to split content
+                         fluidRow( 
                            column(9, 
                                   plotOutput(ns("plot_box"))
                            ),
@@ -50,6 +48,7 @@ mod_visual_ui_combined <- function(id) {
                            )
                          )
                 ),
+                
                 tabPanel("Violin Plot",
                          fluidRow(
                            column(9,
@@ -70,7 +69,7 @@ mod_visual_ui_combined <- function(id) {
                            )
                          )
                 ),
-                # MFA Plots 
+                
                 tabPanel("MFA: Eigenvalues",
                          fluidRow(
                            column(9,
@@ -88,6 +87,7 @@ mod_visual_ui_combined <- function(id) {
                            )
                          )
                 ),
+                
                 tabPanel("MFA: Individuals",
                          fluidRow(
                            column(9,
@@ -186,7 +186,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       mfa_type_colors_r()
     })
     
-    # Utility: Get MFA Type colors from the passed reactive
+    # Get MFA Type colors from the passed reactive
     get_mfa_type_colors <- reactive({
       req(mfa_type_colors_r())
       mfa_type_colors_r()
@@ -493,7 +493,6 @@ mod_visual_server_combined <- function(id, dataset_r,
         need(inherits(mfa_res, "MFA"), "Invalid MFA results object.")
       )
       
-      # fviz_eig returns a ggplot object directly, so we can add theme to it
       fviz_eig(mfa_res) +
         get_custom_theme() +
         labs(title = "Eigenvalue Scree Plot") # Add a title
@@ -509,7 +508,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       }
       
       trait_to_type <- trait_group_df_r() %>% dplyr::distinct(Type) %>%
-        dplyr::mutate(Group = Type) # Use Type as group name for coloring
+        dplyr::mutate(Group = Type)
       
       dims <- c("Dim.1", "Dim.2")
       plots <- lapply(dims, function(dim_name) {
@@ -681,7 +680,6 @@ mod_visual_server_combined <- function(id, dataset_r,
         final_plot <- plot_list[[1]]
       }
       
-      message("--- Exiting mfa_var_contrib_hist_obj reactive ---")
       return(final_plot)
     })
     
@@ -708,8 +706,8 @@ mod_visual_server_combined <- function(id, dataset_r,
       }
       
       # Get the original data to extract the group column
-      df_original <- dataset_r() # This is the dataset (raw or adjusted) that was passed to visual module
-      group_col_name <- group_col_name_r() # USE THE PASSED GROUP NAME
+      df_original <- dataset_r() 
+      group_col_name <- group_col_name_r() 
       
       validate(
         need(group_col_name %in% names(df_original), paste0("Group column '", group_col_name, "' not found in the dataset for MFA individuals plot."))
@@ -729,7 +727,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         dplyr::mutate(Group = as.factor(Group))
       
       mfa_ind_coord <- dplyr::left_join(mfa_ind_coord, original_data_for_join, by = "Individual_ID") %>%
-        tibble::column_to_rownames(var = "Individual_ID") # Convert back if desired
+        tibble::column_to_rownames(var = "Individual_ID")
       
       
       # Validate join result
@@ -739,16 +737,16 @@ mod_visual_server_combined <- function(id, dataset_r,
       )
       
       p <- ggplot2::ggplot(mfa_ind_coord, ggplot2::aes(x = Dim.1, y = Dim.2, fill = Group)) +
-        ggplot2::geom_point(ggplot2::aes(color = Group), # Map color to Group for the border
+        ggplot2::geom_point(ggplot2::aes(color = Group), 
                             shape = as.numeric(mfa_point_shape()),
                             size = mfa_point_size(),
-                            stroke = 0.5) # Add a small stroke/border to make points more visible
+                            stroke = 0.5) 
       
       if (isTRUE(mfa_ellipse())) {
-        p <- p + ggplot2::stat_ellipse(ggplot2::aes(color = Group, fill = Group), # Ellipses can use both for outline and fill
+        p <- p + ggplot2::stat_ellipse(ggplot2::aes(color = Group, fill = Group), 
                                        type = "norm",
                                        alpha = mfa_ellipse_alpha(),
-                                       geom = "polygon") # Use polygon for filled ellipses
+                                       geom = "polygon") 
       }
       
       if (isTRUE(input$mfa_convex_hull)) {
@@ -766,16 +764,16 @@ mod_visual_server_combined <- function(id, dataset_r,
       
       
       p <- p +
-        get_fill_scale_otu(plot_palette()) + # Apply OTU-specific fill scale for points AND ellipses
-        get_color_scale_otu(plot_palette()) + # Apply OTU-specific color scale for ellipses border AND point borders
-        get_custom_theme() + # Use the reactive theme directly
+        get_fill_scale_otu(plot_palette()) + 
+        get_color_scale_otu(plot_palette()) + 
+        get_custom_theme() + 
         ggplot2::labs(
           x = paste0("Dim 1 (", round(mfa_res$eig[1,2], 2), "%)"),
           y = paste0("Dim 2 (", round(mfa_res$eig[2,2], 2), "%)"),
-          fill = str_to_title(group_col_name), # Dynamic legend title
-          color = str_to_title(group_col_name) # Ensure color legend also titled
+          fill = str_to_title(group_col_name), 
+          color = str_to_title(group_col_name) 
         ) +
-        ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(size = 8, shape = as.numeric(mfa_point_shape())))) # Override legend point size and shape
+        ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(size = 8, shape = as.numeric(mfa_point_shape())))) 
       
       # Add group centroids if enabled
       if (isTruthy(input$mfa_centroids)) {
@@ -846,8 +844,6 @@ mod_visual_server_combined <- function(id, dataset_r,
     height = function() input$mfa_var_contrib_hist_height,
     width = function() input$mfa_var_contrib_hist_width)
 
-    
-    # Default download dimensions (in inches) - now primarily for width fallback
     DEFAULT_DOWNLOAD_WIDTH <- 10
     DEFAULT_DOWNLOAD_HEIGHT <- 8 # This will mostly be overridden by user input
     
@@ -861,7 +857,6 @@ mod_visual_server_combined <- function(id, dataset_r,
           plot_height_val_px <- input[[height_input_id]]
           plot_width_val_px <- input[[width_input_id]] 
           
-          # Convert pixels to inches for ggsave (assuming 96 dpi for web display)
           plot_height_val_in <- if (!is.null(plot_height_val_px) && plot_height_val_px > 0) {
             plot_height_val_px / 96
           } else {
@@ -871,8 +866,6 @@ mod_visual_server_combined <- function(id, dataset_r,
           plot_width_val_in <- if (!is.null(plot_width_val_px) && plot_width_val_px > 0) {
             plot_width_val_px / 96
           } else {
-            # Fallback to a default or current rendered width if input is null or zero
-            # For download, it's better to explicitly use the input or a fixed default
             DEFAULT_DOWNLOAD_WIDTH
           }
           
@@ -911,5 +904,5 @@ mod_visual_server_combined <- function(id, dataset_r,
     output$download_mfa_group_contrib_pdf <- create_download_handler(mfa_group_contrib_hist_obj, "mfa_group_contributions", "pdf", "mfa_group_contrib_hist_height", "mfa_group_contrib_hist_width")
     output$download_mfa_group_contrib_jpeg <- create_download_handler(mfa_group_contrib_hist_obj, "mfa_group_contributions", "jpeg", "mfa_group_contrib_hist_height", "mfa_group_contrib_hist_width")
 
-  }) # End moduleServer
-} # End mod_visual_server_combined
+  }) 
+} 

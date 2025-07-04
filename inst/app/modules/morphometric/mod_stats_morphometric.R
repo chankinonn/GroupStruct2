@@ -7,7 +7,6 @@ mod_inferential_ui_morphometric <- function(id) {
     br(),
     
     tabsetPanel(id = ns("main_tabs"), 
-                # Univariate Tests Tab
                 tabPanel("Univariate",
                          br(), 
                          h4("Univariate Analysis"),
@@ -32,7 +31,6 @@ mod_inferential_ui_morphometric <- function(id) {
                          hr(),
                 ),
                 
-                # PERMANOVA Tab
                 tabPanel("Multivariate (PERMANOVA)",
                          br(), 
                          h4("PERMANOVA Analysis"),
@@ -62,7 +60,6 @@ mod_inferential_ui_morphometric <- function(id) {
                          hr(),
                 ),
                 
-                # PCA Tab 
                 tabPanel("PCA",
                          br(), 
                          h4("Standard PCA"),
@@ -73,7 +70,6 @@ mod_inferential_ui_morphometric <- function(id) {
                          hr(),
                 ),
                 
-                # PCAtest Tab 
                 tabPanel("PCAtest",
                          br(), 
                          h4("PCAtest Analysis sensu Camargo (2022)"),
@@ -84,7 +80,6 @@ mod_inferential_ui_morphometric <- function(id) {
                          ),
                          p("If you use PCAtest, please cite:"),
                          p(em("Camargo, A. (2022). PCAtest: testing the statistical significance of Principal Component Analysis in R. PeerJ, 10:e12967. https://doi.org/10.7717/peerj.12967")),
-                         
                          numericInput(ns("pcatest_permutations"), "Number of Permutations:", value = 1000, min = 100, step = 100),
                          actionButton(ns("run_pcatest"), "Run PCAtest"),
                          br(), br(),
@@ -105,7 +100,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
     selected_trait <- reactiveVal(NULL)
     permanova_main_results_r <- reactiveVal(NULL)
     permanova_pairwise_results_r <- reactiveVal(NULL)
-    pcatest_results_r <- reactiveVal(NULL) # New reactive value for PCAtest results
+    pcatest_results_r <- reactiveVal(NULL) 
     
     # Reactive for PCA results
     pca_results_r <- reactive({
@@ -178,7 +173,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
         loadings_df %>% rename(Metric = Trait_Loading) # Rename for consistent binding
       )
       
-      # Format numeric columns to 4 decimal places for display/download
+      # Format numeric columns to 4 decimal places
       numeric_cols <- names(combined_df)[sapply(combined_df, is.numeric)]
       combined_df[numeric_cols] <- lapply(combined_df[numeric_cols], function(x) round(x, 4))
       
@@ -208,7 +203,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
     
     # Univariate Tests 
     observeEvent(input$main_tabs, {
-      # Corrected tab name to match UI: "Univariate"
       if (input$main_tabs == "Univariate") {
         
         output$trait_buttons <- renderUI({
@@ -578,7 +572,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           if (is.null(alpha)) alpha <- 0.05
           
           # Combine the list of data frames into one wide data frame
-          # with columns: Comparison, Trait1_p_value, Trait1_method, Trait2_p_value, Trait2_method, ...
           all_comparisons <- unique(unlist(lapply(pairwise_list, function(df) df$Comparison)))
           combined_df <- data.frame(Comparison = all_comparisons, stringsAsFactors = FALSE)
           
@@ -807,7 +800,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           return(pairw.res)
         }
         
-        # Observe for PERMANOVA button click
+        # Observe for PERMANOVA
         observeEvent(input$run_permanova, {
           shinyjs::addClass(id = "run_permanova", class = "module-active")
           
@@ -817,7 +810,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             req(data_r())
             
             df_source <- data_r()
-            # Ensure it's a data frame, not a reactive value wrapper
             df_for_permanova <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
             
             group_col_name <- names(df_for_permanova)[1]
@@ -913,7 +905,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             permanova_main_results_r(main_result)
             
             # Update progress and detail based on main result significance
-            # Also, check if there are enough unique groups for pairwise (more than 2)
             if (!is.null(main_result) && "Pr(>F)" %in% names(main_result) &&
                 main_result$`Pr(>F)`[1] < 0.05 && n_distinct(species_data_clean) > 2) {
               incProgress(0.5, detail = "Main PERMANOVA significant. Running pairwise comparisons...")

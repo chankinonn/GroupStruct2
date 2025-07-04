@@ -1,5 +1,3 @@
-#' The application User-Interface
-#'
 #' @param request Internal parameter for `{shiny}`.
 #'     DO NOT REMOVE.
 #' @import shiny
@@ -74,7 +72,6 @@ app_ui <- function(request) {
                       ),
                       selected = "meristic"),
           hr(),
-          #h4("Modules"),
           actionButton("go_data", "Input Data", width = "100%"),
           actionButton("go_summary", "Summary Statistics", width = "100%"),
           uiOutput("allometry_button_ui"),

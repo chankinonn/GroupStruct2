@@ -1,31 +1,28 @@
-# modules/combined/mod_mfa.R
 
 mod_mfa_ui <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Multiple Factor Analysis (MFA)"),
     hr(),
-    p("If you use this module, please cite: XXXXXXXXXX."),
+    p("If you use this module, please cite: Grismer (2025) Introducing multiple factor analysis (MFA) as a diagnostic taxonomic tool complementing principal component analysis (PCA). ZooKeys, in press"),
     br(),
-    tabsetPanel(id = ns("mfa_main_tabs"), # Main tabsetPanel for MFA and PERMANOVA on MFA Scores
-                tabPanel("MFA Analysis & Results", # Main MFA tab
+    tabsetPanel(id = ns("mfa_main_tabs"), 
+                tabPanel("MFA Analysis & Results", 
                          br(),
                          hr(),
                          h4("MFA Configuration: Create and Assign Traits to Groups"),
                          p("Create custom groups (e.g., meristic, morphometric, bodyshape, color, etc) and assign traits to them. Each group must only contain one type of data (e.g., numerical or categorical. Do not mix numerical and categorical data in a single group). You can create multiple numerical or categorical groups as long as each group contains only a single type of data. Unselected traits will be excluded from the MFA."),
                          p(strong("Note 1:"), "If allometric correction was performed on morphometric data, it will automatically be used in the MFA. Otherwise, all traits will come from raw combined data."),
                          p(strong("Note 2:"), "At least 2 groups must be created."),
-                         
-                         # Inputs for defining variable groups (meristic, morphometric, categorical)
                          uiOutput(ns("variable_group_selection")),
                          br(),
                          actionButton(ns("perform_mfa"), "Perform MFA"),
                          br(),
-                         textOutput(ns("mfa_status_message")), # element for status messages
+                         textOutput(ns("mfa_status_message")), 
                          br(),
                          hr(),
                          h4("MFA Results Tables"),
-                         tabsetPanel( # Nested tabsetPanel for MFA results tables
+                         tabsetPanel(
                            tabPanel("Eigenvalues",
                                     DTOutput(ns("mfa_eigen_table"))
                            ),
@@ -43,9 +40,9 @@ mod_mfa_ui <- function(id) {
                          br(),
                          downloadButton(ns("download_all_mfa_results"), "Download All MFA Tables"),
                          hr()
-                ), # End of "MFA Analysis & Results" tab
+                ), 
                 
-                tabPanel("PERMANOVA on MFA Scores", # Separate tab for PERMANOVA on MFA Scores
+                tabPanel("PERMANOVA on MFA Scores", 
                          br(),
                          h4("PERMANOVA Analysis on MFA Scores"),
                          p("This analysis tests for significant differences among group centroids in the ",
@@ -66,24 +63,21 @@ mod_mfa_ui <- function(id) {
                          h5("Pairwise PERMANOVA Results on MFA Scores:"),
                          DTOutput(ns("permanova_pairwise_results_mfa")),
                          downloadButton(ns("download_permanova_pairwise_mfa"), "Download Pairwise Results")
-                ) # End of "PERMANOVA on MFA Scores" tab
-    ) # End of main tabsetPanel
+                ) 
+    ) 
   )
 }
-
-
 
 mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    mfa_results_r <- reactiveVal(NULL) # Stores the MFA model output
-    mfa_data_for_analysis_r <- reactiveVal(NULL) # Stores the actual data passed to MFA
-    mfa_status_message_r <- reactiveVal("Make sure at least 2 groups are created.") # New reactiveVal for status messages
+    mfa_results_r <- reactiveVal(NULL) 
+    mfa_data_for_analysis_r <- reactiveVal(NULL)
+    mfa_status_message_r <- reactiveVal("Make sure at least 2 groups are created.")
     
     # Stores user-defined custom trait groupings
     custom_trait_groups <- reactiveValues(groups = list())
-    
     
     # Reactive values for PERMANOVA results
     permanova_main_mfa_results_r <- reactiveVal(NULL)
@@ -99,12 +93,9 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       data_to_use <- NULL
       if (!is.null(allometry_adjusted_data_r()) && nrow(allometry_adjusted_data_r()) > 0) {
         data_to_use <- allometry_adjusted_data_r()
-        #message("MFA module (data_for_mfa_source_r): Using allometry-adjusted data. Rows: ", nrow(data_to_use))
       } else if (!is.null(raw_combined_data_r()) && !is.null(raw_combined_data_r()$data) && nrow(raw_combined_data_r()$data) > 0) {
         data_to_use <- raw_combined_data_r()$data
-        #message("MFA module (data_for_mfa_source_r): Allometry not performed. Using raw combined data. Rows: ", nrow(data_to_use))
       } else {
-        #message("MFA module (data_for_mfa_source_r): No valid data (raw or adjusted) available.")
       }
       return(data_to_use)
     })
@@ -114,7 +105,6 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       df <- data_for_mfa_source_r()
       req(df)
       col_name <- names(df)[1]
-      #message("MFA module (group_col_name_r): Identified group column: ", col_name)
       col_name
     })
     
@@ -142,7 +132,6 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       
       # Filter to only include numeric or factor/character columns
       valid_traits <- traits[sapply(df[traits], function(x) is.numeric(x) || is.factor(x) || is.character(x))]
-      #message("MFA module (all_numeric_and_factor_traits_r): Found ", length(valid_traits), " potential traits.")
       return(valid_traits)
     })
     
@@ -152,7 +141,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       })
     })
     
-    # Dynamic UI for variable group inputs using checkboxGroupInput
+    # Dynamic UI for variable group inputs 
     output$variable_group_selection <- renderUI({
       all_traits <- all_numeric_and_factor_traits_r()
       if (length(all_traits) == 0) {
@@ -162,7 +151,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       tagList(
         h5(strong("Create groups and assign traits to them:")),
         textInput(ns("new_group_name"), "Group Name:", placeholder = "e.g., ShapeTraits"),
-        uiOutput(ns("trait_selector_ui")),  # <- this renders the checkbox group
+        uiOutput(ns("trait_selector_ui")),
         actionButton(ns("add_group"), "Add to Group", class = "btn-success mt-2"),
         actionButton(ns("reset_groups"), "Reset All Groups", class = "btn-danger mt-2"),
         hr(),
@@ -327,11 +316,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           }
         }
       }
-      # End Data Type Coercion and Validation 
-      
-      
-      
-      
+
       # Check for missing values AFTER all type conversions
       if (any(is.na(data_for_mfa))) {
         mfa_status_message_r("Error: Missing values detected in selected traits after type conversion. MFA requires complete cases. Please clean your data first (e.g., using 'Impute Missing Data' module).")
@@ -349,9 +334,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
         }
       }))
       
-      
       # Final validation for MFA input
-      # The sum of group_lengths should now include the 1 for the supplementary group
       if (sum(group_lengths) != ncol(data_for_mfa)) {
         mfa_status_message_r(paste0("Internal error: Mismatch between selected variables and group configuration for MFA. Sum of group lengths (", sum(group_lengths), ") does not match number of columns in data (", ncol(data_for_mfa), "). Please report this issue."))
         return()
@@ -362,8 +345,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
         return()
       }
       
-      message("MFA is about to be performed...") # Retain this message for console debugging
-      
+      message("MFA is about to be performed...") 
       
       # Perform MFA
       mfa_res <- tryCatch({
@@ -378,20 +360,19 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
         )
       }, error = function(e) {
         mfa_status_message_r(paste("MFA failed:", e$message))
-        message("MFA failed with error:", e$message) # Print error to console
+        message("MFA failed with error:", e$message) 
         mfa_results_r(NULL)
         return(NULL)
       })
       
       mfa_results_r(mfa_res)
-      mfa_data_for_analysis_r(data_for_mfa) # Store the data used for MFA
+      mfa_data_for_analysis_r(data_for_mfa) 
       
       if (!is.null(mfa_res)) {
         mfa_status_message_r("MFA performed successfully! See results below.")
-        message("MFA performed successfully!") # Print success to console
+        message("MFA performed successfully!") 
       }
     })
-    
     
     # MFA Results Outputs
     
@@ -455,7 +436,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       datatable(round(ind_coord_df, 3), options = list(dom = 'tip', scrollX = TRUE))
     })
     
-    # Download All MFA Results (Tables)
+    # Download All MFA Results
     output$download_all_mfa_results <- downloadHandler(
       filename = function() {
         paste0("mfa_results_", Sys.Date(), ".zip")
@@ -469,7 +450,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
         
         files_to_zip <- c()
         
-        # 1. Eigenvalues
+        # Eigenvalues
         if (!is.null(mfa_res$eig)) {
           eig_df <- as.data.frame(mfa_res$eig)
           colnames(eig_df) <- c("Eigenvalue", "Percentage of variance", "Cumulative percentage of variance")
@@ -477,13 +458,13 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           files_to_zip <- c(files_to_zip, "mfa_eigenvalues.csv")
         }
         
-        # 2. Individuals Coordinates
+        # Individuals Coordinates
         if (!is.null(mfa_res$ind$coord)) {
           write.csv(as.data.frame(mfa_res$ind$coord), "mfa_individuals_coordinates.csv", row.names = TRUE)
           files_to_zip <- c(files_to_zip, "mfa_individuals_coordinates.csv")
         }
         
-        # 3. Quantitative Variables Summary (Coord, Cos2, Contrib)
+        # Quantitative Variables Summary (Coord, Cos2, Contrib)
         if (!is.null(mfa_res$quanti.var) && !is.null(mfa_res$quanti.var$coord)) {
           quanti_var_df <- bind_cols(
             as.data.frame(mfa_res$quanti.var$coord) %>% rename_with(~paste0(.x, "_coord")),
@@ -494,7 +475,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           files_to_zip <- c(files_to_zip, "mfa_quantitative_variables_summary.csv")
         }
         
-        # 4. Qualitative Variables Summary (Coord, Cos2, Contrib, V-test)
+        # Qualitative Variables Summary (Coord, Cos2, Contrib, V-test)
         if (!is.null(mfa_res$quali.var) && !is.null(mfa_res$quali.var$coord)) {
           quali_var_df <- bind_cols(
             as.data.frame(mfa_res$quali.var$coord) %>% rename_with(~paste0(.x, "_coord")),
@@ -506,7 +487,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           files_to_zip <- c(files_to_zip, "mfa_qualitative_variables_summary.csv")
         }
         
-        # 5. Group Summary (Coord, Cos2, Contrib)
+        # Group Summary (Coord, Cos2, Contrib)
         if (!is.null(mfa_res$group) && !is.null(mfa_res$group$coord)) {
           group_df <- bind_cols(
             as.data.frame(mfa_res$group$coord) %>% rename_with(~paste0(.x, "_coord")),
@@ -624,19 +605,16 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       permanova_pairwise_mfa_results_r(pairwise_permanova_res)
     })
     
-    # Output for Main PERMANOVA Results
     output$permanova_main_results_mfa <- renderPrint({
       req(permanova_main_mfa_results_r())
       permanova_main_mfa_results_r()
     })
     
-    # Output for Pairwise PERMANOVA Results
     output$permanova_pairwise_results_mfa <- renderDT({
       req(permanova_pairwise_mfa_results_r())
       datatable(permanova_pairwise_mfa_results_r(), options = list(pageLength = 10, scrollX = TRUE))
     })
     
-    # Download Handler for Main PERMANOVA Results
     output$download_permanova_main_mfa <- downloadHandler(
       filename = function() {
         paste("permanova_main_mfa_results_", Sys.Date(), ".txt", sep = "")
@@ -647,7 +625,6 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       }
     )
     
-    # Download Handler for Pairwise PERMANOVA Results
     output$download_permanova_pairwise_mfa <- downloadHandler(
       filename = function() {
         paste("permanova_pairwise_mfa_results_", Sys.Date(), ".csv", sep = "")
@@ -657,7 +634,6 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
         write.csv(permanova_pairwise_mfa_results_r(), file, row.names = FALSE)
       }
     )
-    
     
     return(list(
       mfa_results_r = mfa_results_r,

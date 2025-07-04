@@ -73,7 +73,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
     
     adjusted_data_output_r <- reactiveVal(NULL)
     
-    # Step 1: UI for body size column
+    # UI for body size column
     output$body_size_selector_ui <- renderUI({
       req(raw_combined_data_r())
       df <- raw_combined_data_r()$data
@@ -95,7 +95,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       )
     })
     
-    # Step 2: Morphometric trait selector (excluding selected body size)
+    # Morphometric trait selector (excluding selected body size)
     output$morphometric_traits_selector <- renderUI({
       req(raw_combined_data_r(), input$body_size_col)
       df <- raw_combined_data_r()$data

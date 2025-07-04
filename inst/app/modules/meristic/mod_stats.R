@@ -6,7 +6,6 @@ mod_inferential_ui_meristic <- function(id) {
     br(),
     
     tabsetPanel(id = ns("main_tabs"), 
-                # Univariate Tests Tab
                 tabPanel("Univariate",
                          br(),
                          h4("Univariate Analysis"),
@@ -32,7 +31,6 @@ mod_inferential_ui_meristic <- function(id) {
                          hr(),
                 ),
                 
-                # PERMANOVA Tab
                 tabPanel("Multivariate (PERMANOVA)",
                          br(), 
                          h4("PERMANOVA Analysis"),
@@ -61,7 +59,6 @@ mod_inferential_ui_meristic <- function(id) {
                          downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results")
                 ),
                 
-                # PCA Tab 
                 tabPanel("PCA",
                          br(), 
                          h4("Standard PCA"),
@@ -72,7 +69,6 @@ mod_inferential_ui_meristic <- function(id) {
                          hr(),
                 ),
                 
-                # PCAtest Tab 
                 tabPanel("PCAtest",
                          br(), 
                          h4("PCAtest Analysis sensu Camargo (2022)"),
@@ -101,14 +97,13 @@ mod_inferential_server_meristic <- function(id, data_r) {
     ns <- session$ns 
     
     selected_trait <- reactiveVal(NULL)
-    permanova_main_results_r <- reactiveVal(NULL) # Reactive value for PERMANOVA main results
-    permanova_pairwise_results_r <- reactiveVal(NULL) # Reactive value for PERMANOVA pairwise results
-    pcatest_results_r <- reactiveVal(NULL) # Reactive value for PCAtest results
-    pcatest_output_text_r <- reactiveVal(NULL) # Reactive value to store captured PCAtest output
-    
-    # === PCA Core ===
-    
-    # PCA calculation from dataset
+    permanova_main_results_r <- reactiveVal(NULL) 
+    permanova_pairwise_results_r <- reactiveVal(NULL) 
+    pcatest_results_r <- reactiveVal(NULL) 
+    pcatest_output_text_r <- reactiveVal(NULL) 
+
+
+    # PCA calculation 
     pca_results_r <- reactive({
       df <- data_r()
       req(df)
@@ -120,7 +115,7 @@ mod_inferential_server_meristic <- function(id, data_r) {
       prcomp(data_mat_numeric[complete_rows, ], center = TRUE, scale. = TRUE)
     })
     
-    # PCA summary table combining eigenvalues, variance, loadings, etc.
+    # PCA summary table 
     pca_summary_results_r <- reactive({
       pca <- pca_results_r()
       req(pca)
@@ -156,7 +151,6 @@ mod_inferential_server_meristic <- function(id, data_r) {
         loadings_df %>% rename(Metric = Trait_Loading)
       )
       
-      # Round numeric values
       numeric_cols <- names(combined_df)[sapply(combined_df, is.numeric)]
       combined_df[numeric_cols] <- lapply(combined_df[numeric_cols], function(x) round(x, 4))
       
@@ -191,11 +185,10 @@ mod_inferential_server_meristic <- function(id, data_r) {
     })
     
     
-    # Univariate Tests Logic 
+    # Univariate tests
     observeEvent(input$main_tabs, {
       if (input$main_tabs == "Univariate") {
         
-        # Render trait buttons dynamically with active styling
         output$trait_buttons <- renderUI({
           df_source <- data_r()
           df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
@@ -207,7 +200,6 @@ mod_inferential_server_meristic <- function(id, data_r) {
           btns <- lapply(traits, function(trait) {
             active <- !is.null(selected_trait()) && selected_trait() == trait
             style <- if (active) "background-color: #337ab7; color: white;" else ""
-            # Ensure actionButton is namespaced
             actionButton(ns(paste0("btn_", trait)), label = trait, width = "150px", style = style)
           })
           do.call(tagList, btns)
@@ -232,7 +224,6 @@ mod_inferential_server_meristic <- function(id, data_r) {
           }
         }, ignoreNULL = TRUE)
         
-        # Observe button clicks and update selected_trait (with local scoping)
         observe({
           df_source <- data_r()
           df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
@@ -243,7 +234,7 @@ mod_inferential_server_meristic <- function(id, data_r) {
             local({
               mytrait <- trait
               btn_id <- paste0("btn_", mytrait)
-              observeEvent(input[[btn_id]], { # Access namespaced input ID
+              observeEvent(input[[btn_id]], { 
                 selected_trait(mytrait)
               }, ignoreInit = TRUE)
             })
@@ -260,7 +251,6 @@ mod_inferential_server_meristic <- function(id, data_r) {
         })
         
         # This reactive depends on selected_trait() AND input$force_parametric
-        # It needs to re-run whenever either changes.
         output$test_results <- renderPrint({
           trait <- selected_trait()
           if (is.null(trait)) {
@@ -726,15 +716,15 @@ mod_inferential_server_meristic <- function(id, data_r) {
         })
         
         
-      } # End of Univariate Tests tab conditional
-    }) # End of observeEvent for main_tabs
+      } 
+    }) 
     
 
     # PERMANOVA  
     observeEvent(input$main_tabs, {
       if (input$main_tabs == "Multivariate (PERMANOVA)") {
         
-        # Helper function for pairwise.adonis, adapted for meristic data
+        # Helper function for pairwise.adonis
         pairwise.adonis_meristic <- function(x, factors, sim.method = 'euclidean', p.adjust.m ='bonferroni', permutations = 50000) {
           co = combn(unique(as.character(factors)),2)
           pairs = c()
@@ -784,7 +774,7 @@ mod_inferential_server_meristic <- function(id, data_r) {
           return(pairw.res)
         }
         
-        # Observe for PERMANOVA button click
+        # Observe for PERMANOVA
         observeEvent(input$run_permanova, {
           shinyjs::addClass(id = "run_permanova", class = "module-active")
           
@@ -893,7 +883,7 @@ mod_inferential_server_meristic <- function(id, data_r) {
                 main_result$`Pr(>F)`[1] < 0.05 && n_distinct(species_data_clean) > 2) {
               incProgress(0.5, detail = "Main PERMANOVA significant. Running pairwise comparisons...")
               pairwise_result <- tryCatch({
-                pairwise.adonis_meristic(x = permanova_data_input, # Use permanova_data_input (could be PCA scores)
+                pairwise.adonis_meristic(x = permanova_data_input, 
                                          factors = species_data_clean,
                                          sim.method = input$permanova_distance_method,
                                          permutations = input$permanova_permutations)
@@ -949,8 +939,8 @@ mod_inferential_server_meristic <- function(id, data_r) {
             write.csv(permanova_pairwise_results_r(), file, row.names = FALSE)
           }
         )
-      } # End of PERMANOVA tab conditional
-    }) # End of observeEvent for main_tabs
+      } 
+    }) 
     
     # PCAtest 
     observeEvent(input$main_tabs, {
@@ -964,7 +954,7 @@ mod_inferential_server_meristic <- function(id, data_r) {
             incProgress(0.1, detail = "Preparing data for PCAtest...")
             df_source <- data_r()
             df_for_pcatest <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
-            req(df_for_pcatest) # Ensure data is available
+            req(df_for_pcatest) 
             
             group_col_name <- names(df_for_pcatest)[1]
             traits_data_raw <- df_for_pcatest %>% dplyr::select(where(is.numeric))
@@ -1011,7 +1001,6 @@ mod_inferential_server_meristic <- function(id, data_r) {
               sink(output_con, type = "output")
               sink(message_con, type = "message")
               
-              # Run PCAtest with counter disabled to suppress progress messages
               result <- PCAtest::PCAtest(
                 x = traits_data_clean,
                 nperm = input$pcatest_permutations,

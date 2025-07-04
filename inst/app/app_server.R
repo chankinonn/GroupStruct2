@@ -1,5 +1,3 @@
-#' The application server-side
-#'
 #' @param input,output,session Internal parameters for {shiny}.
 #'     DO NOT REMOVE.
 #' @import shiny
@@ -20,11 +18,13 @@ app_server <- function(input, output, session) {
   # Reactive values to hold outputs of data input modules
   # Meristic Data
   meristic_data_output <- reactiveVal(NULL)
+  
   # Reactive helper to access the actual reactive from meristic_data_output
   meristic_data_r <- reactive({ req(meristic_data_output())() })
 
   # Morphometric Data
   morphometric_data_output <- reactiveVal(NULL)
+  
   # Reactive helper to access the actual reactive from morphometric_data_output
   morphometric_data_r <- reactive({
     req(morphometric_data_output())
@@ -47,7 +47,6 @@ app_server <- function(input, output, session) {
   # Explicitly pass the group column name to visual module
   combined_group_col_name_r <- reactive({
     req(combined_data_list_r()$group_col)
-    #message("DEBUG [app.R]: combined_group_col_name_r is '", combined_data_list_r()$group_col, "'")
     combined_data_list_r()$group_col
   })
 
@@ -55,20 +54,20 @@ app_server <- function(input, output, session) {
 
   mfa_combined_module_output <- reactiveVal(NULL)
 
-  #These will correctly extract and *call* the individual reactives from the MFA module's output list
+  # Extract and *call* the individual reactives from the MFA module's output list
   mfa_results_for_plot_r <- reactive({
-    req(mfa_combined_module_output()) # Ensure the list of reactives is available
-    mfa_combined_module_output()$mfa_results_r() # Access the reactive from the list, THEN call it
+    req(mfa_combined_module_output()) 
+    mfa_combined_module_output()$mfa_results_r() 
   })
 
   trait_group_df_for_plot_r <- reactive({
 
-    req(mfa_combined_module_output()) # Ensure the list of reactives is available
-    mfa_combined_module_output()$trait_group_df_r() # Access the reactive from the list, THEN call it
+    req(mfa_combined_module_output()) 
+    mfa_combined_module_output()$trait_group_df_r() 
   })
 
-  # This reactive prepares the final data frame to be sent to the visualization module.
-  # It prioritizes allometry-adjusted data if available and valid, otherwise falls back to raw combined data.
+  # Preparea the final data frame to be sent to the visualization module.
+  # Prioritize allometry-adjusted data if available and valid, otherwise falls back to raw combined data.
   combined_data_with_adjusted_morphometrics_r <- reactive({
     message("Preparing combined data for visualization...")
 
@@ -92,8 +91,8 @@ app_server <- function(input, output, session) {
   })
 
   # Reactive values for plot customization
-  manual_colors_r <- reactiveVal(NULL) # For OTU-based coloring
-  mfa_type_colors_r <- reactiveVal(NULL) # For MFA Variable Type coloring
+  manual_colors_r <- reactiveVal(NULL) #  OTU-based coloring
+  mfa_type_colors_r <- reactiveVal(NULL) #  MFA Variable Type coloring
 
   # Reactive to hold the currently active dataset for color initialization
   active_raw_dataset_for_colors_r <- reactive({
@@ -108,7 +107,7 @@ app_server <- function(input, output, session) {
     }
   })
 
-  # Fix for manual colors
+  # Manual colors
   observeEvent(input$`manual_color_modal-save_otu_colors`, {
     updateCheckboxInput(session, "use_manual_colors", value = TRUE)
 
@@ -145,14 +144,14 @@ app_server <- function(input, output, session) {
   observeEvent(trait_group_df_for_plot_r(), { # Trigger when trait_group_df_for_plot_r changes
     trait_df <- trait_group_df_for_plot_r()
     if (!is.null(trait_df) && nrow(trait_df) > 0) {
-      # Get the actual unique group names from your trait definitions (e.g., "mor", "mer")
+      # Get the actual unique group names from trait definitions 
       actual_mfa_types <- unique(trait_df$Type)
 
-      # Generate a set of default colors for these specific types
+      # Generate a set of default colors
       default_colors_for_actual_types <- scales::hue_pal()(length(actual_mfa_types))
       names(default_colors_for_actual_types) <- actual_mfa_types
 
-      # Get the current state of colors (user-defined or previously defaulted)
+      # Get the current state of colors
       current_mfa_colors <- mfa_type_colors_r()
 
       if (is.null(current_mfa_colors) || length(current_mfa_colors) == 0) {
@@ -199,7 +198,7 @@ app_server <- function(input, output, session) {
 
 
   # Meristic module servers
-  # These modules will only be initialized and re-run when meristic_data_r() has data
+  # Modules will only be initialized and re-run when meristic_data_r() has data
   observe({
     req(input$data_type == "meristic")
     req(meristic_data_r())
@@ -233,12 +232,11 @@ app_server <- function(input, output, session) {
       allometry_module_output(mod_allometry_server_morphometric("allometry_ui_1_morphometric", morphometric_data_r))
     }
 
-
-    # This reactive will determine which data to pass to inferential stats and visual
+    # Determine which data to pass to inferential stats and visual
     stats_visual_data_source_r <- reactive({
-      # If adjusted_data_r() has data (i.e., allometry has been run and successful)
+      # If adjusted_data_r() has data 
       # AND the user is in the 'stats' or 'visual' module, use adjusted data.
-      # Otherwise (e.g., in 'data' or 'summary' module, or allometry failed/not run), use raw data.
+      # Otherwise use raw data.
       if (current_module() %in% c("stats", "visual") && !is.null(adjusted_data_r())) {
         # Check if adjusted_data_r() actually has data and is a data.frame
         if (is.data.frame(adjusted_data_r()) && nrow(adjusted_data_r()) > 0) {
@@ -497,12 +495,12 @@ app_server <- function(input, output, session) {
                                "combined" = NS("visual_ui_1_combined")
     )
 
-    # Get the current palette value
+    # Get the current palette
     palette_val <- input[[ns_visual_target("plot_palette")]]
 
     # For combined data, watch the tab changes
     if (input$data_type == "combined") {
-      # This makes the observer react to tab changes too
+      # This makes the observer react to tab changes
       current_tab <- input[[ns_visual_target("visual_tab")]]
       req(current_tab)
     }
@@ -549,8 +547,7 @@ app_server <- function(input, output, session) {
     }
   })
 
-
-  # Manual color modal observers for OTU colors
+  # Manual color observers for OTU colors
   observeEvent(input[[if (input$data_type == "meristic") NS("visual_ui_1_meristic")("open_manual_colors_modal")
                       else if (input$data_type == "morphometric") NS("visual_ui_1_morphometric")("open_manual_colors_modal")
                       else NS("visual_ui_1_combined")("open_manual_colors_modal")]], {
@@ -599,9 +596,7 @@ app_server <- function(input, output, session) {
     }
   })
 
-
-
-  # Manual color modal observers for MFA Variable Type colors
+  # Manual color observers for MFA Variable Type colors
   observeEvent(input[[NS("visual_ui_1_combined")("open_mfa_type_colors_modal")]], {
     # Dynamically define the types for MFA Variable Contributions plot from actual data
     req(trait_group_df_for_plot_r())

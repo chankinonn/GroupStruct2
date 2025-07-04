@@ -27,6 +27,7 @@ mod_visual_ui_meristic <- function(id) {
                            )
                          )
                 ),
+                
                 tabPanel("Boxplot",
                          fluidRow(
                            column(9,
@@ -47,6 +48,7 @@ mod_visual_ui_meristic <- function(id) {
                            )
                          )
                 ),
+                
                 tabPanel("Violin Plot",
                          fluidRow(
                            column(9,
@@ -67,6 +69,7 @@ mod_visual_ui_meristic <- function(id) {
                            )
                          )
                 ),
+                
                 tabPanel("PCA",
                          fluidRow(
                            column(9,
@@ -84,18 +87,17 @@ mod_visual_ui_meristic <- function(id) {
                                   checkboxInput(ns("pca_ellipse"), "Show 95% Confidence Ellipses", value = FALSE),
                                   checkboxInput(ns("pca_convex"), "Show Convex Hulls", value = FALSE),
                                   checkboxInput(ns("pca_centroids"), "Show Group Centroids", value = FALSE),
-                                  #sliderInput(ns("pca_alpha_ellipse"), "Hull Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
                                   sliderInput(ns("pca_alpha_ellipse"), "Hull/Ellipse Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
                                   hr(),
                                   downloadButton(ns("download_pca_pdf"), "Download PDF"),
                                   br(),
                                   downloadButton(ns("download_pca_jpeg"), "Download JPEG"),
                                   br(),
-                                  #downloadButton(ns("download_pca_summary"), "Download PCA Summary"),
                                   hr()
                            )
                          )
                 ),
+                
                 tabPanel("DAPC",
                          fluidRow(
                            column(9,
@@ -116,7 +118,6 @@ mod_visual_ui_meristic <- function(id) {
                                   checkboxInput(ns("dapc_convex"), "Show Convex Hulls", value = FALSE),
                                   checkboxInput(ns("dapc_centroids"), "Show Group Centroids", value = FALSE),
                                   sliderInput(ns("dapc_alpha_ellipse"), "Hull/Ellipse Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
-                                  #sliderInput(ns("dapc_alpha_ellipse"), "Hull Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
                                   hr(),
                                   downloadButton(ns("download_dapc_pdf"), "Download PDF"),
                                   br(),
@@ -262,9 +263,7 @@ mod_visual_server_meristic <- function(id, dataset,
       
       return(ggplot2::scale_color_viridis_d())  # fallback
     }
-    
-    
-  
+
     
     # Theme generator (always classic, adjusted for x-axis label angle)
     get_custom_theme <- function(axis_text_size, axis_label_size, x_angle, facet_size,
@@ -289,8 +288,6 @@ mod_visual_server_meristic <- function(id, dataset,
         axis.text.y = ggplot2::element_text(size = axis_text_size), # Y-axis text not angled
         axis.title = ggplot2::element_text(size = axis_label_size),
         strip.text = ggplot2::element_text(size = facet_size),
-        
-        # Legend elements are always included now
         legend.position = "right",
         legend.text = ggplot2::element_text(size = legend_text_size()),
         legend.title = ggplot2::element_text(size = legend_title_size(), face = "bold")
@@ -434,9 +431,7 @@ mod_visual_server_meristic <- function(id, dataset,
           get_fill_scale(plot_palette()) +
           get_color_scale(plot_palette())
       }
-      
-      
-      
+
       if (isTRUE(input$pca_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Group), function(df) {
           df[chull(df$PC1, df$PC2), ]
@@ -530,9 +525,7 @@ mod_visual_server_meristic <- function(id, dataset,
           get_fill_scale(plot_palette()) +
           get_color_scale(plot_palette())
       }
-      
-      
-      
+
       if (isTRUE(input$dapc_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(df) {
           df[chull(df$LD1, df$LD2), ]
@@ -565,12 +558,10 @@ mod_visual_server_meristic <- function(id, dataset,
     })
     
     
-    # Render plots with dynamic height and width
     output$plot_scatter <- renderPlot({
       plot_scatter_obj()
     }, height = function() input$plot_scatter_height,
     width = function() input$plot_scatter_width)
-    
     
     output$plot_box <- renderPlot(
       { plot_box_obj() },

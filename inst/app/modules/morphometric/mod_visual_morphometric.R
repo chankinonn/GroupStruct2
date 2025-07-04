@@ -48,6 +48,7 @@ mod_visual_ui_morphometric <- function(id) {
                            )
                          )
                 ),
+                
                 tabPanel("Violin Plot",
                          fluidRow(
                            column(9,
@@ -68,6 +69,7 @@ mod_visual_ui_morphometric <- function(id) {
                            )
                          )
                 ),
+                
                 tabPanel("PCA",
                          fluidRow(
                            column(9,
@@ -192,7 +194,7 @@ mod_visual_server_morphometric <- function(id, dataset,
     
     # Get manual colors from the passed reactive
     get_manual_colors <- function() {
-      req(manual_colors_r()) # Require the manual_colors_r to be ready
+      req(manual_colors_r()) 
       manual_colors_r()
     }
     
