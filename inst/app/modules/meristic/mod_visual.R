@@ -463,7 +463,8 @@ mod_visual_server_meristic <- function(id, dataset,
           aes(x = PC1, y = PC2, group = Group, fill = Group,
               color = if (input$pca_outline) Group else NA),
           alpha = input$pca_alpha_ellipse,
-          inherit.aes = FALSE
+          inherit.aes = FALSE,
+          show.legend = FALSE
         ) +
           get_fill_scale(plot_palette()) +
           get_color_scale(plot_palette())
@@ -578,7 +579,8 @@ mod_visual_server_meristic <- function(id, dataset,
           aes(x = LD1, y = LD2, group = Group, fill = Group,
               color = if (input$dapc_outline) Group else NA), 
           alpha = input$dapc_alpha_ellipse,
-          inherit.aes = FALSE
+          inherit.aes = FALSE,
+          show.legend = FALSE
         ) +
           get_fill_scale(plot_palette()) +
           get_color_scale(plot_palette())
