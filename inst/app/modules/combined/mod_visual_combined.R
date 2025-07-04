@@ -736,56 +736,107 @@ mod_visual_server_combined <- function(id, dataset_r,
         need(nlevels(mfa_ind_coord$Group) >= 1, "No valid groups found for individuals plot.")
       )
       
-      p <- ggplot2::ggplot(mfa_ind_coord, ggplot2::aes(x = Dim.1, y = Dim.2, fill = Group)) +
-        ggplot2::geom_point(ggplot2::aes(color = Group), 
-                            shape = as.numeric(mfa_point_shape()),
-                            size = mfa_point_size(),
-                            stroke = 0.5) 
+      p <- ggplot(mfa_ind_coord, aes(x = Dim.1, y = Dim.2))
       
-      if (isTRUE(mfa_ellipse())) {
-        p <- p + ggplot2::stat_ellipse(ggplot2::aes(color = Group, fill = Group), 
-                                       type = "norm",
-                                       alpha = mfa_ellipse_alpha(),
-                                       geom = "polygon") 
+      if (isTRUE(input$mfa_outline_points)) {
+        p <- p + geom_point(
+          aes(fill = Group),
+          shape = 21,
+          size = input$mfa_point_size,
+          stroke = 0.5,
+          color = "black"
+        ) + get_fill_scale_otu(plot_palette())
+      } else {
+        p <- p + geom_point(
+          aes(color = Group),
+          shape = 19,
+          size = input$mfa_point_size
+        ) + get_color_scale_otu(plot_palette())
       }
       
+      # ELLIPSE
+      if (isTRUE(input$mfa_ellipse)) {
+        if (isTRUE(input$mfa_outline_shapes)) {
+          p <- p + stat_ellipse(
+            aes(group = Group, fill = Group, color = Group),
+            type = "norm", level = 0.95, geom = "polygon",
+            alpha = input$mfa_ellipse_alpha, show.legend = FALSE
+          ) + get_fill_scale_otu(plot_palette()) + get_color_scale_otu(plot_palette())
+        } else {
+          p <- p + stat_ellipse(
+            aes(group = Group, fill = Group),
+            type = "norm", level = 0.95, geom = "polygon",
+            alpha = input$mfa_ellipse_alpha, color = NA,
+            show.legend = FALSE
+          ) + get_fill_scale_otu(plot_palette())
+        }
+      }
+      
+      # HULL
       if (isTRUE(input$mfa_convex_hull)) {
-        # Create data frame of convex hulls for each group
         hull_df <- mfa_ind_coord %>%
           dplyr::group_by(Group) %>%
           dplyr::filter(n() >= 3) %>%
           dplyr::slice(chull(Dim.1, Dim.2)) %>%
-          ungroup()
+          dplyr::ungroup()
         
-        p <- p + geom_polygon(data = hull_df,
-                              aes(x = Dim.1, y = Dim.2, group = Group, fill = Group),
-                              alpha = mfa_ellipse_alpha(), color = NA)
+        if (isTRUE(input$mfa_outline_shapes)) {
+          p <- p + geom_polygon(
+            data = hull_df,
+            aes(x = Dim.1, y = Dim.2, group = Group, fill = Group, color = Group),
+            alpha = input$mfa_ellipse_alpha,
+            inherit.aes = FALSE, show.legend = FALSE
+          ) + get_fill_scale_otu(plot_palette()) + get_color_scale_otu(plot_palette())
+        } else {
+          p <- p + geom_polygon(
+            data = hull_df,
+            aes(x = Dim.1, y = Dim.2, group = Group, fill = Group),
+            color = NA,
+            alpha = input$mfa_ellipse_alpha,
+            inherit.aes = FALSE, show.legend = FALSE
+          ) + get_fill_scale_otu(plot_palette())
+        }
       }
       
-      
-      p <- p +
-        get_fill_scale_otu(plot_palette()) + 
-        get_color_scale_otu(plot_palette()) + 
-        get_custom_theme() + 
-        ggplot2::labs(
-          x = paste0("Dim 1 (", round(mfa_res$eig[1,2], 2), "%)"),
-          y = paste0("Dim 2 (", round(mfa_res$eig[2,2], 2), "%)"),
-          fill = str_to_title(group_col_name), 
-          color = str_to_title(group_col_name) 
-        ) +
-        ggplot2::guides(fill = ggplot2::guide_legend(override.aes = list(size = 8, shape = as.numeric(mfa_point_shape())))) 
-      
-      # Add group centroids if enabled
-      if (isTruthy(input$mfa_centroids)) {
+      # CENTROIDS
+      if (isTRUE(input$mfa_centroids)) {
         centroids <- mfa_ind_coord %>%
-          dplyr::group_by(Group) %>%
-          dplyr::summarize(Dim.1 = mean(Dim.1), Dim.2 = mean(Dim.2), .groups = "drop")
+          group_by(Group) %>%
+          summarize(Dim.1 = mean(Dim.1), Dim.2 = mean(Dim.2), .groups = "drop")
         
-        p <- p + ggplot2::geom_point(data = centroids,
-                                     aes(x = Dim.1, y = Dim.2),
-                                     shape = 8, size = 4,
-                                     stroke = 1.5, color = "black", fill = "white",
-                                     inherit.aes = FALSE)
+        p <- p + geom_point(
+          data = centroids,
+          aes(x = Dim.1, y = Dim.2),
+          shape = 8, size = 4, color = "black", fill = "white", stroke = 1,
+          inherit.aes = FALSE, show.legend = FALSE
+        )
+      }
+      
+      # FINAL LABELS + THEME + GUIDES
+      p <- p +
+        get_custom_theme() +
+        labs(
+          x = paste0("Dim 1 (", round(mfa_res$eig[1, 2], 2), "%)"),
+          y = paste0("Dim 2 (", round(mfa_res$eig[2, 2], 2), "%)"),
+          fill = str_to_title(group_col_name),
+          color = str_to_title(group_col_name)
+        )
+      
+      # Guides — conditionally toggle which legend is used
+      if (isTRUE(input$mfa_outline_points)) {
+        p <- p + guides(
+          fill = guide_legend(override.aes = list(
+            size = input$mfa_point_size, shape = 21, color = "black"
+          )),
+          color = "none"
+        )
+      } else {
+        p <- p + guides(
+          color = guide_legend(override.aes = list(
+            size = input$mfa_point_size, shape = 19
+          )),
+          fill = "none"
+        )
       }
       
       return(p)
