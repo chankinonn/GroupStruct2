@@ -79,7 +79,7 @@ mod_visual_ui_meristic <- function(id) {
                            column(3,
                                   br(),
                                   numericInput(ns("plot_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                  numericInput(ns("plot_pca_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                  numericInput(ns("plot_pca_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
                                   hr(),
                                   numericInput(ns("pca_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
                                   checkboxInput(ns("pca_outline_points"), "Outline Points", value = FALSE),
@@ -107,7 +107,7 @@ mod_visual_ui_meristic <- function(id) {
                            column(3,
                                   br(),
                                   numericInput(ns("plot_dapc_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                  numericInput(ns("plot_dapc_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                  numericInput(ns("plot_dapc_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
                                   hr(),
                                   uiOutput(ns("n_pca_dapc_ui")),
                                   sliderInput(ns("n_da_dapc"), "Number of Discriminant Axes (n.da):", min = 1, max = 5, value = 2, step = 1),
@@ -418,7 +418,6 @@ mod_visual_server_meristic <- function(id, dataset,
       pc1_label <- paste0("PC1 (", var_explained[1], "%)")
       pc2_label <- paste0("PC2 (", var_explained[2], "%)")
       
-      # Base plot
       p <- ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2)) +
         ggplot2::xlab(pc1_label) +
         ggplot2::ylab(pc2_label)
@@ -428,29 +427,36 @@ mod_visual_server_meristic <- function(id, dataset,
           aes(fill = Group),
           shape = 21,
           size = input$pca_point_size,
-          color = "black",  # stroke color
+          color = "black",  
           stroke = 0.5
-        ) +
-          get_fill_scale(plot_palette())
+        )
       } else {
         p <- p + ggplot2::geom_point(
           aes(color = Group),
           size = input$pca_point_size,
           shape = 19
-        ) +
-          get_color_scale(plot_palette())
+        )
       }
       
       if (isTRUE(input$pca_ellipse)) {
-        p <- p + ggplot2::stat_ellipse(
-          aes(group = Group, fill = Group, color = if (input$pca_outline) Group else NA),
-          type = "norm",
-          geom = "polygon",
-          alpha = input$pca_alpha_ellipse,
-          show.legend = FALSE
-        ) +
-          get_fill_scale(plot_palette()) +
-          get_color_scale(plot_palette())
+        if (isTRUE(input$pca_outline)) {
+          p <- p + ggplot2::stat_ellipse(
+            aes(group = Group, fill = Group, color = Group),
+            type = "norm",
+            geom = "polygon",
+            alpha = input$pca_alpha_ellipse,
+            show.legend = FALSE
+          )
+        } else {
+          p <- p + ggplot2::stat_ellipse(
+            aes(group = Group, fill = Group),
+            color = NA,
+            type = "norm",
+            geom = "polygon",
+            alpha = input$pca_alpha_ellipse,
+            show.legend = FALSE
+          )
+        }
       }
       
       if (isTRUE(input$pca_convex)) {
@@ -458,16 +464,24 @@ mod_visual_server_meristic <- function(id, dataset,
           df[chull(df$PC1, df$PC2), ]
         }), .id = "Group")
         
-        p <- p + ggplot2::geom_polygon(
-          data = hull_df,
-          aes(x = PC1, y = PC2, group = Group, fill = Group,
-              color = if (input$pca_outline) Group else NA),
-          alpha = input$pca_alpha_ellipse,
-          inherit.aes = FALSE,
-          show.legend = FALSE
-        ) +
-          get_fill_scale(plot_palette()) +
-          get_color_scale(plot_palette())
+        if (isTRUE(input$pca_outline)) {
+          p <- p + ggplot2::geom_polygon(
+            data = hull_df,
+            aes(x = PC1, y = PC2, group = Group, fill = Group, color = Group),
+            alpha = input$pca_alpha_ellipse,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          )
+        } else {
+          p <- p + ggplot2::geom_polygon(
+            data = hull_df,
+            aes(x = PC1, y = PC2, group = Group, fill = Group),
+            color = NA,
+            alpha = input$pca_alpha_ellipse,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          )
+        }
       }
       
       if (isTRUE(input$pca_centroids)) {
@@ -481,128 +495,120 @@ mod_visual_server_meristic <- function(id, dataset,
                                      inherit.aes = FALSE)
       }
       
-      p +
-        get_color_scale(plot_palette()) +
-        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
-                         legend_text_size(), legend_title_size())
+      if (isTRUE(input$pca_outline_points)) {
+        p <- p + get_fill_scale(plot_palette())
+        p <- p + get_color_scale(plot_palette()) + ggplot2::guides(color = "none")
+      } else {
+        p <- p + get_color_scale(plot_palette())
+        p <- p + get_fill_scale(plot_palette()) + ggplot2::guides(fill = "none")
+      }
+      p + get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                           legend_text_size(), legend_title_size())
+      
     })
     
     
-    plot_dapc_obj <- reactive({
-      req(dataset())
-      req(input$n_pca_dapc, input$n_da_dapc, input$dapc_point_size,
-          common_plot_inputs_ready())
-      
-      df <- dataset()
-      otu_col <- names(df)[1]
-      data_mat <- df[, -1]
-      complete_rows <- complete.cases(data_mat)
-      
-      if (sum(complete_rows) < 2 || ncol(data_mat) < 2 || dplyr::n_distinct(df[[otu_col]]) < 2) {
-        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
-                                                     label = "Not enough data or groups for DAPC. Need at least 2 complete rows, 2 numeric variables, and 2 groups."))
-      }
-      
-      data_for_dapc <- as.data.frame(data_mat[complete_rows, ])
-      group_for_dapc <- as.factor(df[[otu_col]][complete_rows])
-      
-      dapc_res <- tryCatch({
-        adegenet::dapc(data_for_dapc, group_for_dapc,
-                       n.pca = input$n_pca_dapc, n.da = input$n_da_dapc)
-      }, error = function(e) {
-        warning("DAPC error: ", e$message)
-        NULL
-      })
-      
-      if (is.null(dapc_res)) {
-        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
-                                                     label = "DAPC could not be performed. Check data and parameters."))
-      }
-      
-      if (ncol(dapc_res$ind.coord) < 2) {
-        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
-                                                     label = "DAPC did not produce enough discriminant axes (LD1, LD2). Try reducing n.da or increasing groups."))
-      }
-      
-      dapc_df <- as.data.frame(dapc_res$ind.coord)
-      dapc_df$Group <- dapc_res$grp
-      
-      # Calculate % variance explained for LD1 and LD2
-      eig <- dapc_res$eig
-      eig_percent <- round(100 * eig / sum(eig), 1)
-      ld1_label <- paste0("LD1 (", eig_percent[1], "%)")
-      ld2_label <- paste0("LD2 (", eig_percent[2], "%)")
-      
-      p <- ggplot2::ggplot(dapc_df, ggplot2::aes(x = LD1, y = LD2)) +
-        ggplot2::xlab(ld1_label) +
-        ggplot2::ylab(ld2_label)
-      
-      if (isTRUE(input$dapc_outline_points)) {
-        p <- p + ggplot2::geom_point(
-          aes(fill = Group), # Fill by Group
-          shape = 21,
-          size = input$dapc_point_size,
-          color = "black",
-          stroke = 0.5
-        ) +
-          get_fill_scale(plot_palette())
-      } else {
-        p <- p + ggplot2::geom_point(
-          aes(fill = Group, color = Group), 
-          size = input$dapc_point_size,
-          shape = 21 
-        ) +
-          get_color_scale(plot_palette()) + 
-          get_fill_scale(plot_palette()) 
-      }
-      
-      if (isTRUE(input$dapc_ellipse)) {
+    p <- ggplot2::ggplot(dapc_df, ggplot2::aes(x = LD1, y = LD2)) +
+      ggplot2::xlab(ld1_label) +
+      ggplot2::ylab(ld2_label)
+    
+    if (isTRUE(input$dapc_outline_points)) {
+      p <- p + ggplot2::geom_point(
+        aes(fill = Group),
+        shape = 21,
+        size = input$dapc_point_size,
+        color = "black",
+        stroke = 0.5
+      ) +
+        get_fill_scale(plot_palette())
+    } else {
+      p <- p + ggplot2::geom_point(
+        aes(fill = Group, color = Group),
+        shape = 21,
+        size = input$dapc_point_size
+      ) +
+        get_fill_scale(plot_palette()) +
+        get_color_scale(plot_palette())
+    }
+    
+    if (isTRUE(input$dapc_ellipse)) {
+      if (isTRUE(input$dapc_outline)) {
         p <- p + ggplot2::stat_ellipse(
-          aes(group = Group, fill = Group, color = if (input$dapc_outline) Group else NA), 
+          aes(group = Group, fill = Group, color = Group),
           type = "norm",
           level = 0.67,
           geom = "polygon",
           alpha = input$dapc_alpha_ellipse,
-          show.legend = FALSE 
-        ) +
-          get_fill_scale(plot_palette()) +
-          get_color_scale(plot_palette())
+          show.legend = FALSE
+        )
+      } else {
+        p <- p + ggplot2::stat_ellipse(
+          aes(group = Group, fill = Group),
+          color = NA,
+          type = "norm",
+          level = 0.67,
+          geom = "polygon",
+          alpha = input$dapc_alpha_ellipse,
+          show.legend = FALSE
+        )
       }
+    }
+    
+    if (isTRUE(input$dapc_convex)) {
+      hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(df) {
+        df[chull(df$LD1, df$LD2), ]
+      }), .id = "Group")
       
-      if (isTRUE(input$dapc_convex)) {
-        hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(df) {
-          df[chull(df$LD1, df$LD2), ]
-        }), .id = "Group")
-        
+      if (isTRUE(input$dapc_outline)) {
         p <- p + ggplot2::geom_polygon(
           data = hull_df,
-          aes(x = LD1, y = LD2, group = Group, fill = Group,
-              color = if (input$dapc_outline) Group else NA), 
+          aes(x = LD1, y = LD2, group = Group, fill = Group, color = Group),
           alpha = input$dapc_alpha_ellipse,
           inherit.aes = FALSE,
           show.legend = FALSE
-        ) +
-          get_fill_scale(plot_palette()) +
-          get_color_scale(plot_palette())
+        )
+      } else {
+        p <- p + ggplot2::geom_polygon(
+          data = hull_df,
+          aes(x = LD1, y = LD2, group = Group, fill = Group),
+          color = NA,
+          alpha = input$dapc_alpha_ellipse,
+          inherit.aes = FALSE,
+          show.legend = FALSE
+        )
       }
+    }
+    
+    if (isTRUE(input$dapc_centroids)) {
+      centroids <- dapc_df %>%
+        dplyr::group_by(Group) %>%
+        dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
       
-      if (isTRUE(input$dapc_centroids)) {
-        centroids <- dapc_df %>%
-          dplyr::group_by(Group) %>%
-          dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
-        
-        p <- p + ggplot2::geom_point(data = centroids,
-                                     aes(x = LD1, y = LD2),
-                                     shape = 8, size = 4, color = "black", fill = "white", stroke = 1,
-                                     inherit.aes = FALSE)
-      }
-      
-      p +
-        get_color_scale(plot_palette()) +
-        get_fill_scale(plot_palette()) +
-        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
-                         legend_text_size(), legend_title_size())
-    })
+      p <- p + ggplot2::geom_point(
+        data = centroids,
+        aes(x = LD1, y = LD2),
+        shape = 8,
+        size = 4,
+        color = "black",
+        fill = "white",
+        stroke = 1,
+        inherit.aes = FALSE
+      )
+    }
+    
+    p +
+      get_color_scale(plot_palette()) +
+      get_fill_scale(plot_palette()) +
+      get_custom_theme(
+        plot_axis_text_size(),
+        plot_axis_label_size(),
+        0,
+        plot_facet_size(),
+        legend_text_size(),
+        legend_title_size()
+      )
+    
+  })
     
     
     output$plot_scatter <- renderPlot({

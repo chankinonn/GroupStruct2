@@ -415,35 +415,40 @@ mod_visual_server_morphometric <- function(id, dataset,
         ggplot2::ylab(pc2_label)
       
       if (isTRUE(input$pca_outline_points)) {
-        # Black stroke, color determined by group fill
         p <- p + ggplot2::geom_point(
           aes(fill = Group),
           shape = 21,
           size = input$pca_point_size,
-          color = "black",  # stroke color
+          color = "black",  
           stroke = 0.5
-        ) +
-          get_fill_scale(plot_palette())
+        )
       } else {
-        # Default point with color
         p <- p + ggplot2::geom_point(
           aes(color = Group),
           size = input$pca_point_size,
           shape = 19
-        ) +
-          get_color_scale(plot_palette())
+        )
       }
       
       if (isTRUE(input$pca_ellipse)) {
-        p <- p + ggplot2::stat_ellipse(
-          aes(group = Group, fill = Group, color = if (input$pca_outline) Group else NA),
-          type = "norm",
-          geom = "polygon",
-          alpha = input$pca_alpha_ellipse,
-          show.legend = FALSE
-        ) +
-          get_fill_scale(plot_palette()) +
-          get_color_scale(plot_palette())
+        if (isTRUE(input$pca_outline)) {
+          p <- p + ggplot2::stat_ellipse(
+            aes(group = Group, fill = Group, color = Group),
+            type = "norm",
+            geom = "polygon",
+            alpha = input$pca_alpha_ellipse,
+            show.legend = FALSE
+          )
+        } else {
+          p <- p + ggplot2::stat_ellipse(
+            aes(group = Group, fill = Group),
+            color = NA,
+            type = "norm",
+            geom = "polygon",
+            alpha = input$pca_alpha_ellipse,
+            show.legend = FALSE
+          )
+        }
       }
       
       if (isTRUE(input$pca_convex)) {
@@ -451,16 +456,24 @@ mod_visual_server_morphometric <- function(id, dataset,
           df[chull(df$PC1, df$PC2), ]
         }), .id = "Group")
         
-        p <- p + ggplot2::geom_polygon(
-          data = hull_df,
-          aes(x = PC1, y = PC2, group = Group, fill = Group,
-              color = if (input$pca_outline) Group else NA),
-          alpha = input$pca_alpha_ellipse,
-          inherit.aes = FALSE,
-          show.legend = FALSE
-        ) +
-          get_fill_scale(plot_palette()) +
-          get_color_scale(plot_palette())
+        if (isTRUE(input$pca_outline)) {
+          p <- p + ggplot2::geom_polygon(
+            data = hull_df,
+            aes(x = PC1, y = PC2, group = Group, fill = Group, color = Group),
+            alpha = input$pca_alpha_ellipse,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          )
+        } else {
+          p <- p + ggplot2::geom_polygon(
+            data = hull_df,
+            aes(x = PC1, y = PC2, group = Group, fill = Group),
+            color = NA,
+            alpha = input$pca_alpha_ellipse,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          )
+        }
       }
       
       if (isTRUE(input$pca_centroids)) {
@@ -474,10 +487,16 @@ mod_visual_server_morphometric <- function(id, dataset,
                                      inherit.aes = FALSE)
       }
       
-      p +
-        get_color_scale(plot_palette()) +
-        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
-                         legend_text_size(), legend_title_size())
+      if (isTRUE(input$pca_outline_points)) {
+        p <- p + get_fill_scale(plot_palette())
+        p <- p + get_color_scale(plot_palette()) + ggplot2::guides(color = "none")
+      } else {
+        p <- p + get_color_scale(plot_palette())
+        p <- p + get_fill_scale(plot_palette()) + ggplot2::guides(fill = "none")
+      }
+      p + get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                           legend_text_size(), legend_title_size())
+      
     })
     
     
@@ -532,37 +551,46 @@ mod_visual_server_morphometric <- function(id, dataset,
         ggplot2::xlab(ld1_label) +
         ggplot2::ylab(ld2_label)
       
-      # Add points with shape 21 and conditional stroke/fill
       if (isTRUE(input$dapc_outline_points)) {
         p <- p + ggplot2::geom_point(
-          aes(fill = Group), # Fill by Group
+          aes(fill = Group),
           shape = 21,
           size = input$dapc_point_size,
           color = "black",
           stroke = 0.5
         ) +
-          get_fill_scale(plot_palette()) # Apply fill scale
+          get_fill_scale(plot_palette())
       } else {
         p <- p + ggplot2::geom_point(
-          aes(fill = Group, color = Group), # Fill and outline by Group
-          size = input$dapc_point_size,
-          shape = 21 # Still use shape 21 to allow fill
-        ) +
-          get_color_scale(plot_palette()) + # Apply color scale for outline
-          get_fill_scale(plot_palette()) # Apply fill scale
-      }
-      
-      if (isTRUE(input$dapc_ellipse)) {
-        p <- p + ggplot2::stat_ellipse(
-          aes(group = Group, fill = Group, color = if (input$dapc_outline) Group else NA), # Conditional color
-          type = "norm",
-          level = 0.67,
-          geom = "polygon",
-          alpha = input$dapc_alpha_ellipse,
-          show.legend = FALSE 
+          aes(fill = Group, color = Group),
+          shape = 21,
+          size = input$dapc_point_size
         ) +
           get_fill_scale(plot_palette()) +
           get_color_scale(plot_palette())
+      }
+      
+      if (isTRUE(input$dapc_ellipse)) {
+        if (isTRUE(input$dapc_outline)) {
+          p <- p + ggplot2::stat_ellipse(
+            aes(group = Group, fill = Group, color = Group),
+            type = "norm",
+            level = 0.67,
+            geom = "polygon",
+            alpha = input$dapc_alpha_ellipse,
+            show.legend = FALSE
+          )
+        } else {
+          p <- p + ggplot2::stat_ellipse(
+            aes(group = Group, fill = Group),
+            color = NA,
+            type = "norm",
+            level = 0.67,
+            geom = "polygon",
+            alpha = input$dapc_alpha_ellipse,
+            show.legend = FALSE
+          )
+        }
       }
       
       if (isTRUE(input$dapc_convex)) {
@@ -570,16 +598,24 @@ mod_visual_server_morphometric <- function(id, dataset,
           df[chull(df$LD1, df$LD2), ]
         }), .id = "Group")
         
-        p <- p + ggplot2::geom_polygon(
-          data = hull_df,
-          aes(x = LD1, y = LD2, group = Group, fill = Group,
-              color = if (input$dapc_outline) Group else NA), # Conditional color
-          alpha = input$dapc_alpha_ellipse,
-          inherit.aes = FALSE,
-          show.legend = FALSE
-        ) +
-          get_fill_scale(plot_palette()) +
-          get_color_scale(plot_palette())
+        if (isTRUE(input$dapc_outline)) {
+          p <- p + ggplot2::geom_polygon(
+            data = hull_df,
+            aes(x = LD1, y = LD2, group = Group, fill = Group, color = Group),
+            alpha = input$dapc_alpha_ellipse,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          )
+        } else {
+          p <- p + ggplot2::geom_polygon(
+            data = hull_df,
+            aes(x = LD1, y = LD2, group = Group, fill = Group),
+            color = NA,
+            alpha = input$dapc_alpha_ellipse,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          )
+        }
       }
       
       if (isTRUE(input$dapc_centroids)) {
@@ -587,17 +623,30 @@ mod_visual_server_morphometric <- function(id, dataset,
           dplyr::group_by(Group) %>%
           dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
         
-        p <- p + ggplot2::geom_point(data = centroids,
-                                     aes(x = LD1, y = LD2),
-                                     shape = 8, size = 4, color = "black", fill = "white", stroke = 1,
-                                     inherit.aes = FALSE)
+        p <- p + ggplot2::geom_point(
+          data = centroids,
+          aes(x = LD1, y = LD2),
+          shape = 8,
+          size = 4,
+          color = "black",
+          fill = "white",
+          stroke = 1,
+          inherit.aes = FALSE
+        )
       }
       
       p +
         get_color_scale(plot_palette()) +
         get_fill_scale(plot_palette()) +
-        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
-                         legend_text_size(), legend_title_size())
+        get_custom_theme(
+          plot_axis_text_size(),
+          plot_axis_label_size(),
+          0,
+          plot_facet_size(),
+          legend_text_size(),
+          legend_title_size()
+        )
+      
     })
     
     
