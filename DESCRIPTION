@@ -4,7 +4,7 @@ Title: Interactive, User-Friendly Shiny Application for Statistical Analysis and
 Version: 0.1.0
 Authors@R: 
     person(
-      given = "XXX", family = "XXX", role = c("aut", "cre"))
+      given = "XXX", family = "XXX", email = "XXX@users.noreply.github.com", role = c("aut", "cre"))
 Description: >
   GroupStruct2 is an interactive Shiny application designed for 
   analyzing morphological, meristic, and mixed species data. 
