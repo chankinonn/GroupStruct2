@@ -79,3 +79,16 @@ get_color_scale <- function(palette_choices) {
   }
 }
 
+# ggplot themes
+get_ggplot_theme <- function(theme_name) {
+  switch(theme_name,
+         "theme_classic" = ggplot2::theme_classic(),
+         "theme_minimal" = ggplot2::theme_minimal(),
+         "theme_light"   = ggplot2::theme_light(),
+         "theme_dark"    = ggplot2::theme_dark(),
+         "theme_void"    = ggplot2::theme_void(),
+         "theme_bw"      = ggplot2::theme_bw(),
+         "theme_grey"    = ggplot2::theme_grey(),
+         ggplot2::theme_classic() # fallback
+  )
+}

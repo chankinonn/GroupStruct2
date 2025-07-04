@@ -435,6 +435,20 @@ app_server <- function(input, output, session) {
       # Or for all plots if not combined
       if (!(input$data_type == "combined" && tab == "MFA: Variable Contributions")) {
         tagList(
+          
+          selectInput(ns_visual_target("plot_theme"), "Select Plot Theme:",
+                      choices = c(
+                        "Classic" = "theme_classic",
+                        "Minimal" = "theme_minimal",
+                        "Light" = "theme_light",
+                        "Dark" = "theme_dark",
+                        "Void" = "theme_void",
+                        "Grey" = "theme_grey",
+                        "BW" = "theme_bw"
+                      ),
+                      selected = isolate(input[[ns_visual_target("plot_theme")]]) %||% "theme_classic"
+          ),
+          
           selectInput(ns_visual_target("plot_palette"), "Select Color Palette:",
                       choices = list(
                         "Viridis Palettes" = setNames(
