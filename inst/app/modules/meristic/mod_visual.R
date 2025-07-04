@@ -81,11 +81,10 @@ mod_visual_ui_meristic <- function(id) {
                                   numericInput(ns("plot_pca_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
                                   hr(),
                                   numericInput(ns("pca_point_size"), "Point Size:", value = 3, min = 1, max = 10),
-                                  selectInput(ns("pca_point_shape"), "Point Shape:",
-                                              choices = c("Circle" = 19, "Square" = 15, "Triangle" = 17, "Diamond" = 18),
-                                              selected = 19),
+                                  checkboxInput(ns("pca_outline_points"), "Outline Points", value = FALSE),
                                   checkboxInput(ns("pca_ellipse"), "Show 95% Confidence Ellipses", value = FALSE),
                                   checkboxInput(ns("pca_convex"), "Show Convex Hulls", value = FALSE),
+                                  checkboxInput(ns("pca_outline"), "Outline Ellipse or Hull", value = FALSE),
                                   checkboxInput(ns("pca_centroids"), "Show Group Centroids", value = FALSE),
                                   sliderInput(ns("pca_alpha_ellipse"), "Hull/Ellipse Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
                                   hr(),
@@ -93,6 +92,7 @@ mod_visual_ui_meristic <- function(id) {
                                   br(),
                                   downloadButton(ns("download_pca_jpeg"), "Download JPEG"),
                                   br(),
+                                  downloadButton(ns("download_pca_summary"), "Download PCA Summary"),
                                   hr()
                            )
                          )
@@ -109,13 +109,12 @@ mod_visual_ui_meristic <- function(id) {
                                   numericInput(ns("plot_dapc_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
                                   hr(),
                                   numericInput(ns("dapc_point_size"), "Point Size:", value = 3, min = 1, max = 10),
-                                  selectInput(ns("dapc_point_shape"), "Point Shape:",
-                                              choices = c("Circle" = 19, "Square" = 15, "Triangle" = 17, "Diamond" = 18),
-                                              selected = 19),
+                                  checkboxInput(ns("dapc_outline_points"), "Outline Points", value = FALSE),
                                   uiOutput(ns("n_pca_dapc_ui")),
                                   sliderInput(ns("n_da_dapc"), "Number of Discriminant Axes (n.da):", min = 1, max = 5, value = 2, step = 1),
-                                  checkboxInput(ns("dapc_ellipse"), "Show 67% Confidence Ellipses (following adegenet)", value = TRUE),
+                                  checkboxInput(ns("dapc_ellipse"), "Show 67% Confidence Ellipses (following adegenet)", value = FALSE),
                                   checkboxInput(ns("dapc_convex"), "Show Convex Hulls", value = FALSE),
+                                  checkboxInput(ns("dapc_outline"), "Outline Ellipse or Hull", value = FALSE),
                                   checkboxInput(ns("dapc_centroids"), "Show Group Centroids", value = FALSE),
                                   sliderInput(ns("dapc_alpha_ellipse"), "Hull/Ellipse Fill Alpha", min = 0, max = 1, value = 0.3, step = 0.05),
                                   hr(),
@@ -395,7 +394,7 @@ mod_visual_server_meristic <- function(id, dataset,
     
     plot_pca_obj <- reactive({
       req(dataset(), common_plot_inputs_ready())
-      req(input$pca_point_size, input$pca_point_shape)
+      req(input$pca_point_size)
       
       df <- dataset()
       otu_col <- names(df)[1]
@@ -416,22 +415,43 @@ mod_visual_server_meristic <- function(id, dataset,
       pc1_label <- paste0("PC1 (", var_explained[1], "%)")
       pc2_label <- paste0("PC2 (", var_explained[2], "%)")
       
-      p <- ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2, color = Group)) +
-        ggplot2::geom_point(size = input$pca_point_size, shape = as.numeric(input$pca_point_shape)) +
+      # Base plot
+      p <- ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2)) +
         ggplot2::xlab(pc1_label) +
         ggplot2::ylab(pc2_label)
       
+      if (isTRUE(input$pca_outline_points)) {
+        # Black stroke, color determined by group fill
+        p <- p + ggplot2::geom_point(
+          aes(fill = Group),
+          shape = 21,
+          size = input$pca_point_size,
+          color = "black",  # stroke color
+          stroke = 0.5
+        ) +
+          get_fill_scale(plot_palette())
+      } else {
+        # Default point with color
+        p <- p + ggplot2::geom_point(
+          aes(color = Group),
+          size = input$pca_point_size,
+          shape = 19
+        ) +
+          get_color_scale(plot_palette())
+      }
+      
       if (isTRUE(input$pca_ellipse)) {
         p <- p + ggplot2::stat_ellipse(
-          aes(group = Group, fill = Group, color = Group),
+          aes(group = Group, fill = Group, color = if (input$pca_outline) Group else NA),
           type = "norm",
           geom = "polygon",
-          alpha = input$pca_alpha_ellipse
+          alpha = input$pca_alpha_ellipse,
+          show.legend = FALSE
         ) +
           get_fill_scale(plot_palette()) +
           get_color_scale(plot_palette())
       }
-
+      
       if (isTRUE(input$pca_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Group), function(df) {
           df[chull(df$PC1, df$PC2), ]
@@ -439,11 +459,13 @@ mod_visual_server_meristic <- function(id, dataset,
         
         p <- p + ggplot2::geom_polygon(
           data = hull_df,
-          aes(x = PC1, y = PC2, group = Group, fill = Group),
+          aes(x = PC1, y = PC2, group = Group, fill = Group,
+              color = if (input$pca_outline) Group else NA),
           alpha = input$pca_alpha_ellipse,
-          color = NA,
           inherit.aes = FALSE
-        ) + get_fill_scale(plot_palette())
+        ) +
+          get_fill_scale(plot_palette()) +
+          get_color_scale(plot_palette())
       }
       
       if (isTRUE(input$pca_centroids)) {
@@ -466,7 +488,7 @@ mod_visual_server_meristic <- function(id, dataset,
     
     plot_dapc_obj <- reactive({
       req(dataset())
-      req(input$n_pca_dapc, input$n_da_dapc, input$dapc_point_size, input$dapc_point_shape,
+      req(input$n_pca_dapc, input$n_da_dapc, input$dapc_point_size,
           common_plot_inputs_ready())
       
       df <- dataset()
@@ -509,23 +531,43 @@ mod_visual_server_meristic <- function(id, dataset,
       ld1_label <- paste0("LD1 (", eig_percent[1], "%)")
       ld2_label <- paste0("LD2 (", eig_percent[2], "%)")
       
-      p <- ggplot2::ggplot(dapc_df, ggplot2::aes(x = LD1, y = LD2, color = Group)) +
-        ggplot2::geom_point(size = input$dapc_point_size, shape = as.numeric(input$dapc_point_shape)) +
+      p <- ggplot2::ggplot(dapc_df, ggplot2::aes(x = LD1, y = LD2)) +
         ggplot2::xlab(ld1_label) +
         ggplot2::ylab(ld2_label)
       
+      # Add points with shape 21 and conditional stroke/fill
+      if (isTRUE(input$dapc_outline_points)) {
+        p <- p + ggplot2::geom_point(
+          aes(fill = Group), # Fill by Group
+          shape = 21,
+          size = input$dapc_point_size,
+          color = "black",
+          stroke = 0.5
+        ) +
+          get_fill_scale(plot_palette()) # Apply fill scale
+      } else {
+        p <- p + ggplot2::geom_point(
+          aes(fill = Group, color = Group), # Fill and outline by Group
+          size = input$dapc_point_size,
+          shape = 21 # Still use shape 21 to allow fill
+        ) +
+          get_color_scale(plot_palette()) + # Apply color scale for outline
+          get_fill_scale(plot_palette()) # Apply fill scale
+      }
+      
       if (isTRUE(input$dapc_ellipse)) {
         p <- p + ggplot2::stat_ellipse(
-          aes(group = Group, fill = Group, color = Group),
+          aes(group = Group, fill = Group, color = if (input$dapc_outline) Group else NA), # Conditional color
           type = "norm",
           level = 0.67,
           geom = "polygon",
-          alpha = input$dapc_alpha_ellipse
+          alpha = input$dapc_alpha_ellipse,
+          show.legend = FALSE # Added from your example, useful for not duplicating legend entries
         ) +
           get_fill_scale(plot_palette()) +
           get_color_scale(plot_palette())
       }
-
+      
       if (isTRUE(input$dapc_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(df) {
           df[chull(df$LD1, df$LD2), ]
@@ -533,11 +575,13 @@ mod_visual_server_meristic <- function(id, dataset,
         
         p <- p + ggplot2::geom_polygon(
           data = hull_df,
-          aes(x = LD1, y = LD2, group = Group, fill = Group),
+          aes(x = LD1, y = LD2, group = Group, fill = Group,
+              color = if (input$dapc_outline) Group else NA), # Conditional color
           alpha = input$dapc_alpha_ellipse,
-          color = NA,
           inherit.aes = FALSE
-        ) + get_fill_scale(plot_palette())
+        ) +
+          get_fill_scale(plot_palette()) +
+          get_color_scale(plot_palette())
       }
       
       if (isTRUE(input$dapc_centroids)) {
@@ -553,6 +597,7 @@ mod_visual_server_meristic <- function(id, dataset,
       
       p +
         get_color_scale(plot_palette()) +
+        get_fill_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
                          legend_text_size(), legend_title_size())
     })
