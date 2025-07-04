@@ -59,6 +59,7 @@ mod_visual_ui_meristic <- function(id) {
                                   numericInput(ns("plot_violin_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
                                   numericInput(ns("plot_violin_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
                                   hr(),
+                                  checkboxInput(ns("violin_outline"), "Outline Violin", value = FALSE),
                                   uiOutput(ns("violin_variable_selector")),
                                   uiOutput(ns("violin_group_selector")),
                                   hr(),
@@ -369,10 +370,12 @@ mod_visual_server_meristic <- function(id, dataset,
       
       df_long <- tidyr::pivot_longer(df, cols = all_of(traits_to_plot), names_to = "Trait", values_to = "Value")
       
+      violin_outline_color <- if (isTRUE(input$violin_outline)) "black" else NA
+      
       ggplot2::ggplot(df_long, ggplot2::aes_string(x = names(df)[1], y = "Value", fill = names(df)[1])) +
-        ggplot2::geom_violin(width = 0.9, alpha = 0.6, color = NA) +
+        ggplot2::geom_violin(width = 0.7, alpha = 0.6, color = violin_outline_color) + 
         ggplot2::facet_wrap(~Trait, scales = "free_y") +
-        get_fill_scale(plot_palette()) + # Removed prefix
+        get_fill_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
                          plot_x_angle(), plot_facet_size(),
                          legend_text_size(), legend_title_size())
@@ -421,7 +424,6 @@ mod_visual_server_meristic <- function(id, dataset,
         ggplot2::ylab(pc2_label)
       
       if (isTRUE(input$pca_outline_points)) {
-        # Black stroke, color determined by group fill
         p <- p + ggplot2::geom_point(
           aes(fill = Group),
           shape = 21,
@@ -431,7 +433,6 @@ mod_visual_server_meristic <- function(id, dataset,
         ) +
           get_fill_scale(plot_palette())
       } else {
-        # Default point with color
         p <- p + ggplot2::geom_point(
           aes(color = Group),
           size = input$pca_point_size,
@@ -535,7 +536,6 @@ mod_visual_server_meristic <- function(id, dataset,
         ggplot2::xlab(ld1_label) +
         ggplot2::ylab(ld2_label)
       
-      # Add points with shape 21 and conditional stroke/fill
       if (isTRUE(input$dapc_outline_points)) {
         p <- p + ggplot2::geom_point(
           aes(fill = Group), # Fill by Group
@@ -544,25 +544,25 @@ mod_visual_server_meristic <- function(id, dataset,
           color = "black",
           stroke = 0.5
         ) +
-          get_fill_scale(plot_palette()) # Apply fill scale
+          get_fill_scale(plot_palette())
       } else {
         p <- p + ggplot2::geom_point(
-          aes(fill = Group, color = Group), # Fill and outline by Group
+          aes(fill = Group, color = Group), 
           size = input$dapc_point_size,
-          shape = 21 # Still use shape 21 to allow fill
+          shape = 21 
         ) +
-          get_color_scale(plot_palette()) + # Apply color scale for outline
-          get_fill_scale(plot_palette()) # Apply fill scale
+          get_color_scale(plot_palette()) + 
+          get_fill_scale(plot_palette()) 
       }
       
       if (isTRUE(input$dapc_ellipse)) {
         p <- p + ggplot2::stat_ellipse(
-          aes(group = Group, fill = Group, color = if (input$dapc_outline) Group else NA), # Conditional color
+          aes(group = Group, fill = Group, color = if (input$dapc_outline) Group else NA), 
           type = "norm",
           level = 0.67,
           geom = "polygon",
           alpha = input$dapc_alpha_ellipse,
-          show.legend = FALSE # Added from your example, useful for not duplicating legend entries
+          show.legend = FALSE 
         ) +
           get_fill_scale(plot_palette()) +
           get_color_scale(plot_palette())
@@ -576,7 +576,7 @@ mod_visual_server_meristic <- function(id, dataset,
         p <- p + ggplot2::geom_polygon(
           data = hull_df,
           aes(x = LD1, y = LD2, group = Group, fill = Group,
-              color = if (input$dapc_outline) Group else NA), # Conditional color
+              color = if (input$dapc_outline) Group else NA), 
           alpha = input$dapc_alpha_ellipse,
           inherit.aes = FALSE
         ) +
