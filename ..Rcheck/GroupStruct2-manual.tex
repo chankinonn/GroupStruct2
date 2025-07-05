@@ -1,0 +1,125 @@
+\nonstopmode{}
+\documentclass[a4paper]{book}
+\usepackage[times,inconsolata,hyper]{Rd}
+\usepackage{makeidx}
+\usepackage[utf8]{inputenc} % @SET ENCODING@
+% \usepackage{graphicx} % @USE GRAPHICX@
+\makeindex{}
+\begin{document}
+\chapter*{}
+\begin{center}
+{\textbf{\huge Package `GroupStruct2'}}
+\par\bigskip{\large \today}
+\end{center}
+\inputencoding{utf8}
+\ifthenelse{\boolean{Rd@use@hyper}}{\hypersetup{pdftitle = {GroupStruct2: Interactive, User-Friendly Shiny Application for Statistical Analysis and Data Visualization in Species Diagnosis}}}{}
+\ifthenelse{\boolean{Rd@use@hyper}}{\hypersetup{pdfauthor = {Kin Onn Chan}}}{}
+\begin{description}
+\raggedright{}
+\item[Type]\AsIs{Package}
+\item[Title]\AsIs{Interactive, User-Friendly Shiny Application for Statistical
+Analysis and Data Visualization in Species Diagnosis}
+\item[Version]\AsIs{1.0.0}
+\item[Author]\AsIs{Kin Onn Chan}
+\item[Maintainer]\AsIs{Kin Onn Chan }\email{chankinonn@users.noreply.github.com}\AsIs{}
+\item[Description]\AsIs{>
+GroupStruct2 is an interactive Shiny application designed for 
+analyzing morphological, meristic, and mixed species data. 
+It provides modules for data input, summary statistics, 
+allometric corrections, multivariate analyses (e.g., PCA, DAPC, MFA), 
+and rich data visualizations to assist in species delimitation 
+and comparative morphology studies.}
+\item[License]\AsIs{MIT + file LICENSE}
+\item[Encoding]\AsIs{UTF-8}
+\item[LazyData]\AsIs{true}
+\item[Imports]\AsIs{shiny, DT, dplyr, ggplot2, tidyr, vegan, viridis,
+RColorBrewer, rstatix, car, readr, adegenet, FactoMineR,
+factoextra, shinyjs, colourpicker, forcats, purrr, scales,
+openxlsx, shinyWidgets, ggthemes, broom, tibble, htmltools,
+stringr, ggpubr, ggrepel}
+\item[Remotes]\AsIs{arleyc/PCAtest}
+\item[RoxygenNote]\AsIs{7.2.3}
+\item[Suggests]\AsIs{testthat (>= 3.0.0)}
+\item[Config/testthat/edition]\AsIs{3}
+\end{description}
+\Rdcontents{\R{} topics documented:}
+\inputencoding{utf8}
+\HeaderA{groupstruct2}{Launch the GroupStruct2 Shiny app}{groupstruct2}
+%
+\begin{Description}
+This function launches the Shiny app from the package.
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+groupstruct2()
+\end{verbatim}
+\end{Usage}
+\inputencoding{utf8}
+\HeaderA{mod\_home\_ui\_combined}{Home UI for Combined Data}{mod.Rul.home.Rul.ui.Rul.combined}
+%
+\begin{Description}
+Home UI for Combined Data
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+mod_home_ui_combined(id)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{id}] Namespace ID
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Shiny UI for combined/mixed data home screen
+\end{Value}
+\inputencoding{utf8}
+\HeaderA{mod\_home\_ui\_meristic}{Home UI for Meristic Data}{mod.Rul.home.Rul.ui.Rul.meristic}
+%
+\begin{Description}
+Home UI for Meristic Data
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+mod_home_ui_meristic(id)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{id}] Namespace ID
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Shiny UI for meristic home screen
+\end{Value}
+\inputencoding{utf8}
+\HeaderA{mod\_home\_ui\_morphometric}{Home UI for Morphometric Data}{mod.Rul.home.Rul.ui.Rul.morphometric}
+%
+\begin{Description}
+Home UI for Morphometric Data
+\end{Description}
+%
+\begin{Usage}
+\begin{verbatim}
+mod_home_ui_morphometric(id)
+\end{verbatim}
+\end{Usage}
+%
+\begin{Arguments}
+\begin{ldescription}
+\item[\code{id}] Namespace ID
+\end{ldescription}
+\end{Arguments}
+%
+\begin{Value}
+Shiny UI for morphometric home screen
+\end{Value}
+\printindex{}
+\end{document}

@@ -1,0 +1,5 @@
+groupstruct2            Launch the GroupStruct2 Shiny app
+mod_home_ui_combined    Home UI for Combined Data
+mod_home_ui_meristic    Home UI for Meristic Data
+mod_home_ui_morphometric
+                        Home UI for Morphometric Data
