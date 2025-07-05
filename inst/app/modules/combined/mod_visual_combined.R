@@ -560,7 +560,7 @@ mod_visual_server_combined <- function(id, dataset_r,
           mutate(Group = factor(Group, levels = Group),
                  Type = ifelse(is.na(Type), "Other", Type))
         
-        ggplot(df, aes(x = Group, y = Contribution, fill = Type)) +
+        ggplot(df, aes(x = Group, y = Contribution, fill = Type)) + labs(fill = "Group") +
           geom_col(width = 0.7) +
           geom_hline(yintercept = 100 / nrow(df), linetype = "dashed", color = "red", linewidth = 0.8) +
           coord_flip() +
@@ -707,7 +707,7 @@ mod_visual_server_combined <- function(id, dataset_r,
           labs(x = "Variables", y = paste("Contribution to", dim, "(%)"),
                title = paste("Variable Contributions to", dim)) +
           coord_flip() +
-          scale_fill_manual(values = get_mfa_var_type_colors(), name = "Trait Type",
+          scale_fill_manual(values = get_mfa_var_type_colors(), name = "Group",
                             na.value = "grey50", drop = FALSE) +
           get_custom_theme() +
           theme(legend.position = "bottom")
