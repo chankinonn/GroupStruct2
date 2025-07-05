@@ -1,7 +1,7 @@
 Package: GroupStruct2
 Type: Package
 Title: Interactive, User-Friendly Shiny Application for Statistical Analysis and Data Visualization in Species Diagnosis
-Version: 0.1.0
+Version: 1.0.0
 Authors@R: 
     person(
       given = "Kin Onn", family = "Chan", email = "chankinonn@users.noreply.github.com", role = c("aut", "cre"))
