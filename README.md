@@ -1,13 +1,12 @@
 # GroupStruct2
 
-**GroupStruct2** is a user-friendly Shiny application for analyzing numerical, categorical, or mixed (numerical + categorical) datasets for species diagnosis. GroupStruct2 features integrated outlier detection, automatic testing of statistical assumptions (e.g., normality, homogeneity of variance), and adaptive selection of appropriate statistical tests (e.g., parametric vs. non-parametric) to reduce systematic bias. It also incorporates allometric body-size correction from the original GroupStruct package, widely used dimension reduction methods (PCA and DAPC), and supports joint analysis of mixed data through multiple factor analysis (MFA).
-
+**GroupStruct2** is a user-friendly Shiny application that provides statistical and visual support for species diagnosis. Although GroupStruct2 is optimized for species diagnosis, its analytical framework can be co-opted to infer group structure for any numeric or numeric + categorical dataset (biological or non-biological). GroupStruct2 combines robust statistical workflows with highly customizable, publication-ready visualizations based on the ggplot architecture, all within an intuitive graphical user interface that requires no coding experience beyond installing and launching the application.
 
 ---
 
 ## 🔧 Installation
 
-You can install the development version of this package directly from GitHub using the `remotes` package:
+You can install the stable version of this package directly from GitHub using the `remotes` package:
 
 ```r
 # Install remotes if needed
@@ -16,8 +15,7 @@ install.packages("remotes")
 # Install GroupStruct2 from GitHub
 remotes::install_github("chankinonn/GroupStruct2")
 
-# Run GroupStruct2
-remotes::install_github("chankinonn/GroupStruct2")
+# Load and launch GroupStruct2
 library(GroupStruct2)
 groupstruct2()
 
