@@ -59,6 +59,12 @@ mod_visual_ui_combined <- function(id) {
                                   numericInput(ns("plot_violin_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
                                   numericInput(ns("plot_violin_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
                                   hr(),
+                                  checkboxInput(ns("violin_outline"), "Outline Violin", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s'] == true", ns("violin_outline")),
+                                    sliderInput(ns("violin_point_stroke"), "Point Outline Width",
+                                                min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                  ),
                                   uiOutput(ns("violin_variable_selector")),
                                   uiOutput(ns("violin_group_selector")),
                                   hr(),
@@ -102,7 +108,7 @@ mod_visual_ui_combined <- function(id) {
                                   checkboxInput(ns("mfa_outline_points"), "Outline Points", value = FALSE),
                                   conditionalPanel(
                                     condition = sprintf("input['%s']", ns("mfa_outline_points")),
-                                    sliderInput(ns("mfa_point_stroke"), "Point Outline Width", min = 0, max = 5, value = 1, step = 1, width = '150px')
+                                    sliderInput(ns("mfa_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
                                   ),
                                   checkboxInput(ns("mfa_centroids"), "Group Centroids", value = FALSE),
                                   checkboxInput(ns("mfa_ellipse"), "95% Confidence Ellipses", value = FALSE),
@@ -504,8 +510,12 @@ mod_visual_server_combined <- function(id, dataset_r,
         dplyr::select(all_of(c(group_var_name, traits_to_plot))) %>%
         pivot_longer(-all_of(group_var_name), names_to = "Trait", values_to = "Value")
       
+      # Outline color and size depend on input$violin_outline and input$violin_point_stroke
+      violin_outline_color <- if (isTRUE(input$violin_outline)) "black" else NA
+      violin_outline_size  <- if (isTRUE(input$violin_outline)) input$violin_point_stroke else 0
+      
       ggplot(df_long, aes_string(x = group_var_name, y = "Value", fill = group_var_name)) +
-        geom_violin(width = 0.9, alpha = 0.6, color = NA) +
+        geom_violin(width = 0.9, alpha = 0.6, color = violin_outline_color, size = violin_outline_size) +
         facet_wrap(~Trait, scales = "free_y") +
         get_fill_scale_otu(plot_palette()) + # Use OTU-specific fill scale
         get_custom_theme() +

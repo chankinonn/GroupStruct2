@@ -60,6 +60,11 @@ mod_visual_ui_morphometric <- function(id) {
                                   numericInput(ns("plot_violin_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
                                   hr(),
                                   checkboxInput(ns("violin_outline"), "Outline Violin", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s'] == true", ns("violin_outline")),
+                                    sliderInput(ns("violin_point_stroke"), "Point Outline Width",
+                                                min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                  ),
                                   uiOutput(ns("violin_variable_selector")),
                                   uiOutput(ns("violin_group_selector")),
                                   hr(),
@@ -399,23 +404,27 @@ mod_visual_server_morphometric <- function(id, dataset,
     plot_violin_obj <- reactive({
       req(dataset(), common_plot_inputs_ready(), input$selected_violin_traits)
       df <- dataset()
+      
       if (!is.null(input$selected_violin_groups)) {
         df <- df[df[[1]] %in% input$selected_violin_groups, ]
       }
+      
       traits_to_plot <- input$selected_violin_traits
       req(length(traits_to_plot) > 0)
       
       df_long <- tidyr::pivot_longer(df, cols = all_of(traits_to_plot), names_to = "Trait", values_to = "Value")
       
       violin_outline_color <- if (isTRUE(input$violin_outline)) "black" else NA
+      violin_outline_size  <- if (isTRUE(input$violin_outline)) input$violin_point_stroke else 0
       
       ggplot2::ggplot(df_long, ggplot2::aes_string(x = names(df)[1], y = "Value", fill = names(df)[1])) +
-        ggplot2::geom_violin(width = 0.7, alpha = 0.6, color = violin_outline_color) + 
+        ggplot2::geom_violin(width = 0.7, alpha = 0.6, color = violin_outline_color, size = violin_outline_size) +
         ggplot2::facet_wrap(~Trait, scales = "free_y") +
         get_fill_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
                          plot_x_angle(), plot_facet_size(),
-                         legend_text_size(), legend_title_size(),theme_choice = input$plot_theme)
+                         legend_text_size(), legend_title_size(),
+                         input$plot_theme)
     })
     
     # Reactive for PCA results
