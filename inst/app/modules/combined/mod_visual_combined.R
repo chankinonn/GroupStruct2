@@ -140,8 +140,8 @@ mod_visual_ui_combined <- function(id) {
                            ),
                            column(3,
                                   br(),
-                                  numericInput(ns("mfa_group_contrib_hist_height"), "Plot Height (px)", value = 800, min = 400, step = 50, width = '100%'),
-                                  numericInput(ns("mfa_group_contrib_hist_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '100%'),
+                                  numericInput(ns("mfa_group_contrib_hist_height"), "Plot Height (px)", value = 500, min = 400, step = 50, width = '100%'),
+                                  numericInput(ns("mfa_group_contrib_hist_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '100%'),
                                   hr(),
                                   h5("MFA Group Contributions Settings"),
                                   actionButton(ns("open_mfa_type_colors_modal"), "Set Manual Colors", class = "btn-primary"),
@@ -793,7 +793,7 @@ mod_visual_server_combined <- function(id, dataset_r,
           size = input$mfa_point_size
         ) + get_color_scale_otu(plot_palette())
       }
-      
+
       # ELLIPSE
       if (isTRUE(input$mfa_ellipse)) {
         if (isTRUE(input$mfa_outline_shapes)) {
