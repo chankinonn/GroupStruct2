@@ -19,13 +19,11 @@ landing_page_ui <- function() {
     p(strong("If you use GroupStruct2, please cite:")),
     p(em("XXX")),
     p("Please select a type of data from the dropdown on the left to begin."),
-    br(),
     tags$ul(
       tags$li("Meristic: Count-based characters (numeric data only)"),
       tags$li("Morphometric: Measurement-based characters (numeric data only)"),
       tags$li("Mixed: Meristic + Morphometric + Categorical (mixture of any numeric or numeric + categorical)")
     ),
-    br(),
     p("The first column of your dataset MUST be the grouping variable (e.g., species), followed by other trait variables. The dataset must contain at least 2 samples per group (no singletons) and missing data is NOT ALLOWED."),
     hr(),
     p("Example Datasets:"),
