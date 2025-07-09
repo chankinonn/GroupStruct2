@@ -7,7 +7,8 @@ mod_data_combined_ui <- function(id) {
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file_upload"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
-    actionButton(ns("load_example"), "Load Example Meristic + Morphometric + Categorical Dataset"),
+    actionButton(ns("load_example_1"), "Load Example 1: Meristic + Morphometric Only"),
+    actionButton(ns("load_example_2"), "Load Example 2: Meristic + Morphometric + Categorical Dataset"),
     uiOutput(ns("upload_status_message")),
     br(),
     p("Note on the example dataset: The second colum (SVL) represents body size. Colums 3 (HH) to 16 (TW) are morphometric traits and should be size corrected. Colums 17 (SL) to 27 (TL4) are meristic traits and should not be size corrected. Colums 28 (iris color) to 32 (drk on body) are categorical traits."),
@@ -117,16 +118,15 @@ mod_data_combined_server <- function(id) {
       })
     }, ignoreNULL = FALSE)
     
-    observeEvent(input$load_example, {
-      example_path <- system.file("examples", "Meristic-Morphometric-Categorical.csv", package = "GroupStruct2")
-      req(file.exists(example_path))
+    # Internal function to process example files
+    process_example_file <- function(file_path, success_message) {
+      req(file.exists(file_path))
       
       df_raw <- tryCatch({
-        readr::read_csv(example_path, show_col_types = FALSE)
+        readr::read_csv(file_path, show_col_types = FALSE)
       }, error = function(e) {
         output$upload_status_message <- renderUI({
-          tags$div(class = "alert alert-danger",
-                   paste("Error loading example data: ", e$message))
+          tags$div(class = "alert alert-danger", paste("Error loading example data: ", e$message))
         })
         return(NULL)
       })
@@ -158,16 +158,14 @@ mod_data_combined_server <- function(id) {
       trait_cols <- names(df_raw)[-1]
       categorical_cols_found <- c()
       
-      if (length(trait_cols) > 0) {
-        for (col_name in trait_cols) {
-          if (any(is.na(df_raw[[col_name]]))) {
-            showNotification(paste0("Warning: Trait column '", col_name, "' contains missing values (NA). These will need to be handled in downstream modules like Allometric Correction or MFA."), type = "warning", duration = 8)
-          }
-          
-          if (!is.numeric(df_raw[[col_name]])) {
-            df_raw[[col_name]] <- as.factor(df_raw[[col_name]])
-            categorical_cols_found <- c(categorical_cols_found, col_name)
-          }
+      for (col_name in trait_cols) {
+        if (any(is.na(df_raw[[col_name]]))) {
+          showNotification(paste0("Warning: Trait column '", col_name, "' contains missing values (NA). These will need to be handled in downstream modules."), type = "warning", duration = 8)
+        }
+        
+        if (!is.numeric(df_raw[[col_name]])) {
+          df_raw[[col_name]] <- as.factor(df_raw[[col_name]])
+          categorical_cols_found <- c(categorical_cols_found, col_name)
         }
       }
       
@@ -178,11 +176,23 @@ mod_data_combined_server <- function(id) {
       ))
       
       output$upload_status_message <- renderUI({
-        tags$div(class = "alert alert-success", "Example dataset loaded successfully.")
+        tags$div(class = "alert alert-success", success_message)
       })
+    }
+    
+    # Load Example 1: Meristic + Morphometric Only
+    observeEvent(input$load_example_1, {
+      file_path <- system.file("examples", "Meristic-Morphometric.csv", package = "GroupStruct2")
+      process_example_file(file_path, "Example 1 loaded: Meristic + Morphometric dataset.")
     })
     
+    # Load Example 2: Meristic + Morphometric + Categorical
+    observeEvent(input$load_example_2, {
+      file_path <- system.file("examples", "Meristic-Morphometric-Categorical.csv", package = "GroupStruct2")
+      process_example_file(file_path, "Example 2 loaded: Meristic + Morphometric + Categorical dataset.")
+    })
     
+
     observeEvent(input$detect_outliers, {
       req(processed_combined_data_r())
       df <- processed_combined_data_r()$data
