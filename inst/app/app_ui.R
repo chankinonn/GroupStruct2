@@ -77,7 +77,7 @@ app_ui <- function(request) {
           conditionalPanel(
             condition = "input.data_type != ''",
             hr(),
-            h4("2. Run modules"),
+            h4("2. Modules"),
             actionButton("go_data", "Input Data", width = "100%"),
             actionButton("go_summary", "Summary Statistics", width = "100%"),
             uiOutput("allometry_button_ui"),
