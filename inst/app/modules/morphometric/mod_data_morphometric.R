@@ -7,7 +7,12 @@ mod_data_ui_morphometric <- function(id) {
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
+    actionButton(ns("load_example"), "Load Example Morphometric Dataset"),
     uiOutput(ns("upload_status_message")),
+    br(),
+    p("Note on the example dataset: This example dataset contains 15 morphometric traits from four species of lizard. The second column (SVL) represents body size. Select this when performing allometric correction"),
+    p("Additional details on this dataset can be found at: Grismer et al. (2022). Phylogenetic and multivariate analyses of Gekko smithii Gray, 1842 recover a new species from Peninsular Malaysia and support the resurrection of G. albomaculatus (Giebel, 1861) from Sumatra. Vertebrate Zoology, 72, 47–80. https://doi.org/10.3897/vz.72.e77702)"), 
+    
     hr(),
     h4("Outlier Detection"),
     p("The Boxplot IQR method is used to detect values exceeding 1.5×IQR within each OTU. Useful when comparing across species/populations with heterogeneous distributions. Requires ≥4 samples per group to work well."),
@@ -105,6 +110,74 @@ mod_data_server_morphometric <- function(id) {
       output$upload_status_message <- renderUI({
         tags$div(class = "alert alert-success",
                  "File uploaded and validated successfully. Proceed to the next module.")
+      })
+    })
+    
+    observeEvent(input$load_example, {
+      example_path <- system.file("examples", "Morphometric-only.csv", package = "GroupStruct2")  # use your package name
+      req(file.exists(example_path))
+      
+      df <- tryCatch({
+        read.csv(example_path, stringsAsFactors = FALSE)
+      }, error = function(e) {
+        output$upload_status_message <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   paste0("Error loading example data: ", e$message))
+        })
+        return(NULL)
+      })
+      
+      req(df)
+      
+      if (ncol(df) < 2) {
+        output$upload_status_message <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   "Error: Morphometric data must have at least two columns (OTU names + at least one trait).")
+        })
+        data(NULL)
+        return()
+      }
+      
+      df[[1]] <- as.character(df[[1]])
+      df[[1]] <- factor(df[[1]])
+      
+      trait_cols <- df[, 2:ncol(df), drop = FALSE]
+      all_valid <- TRUE
+      
+      for (i in seq_along(trait_cols)) {
+        col_name <- names(trait_cols)[i]
+        col_values <- trait_cols[[i]]
+        
+        if (any(is.na(col_values))) {
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Trait column '", col_name,
+                            "' contains missing values (NA). Missing values are not allowed for morphometric data."))
+          })
+          all_valid <- FALSE
+          break
+        }
+        
+        if (!is.numeric(col_values)) {
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Trait column '", col_name,
+                            "' is not numeric. All trait columns must be numeric for morphometric data."))
+          })
+          all_valid <- FALSE
+          break
+        }
+      }
+      
+      if (!all_valid) {
+        data(NULL)
+        return()
+      }
+      
+      data(df)
+      output$upload_status_message <- renderUI({
+        tags$div(class = "alert alert-success",
+                 "Example dataset loaded successfully.")
       })
     })
     

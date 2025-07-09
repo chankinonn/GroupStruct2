@@ -7,8 +7,11 @@ mod_data_ui_meristic <- function(id) {
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
-    actionButton(ns("load_example"), "Load Example Dataset"),
+    actionButton(ns("load_example"), "Load Example Meristic Dataset"),
     uiOutput(ns("upload_status_message")),
+    br(),
+    p("Note on the example dataset: This example dataset contains 11 meristic traits from four species of lizard."),
+    p("Additional details on this dataset can be found at: Grismer et al. (2022). Phylogenetic and multivariate analyses of Gekko smithii Gray, 1842 recover a new species from Peninsular Malaysia and support the resurrection of G. albomaculatus (Giebel, 1861) from Sumatra. Vertebrate Zoology, 72, 47–80. https://doi.org/10.3897/vz.72.e77702)"), 
     hr(),
     h4("Outlier Detection"),
     p("The Boxplot IQR method is used to detect values exceeding 1.5×IQR within each OTU. Useful when comparing across species/populations with heterogeneous distributions. Requires ≥4 samples per group to work well."),
@@ -114,7 +117,7 @@ mod_data_server_meristic <- function(id) {
     
     # Load Example Data 
     observeEvent(input$load_example, {
-      example_path <- system.file("examples", "Meristic-only.csv", package = "yourPackageName")  # Replace with your actual package name
+      example_path <- system.file("examples", "Meristic-only.csv", package = "GroupStruct2") 
       req(file.exists(example_path))
       
       df <- tryCatch({
