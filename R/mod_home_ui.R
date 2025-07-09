@@ -48,7 +48,7 @@ landing_page_ui <- function() {
 mod_home_ui_meristic <- function(id) {
   ns <- NS(id)
   tagList(
-    h3("Meristic Data"),
+    h3("Meristic Data (numeric data only)"),
     hr(),
     p("Meristic data are discrete, countable traits such as scale counts, fin rays, vertebrae number, etc."),
     p("The first column must contain Group/OTU names (e.g., species or population)."),
@@ -66,7 +66,7 @@ mod_home_ui_meristic <- function(id) {
 mod_home_ui_morphometric <- function(id) {
   ns <- NS(id)
   tagList(
-    h3("Morphometric Data"),
+    h3("Morphometric Data (numeric data only)"),
     hr(),
     p("Morphometric data are continuous measurements such as lengths and widths."),
     p(strong("Allometric adjustments should be performed to correct for body-size variation in the Allometric Correction module.")),
@@ -85,7 +85,7 @@ mod_home_ui_morphometric <- function(id) {
 mod_home_ui_combined <- function(id) {
   ns <- NS(id)
   tagList(
-    h3("Mixed Data (Numeric, Categorical)"),
+    h3("Mixed Data (numeric, categorical)"),
     hr(),
     p("This module handles mixed data in a single dataset. The data can be a mixture of numerical (e.g., meristic + morphometric), numerical + categorical, or any combination of the two."),
     p("The first column must contain Group/OTU names (e.g., species or population). If morphometric data is included, the second column must be the body-size measurement (e.g., snout-vent length)."),
