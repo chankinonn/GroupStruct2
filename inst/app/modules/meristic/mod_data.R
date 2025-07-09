@@ -8,6 +8,7 @@ mod_data_ui_meristic <- function(id) {
     p("A preview of the data will be shown as soon as it is uploaded."),
     fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
     uiOutput(ns("upload_status_message")),
+    actionButton(ns("load_example"), "Load Example Dataset (Meristic-only.csv)"),
     hr(),
     h4("Outlier Detection"),
     p("The Boxplot IQR method is used to detect values exceeding 1.5×IQR within each OTU. Useful when comparing across species/populations with heterogeneous distributions. Requires ≥4 samples per group to work well."),
@@ -111,6 +112,75 @@ mod_data_server_meristic <- function(id) {
       })
     })
     
+    # Load Example Data 
+    observeEvent(input$load_example, {
+      example_path <- system.file("examples", "Meristic-only.csv", package = "yourPackageName")  # Replace with your actual package name
+      req(file.exists(example_path))
+      
+      df <- tryCatch({
+        read.csv(example_path, stringsAsFactors = FALSE)
+      }, error = function(e) {
+        output$upload_status_message <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   paste0("Error loading example data: ", e$message))
+        })
+        return(NULL)
+      })
+      
+      req(df)
+      
+      if (ncol(df) < 2) {
+        output$upload_status_message <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   "Error: Meristic data must have at least two columns (OTU names + at least one trait).")
+        })
+        data(NULL)
+        return()
+      }
+      
+      df[[1]] <- as.character(df[[1]])
+      df[[1]] <- factor(df[[1]])
+      
+      trait_cols_to_check <- df[, 2:ncol(df), drop = FALSE]
+      all_valid <- TRUE
+      
+      for (i in seq_along(trait_cols_to_check)) {
+        col_name <- names(trait_cols_to_check)[i]
+        col_values <- trait_cols_to_check[[i]]
+        
+        if (any(is.na(col_values))) {
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Trait column '", col_name,
+                            "' contains missing values (NA). Missing values are not allowed for meristic data."))
+          })
+          all_valid <- FALSE
+          break
+        }
+        
+        if (!is.numeric(col_values)) {
+          output$upload_status_message <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Trait column '", col_name,
+                            "' is not numeric. All trait columns must be numeric for meristic data."))
+          })
+          all_valid <- FALSE
+          break
+        }
+      }
+      
+      if (!all_valid) {
+        data(NULL)
+        return()
+      }
+      
+      data(df)
+      output$upload_status_message <- renderUI({
+        tags$div(class = "alert alert-success",
+                 "Example dataset loaded successfully.")
+      })
+    })
+    
     observeEvent(input$detect_outliers, {
       req(data())
       df <- data()
@@ -198,4 +268,3 @@ mod_data_server_meristic <- function(id) {
     return(data)
   })
 }
-
