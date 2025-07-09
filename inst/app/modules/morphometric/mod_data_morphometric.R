@@ -10,6 +10,7 @@ mod_data_ui_morphometric <- function(id) {
     actionButton(ns("load_example"), "Load Example Morphometric Dataset"),
     uiOutput(ns("upload_status_message")),
     br(),
+    p(strong("The example datasets included in this package are for pratice purposes only and are not meant to inform taxonomic changes.")),
     p("Note on the example dataset: This example dataset contains 15 morphometric traits from four species of lizard. The second column (SVL) represents body size. Select this when performing allometric correction"),
     p("Additional details on this dataset can be found at: Grismer et al. (2022). Phylogenetic and multivariate analyses of Gekko smithii Gray, 1842 recover a new species from Peninsular Malaysia and support the resurrection of G. albomaculatus (Giebel, 1861) from Sumatra. Vertebrate Zoology, 72, 47–80. https://doi.org/10.3897/vz.72.e77702)"), 
     

@@ -11,6 +11,7 @@ mod_data_combined_ui <- function(id) {
     actionButton(ns("load_example_2"), "Load Example 2: Meristic + Morphometric + Categorical Dataset"),
     uiOutput(ns("upload_status_message")),
     br(),
+    p(strong("The example datasets included in this package are for pratice purposes only and are not meant to inform taxonomic changes.")),
     p("Note on the example dataset: The second colum (SVL) represents body size. Colums 3 (HH) to 16 (TW) are morphometric traits and should be size corrected. Colums 17 (SL) to 27 (TL4) are meristic traits and should not be size corrected. Colums 28 (iris color) to 32 (drk on body) are categorical traits."),
     p("Additional details on this dataset can be found at: Grismer et al. (2022). Phylogenetic and multivariate analyses of Gekko smithii Gray, 1842 recover a new species from Peninsular Malaysia and support the resurrection of G. albomaculatus (Giebel, 1861) from Sumatra. Vertebrate Zoology, 72, 47–80. https://doi.org/10.3897/vz.72.e77702)"), 
     hr(),
