@@ -31,34 +31,6 @@ mod_inferential_ui_meristic <- function(id) {
                          hr(),
                 ),
                 
-                tabPanel("Multivariate (PERMANOVA)",
-                         br(), 
-                         h4("PERMANOVA Analysis"),
-                         p("The PERMANOVA analysis tests for significant differences among group centroids in multivariate trait space. You can choose to perform this on the original data or on PCA scores. Performing PERMANOVA on PCA scores is recommended to accompany a PCA."),
-                         
-                         fluidRow(
-                           column(6, numericInput(ns("permanova_permutations"), "Number of Permutations:", value = 50000, min = 100, step = 100)),
-                           column(6, selectInput(ns("permanova_distance_method"), "Distance Method:",
-                                                 choices = c("euclidean", "manhattan", "bray", "jaccard", "altGower"),
-                                                 selected = "euclidean"))
-                         ),
-                         tags$div(
-                           style = "font-size: 1.1em; color: red; font-weight: bold; margin-top: 10px;",
-                           checkboxInput(ns("use_pca"), HTML("Use PCA Scores for PERMANOVA"), value = FALSE)
-                         ),
-                         p(em("Note: Euclidean distance is generally the most appropriate method when using PCA scores for PERMANOVA.")),
-                         
-                         actionButton(ns("run_permanova"), "Run PERMANOVA"),
-                         br(), br(),
-                         h5("Main PERMANOVA Results (adonis2):"),
-                         verbatimTextOutput(ns("permanova_main_results")),
-                         downloadButton(ns("download_permanova_main"), "Download Main Results"),
-                         br(),
-                         h5("Pairwise PERMANOVA Results:"),
-                         DTOutput(ns("permanova_pairwise_results")),
-                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results")
-                ),
-                
                 tabPanel("PCA",
                          br(), 
                          h4("Standard PCA"),
@@ -87,7 +59,36 @@ mod_inferential_ui_meristic <- function(id) {
                          verbatimTextOutput(ns("pcatest_main_results")),
                          downloadButton(ns("download_pcatest_main"), "Download PCATest Results"),
                          hr(),
+                ),
+                
+                tabPanel("Multivariate (PERMANOVA)",
+                         br(), 
+                         h4("PERMANOVA Analysis"),
+                         p("The PERMANOVA analysis tests for significant differences among group centroids in multivariate trait space. You can choose to perform this on the original data or on PCA scores. Performing PERMANOVA on PCA scores is recommended to accompany a PCA."),
+                         
+                         fluidRow(
+                           column(6, numericInput(ns("permanova_permutations"), "Number of Permutations:", value = 50000, min = 100, step = 100)),
+                           column(6, selectInput(ns("permanova_distance_method"), "Distance Method:",
+                                                 choices = c("euclidean", "manhattan", "bray", "jaccard", "altGower"),
+                                                 selected = "euclidean"))
+                         ),
+                         tags$div(
+                           style = "font-size: 1.1em; color: red; font-weight: bold; margin-top: 10px;",
+                           checkboxInput(ns("use_pca"), HTML("Use PCA Scores for PERMANOVA"), value = FALSE)
+                         ),
+                         p(em("Note: Euclidean distance is generally the most appropriate method when using PCA scores for PERMANOVA.")),
+                         
+                         actionButton(ns("run_permanova"), "Run PERMANOVA"),
+                         br(), br(),
+                         h5("Main PERMANOVA Results (adonis2):"),
+                         verbatimTextOutput(ns("permanova_main_results")),
+                         downloadButton(ns("download_permanova_main"), "Download Main Results"),
+                         br(),
+                         h5("Pairwise PERMANOVA Results:"),
+                         DTOutput(ns("permanova_pairwise_results")),
+                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results")
                 )
+      
     )
   )
 }
