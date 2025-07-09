@@ -1,6 +1,47 @@
 #' @importFrom shiny tagList NS h3 hr p br h4 strong
 NULL
 
+#' Landing UI
+#'
+#' @return Shiny UI for the landing page
+#' @export
+landing_page_ui <- function() {
+  tagList(
+    tags$style(HTML("
+      #example_meristic table, #example_meristic th, #example_meristic td,
+      #example_morphometric table, #example_morphometric th, #example_morphometric td,
+      #example_mixed table, #example_mixed th, #example_mixed td {
+        text-align: center !important;
+      }
+    ")),
+    h2("Welcome to GroupStruct2"),
+    hr(),
+    p(strong("If you use GroupStruct2, please cite:")),
+    p(em("XXX")),
+    p("Please select a type of data from the dropdown on the left to begin."),
+    br(),
+    tags$ul(
+      tags$li("Meristic: Count-based characters (numeric data only)"),
+      tags$li("Morphometric: Measurement-based characters (numeric data only)"),
+      tags$li("Mixed: Meristic + Morphometric + Categorical (mixture of any numeric or numeric + categorical)")
+    ),
+    br(),
+    p("The first column of your dataset MUST be the grouping variable (e.g., species), followed by other trait variables. The dataset must contain at least 2 samples per group (no singletons) and missing data is NOT ALLOWED."),
+    hr(),
+    p("Example Datasets:"),
+    
+    h4("Meristic Data"),
+    tableOutput("example_meristic"),
+    
+    h4("Morphometric Data"),
+    tableOutput("example_morphometric"),
+    
+    h4("Mixed Data"),
+    tableOutput("example_mixed"),
+    hr(),
+  )
+}
+
 #' Home UI for Meristic Data
 #'
 #' @param id Namespace ID

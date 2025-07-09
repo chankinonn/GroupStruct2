@@ -62,24 +62,31 @@ app_ui <- function(request) {
       ),
       sidebarLayout(
         sidebarPanel(
-          id = "fixed_sidebar",
-          h4("Select type of data:"),
+          id = "fixed_sidebar", 
+          actionButton("reset_data_type", label = tagList(icon("home"), "GroupStruct2 Home"), 
+                       class = "btn btn-primary btn-block"),
+          hr(),
+          h4("1. Select type of data:"),
+          #br(),
           selectInput("data_type", label = NULL,
-                      choices = list(
-                        "Meristic" = "meristic",
-                        "Morphometric" = "morphometric",
-                        "Mixed data (Meristic, Morphological, Categorical)" = "combined"
-                      ),
-                      selected = "meristic"),
-          hr(),
-          actionButton("go_data", "Input Data", width = "100%"),
-          actionButton("go_summary", "Summary Statistics", width = "100%"),
-          uiOutput("allometry_button_ui"),
-          uiOutput("stats_button_ui"),
-          uiOutput("mfa_button_ui"),
-          actionButton("go_visual", "Visualization", width = "100%"),
-          hr(),
-          uiOutput("visual_customization_ui")
+                      choices = c("Please select" = "", 
+                                  "Meristic" = "meristic",
+                                  "Morphometric" = "morphometric",
+                                  "Mixed data" = "combined"),
+                      selected = ""),
+          conditionalPanel(
+            condition = "input.data_type != ''",
+            hr(),
+            h4("2. Run modules"),
+            actionButton("go_data", "Input Data", width = "100%"),
+            actionButton("go_summary", "Summary Statistics", width = "100%"),
+            uiOutput("allometry_button_ui"),
+            uiOutput("stats_button_ui"),
+            uiOutput("mfa_button_ui"),
+            actionButton("go_visual", "Visualization", width = "100%"),
+            hr(),
+            uiOutput("visual_customization_ui")
+          )
         ),
         mainPanel(
           id = "main_content",

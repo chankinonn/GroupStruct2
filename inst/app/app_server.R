@@ -15,6 +15,29 @@ app_server <- function(input, output, session) {
   observeEvent(input$go_visual, current_module("visual"))
   observeEvent(input$go_mfa, current_module("mfa"))
 
+  # Render example datasets for landing page
+  output$example_meristic <- renderTable({
+    example_meristic
+  }, striped = TRUE, hover = TRUE)
+  
+  output$example_morphometric <- renderTable({
+    df <- example_morphometric
+    df$Snout_vent_Length <- sprintf("%.1f", df$Snout_vent_Length)
+    df$Head_Length <- sprintf("%.1f", df$Head_Length)
+    df$Snout_Length <- sprintf("%.1f", df$Snout_Length)
+    df
+  }, striped = TRUE, hover = TRUE)
+  
+  output$example_mixed <- renderTable({
+    df <- example_mixed
+    df$Midbody_Scale <- sprintf("%.0f", df$Midbody_Scale)
+    df$Ventral_Scale <- sprintf("%.0f", df$Ventral_Scale)
+    df$Snout_vent_Length <- sprintf("%.1f", df$Snout_vent_Length)
+    df$Head_Length <- sprintf("%.1f", df$Head_Length)
+    df
+  }, striped = TRUE, hover = TRUE)
+  
+  
   # Reactive values to hold outputs of data input modules
   # Meristic Data
   meristic_data_output <- reactiveVal(NULL)
@@ -174,6 +197,11 @@ app_server <- function(input, output, session) {
   }, ignoreNULL = FALSE, ignoreInit = FALSE) # Run on init and when trait_df is updated
 
 
+  # Home landing page
+  observeEvent(input$reset_data_type, {
+    updateSelectInput(session, "data_type", selected = "")
+  })
+  
   # Initialize data module servers based on data_type selection
 
   observeEvent(input$data_type, {
@@ -381,28 +409,36 @@ app_server <- function(input, output, session) {
 
   # UI for module content
   output$module_ui <- renderUI({
-    switch(input$data_type,
-           meristic = switch(current_module(),
-                             home = mod_home_ui_meristic("home_ui_1_meristic"),
-                             data = mod_data_ui_meristic("data_ui_1_meristic"),
-                             summary = mod_summary_ui_meristic("summary_ui_1_meristic"),
-                             stats = mod_inferential_ui_meristic("inferential_ui_1_meristic"),
-                             visual = mod_visual_ui_meristic("visual_ui_1_meristic")),
-           morphometric = switch(current_module(),
-                                 home = mod_home_ui_morphometric("home_ui_1_morphometric"),
-                                 data = mod_data_ui_morphometric("data_ui_1_morphometric"),
-                                 summary = mod_summary_ui_morphometric("summary_ui_1_morphometric"),
-                                 allometry = mod_allometry_ui_morphometric("allometry_ui_1_morphometric"),
-                                 stats = mod_inferential_ui_morphometric("inferential_ui_1_morphometric"),
-                                 visual = mod_visual_ui_morphometric("visual_ui_1_morphometric")),
-           combined = switch(current_module(),
-                             home = mod_home_ui_combined("home_ui_1_combined"),
-                             data = mod_data_combined_ui("data_ui_1_combined"),
-                             summary = mod_summary_ui_combined("summary_ui_1_combined"),
-                             allometry = mod_allometry_ui_combined("allometry_ui_1_combined"),
-                             #stats = mod_inferential_ui_combined("inferential_ui_1_combined"),
-                             mfa = mod_mfa_ui("mfa_ui_1_combined"),
-                             visual = mod_visual_ui_combined("visual_ui_1_combined")))
+    if (is.null(input$data_type) || input$data_type == "") {
+      landing_page_ui()
+    } else {
+      switch(input$data_type,
+             
+             meristic = switch(current_module(),
+                               home = mod_home_ui_meristic("home_ui_1_meristic"),
+                               data = mod_data_ui_meristic("data_ui_1_meristic"),
+                               summary = mod_summary_ui_meristic("summary_ui_1_meristic"),
+                               stats = mod_inferential_ui_meristic("inferential_ui_1_meristic"),
+                               visual = mod_visual_ui_meristic("visual_ui_1_meristic")),
+             
+             morphometric = switch(current_module(),
+                                   home = mod_home_ui_morphometric("home_ui_1_morphometric"),
+                                   data = mod_data_ui_morphometric("data_ui_1_morphometric"),
+                                   summary = mod_summary_ui_morphometric("summary_ui_1_morphometric"),
+                                   allometry = mod_allometry_ui_morphometric("allometry_ui_1_morphometric"),
+                                   stats = mod_inferential_ui_morphometric("inferential_ui_1_morphometric"),
+                                   visual = mod_visual_ui_morphometric("visual_ui_1_morphometric")),
+             
+             combined = switch(current_module(),
+                               home = mod_home_ui_combined("home_ui_1_combined"),
+                               data = mod_data_combined_ui("data_ui_1_combined"),
+                               summary = mod_summary_ui_combined("summary_ui_1_combined"),
+                               allometry = mod_allometry_ui_combined("allometry_ui_1_combined"),
+                               stats = mod_inferential_ui_combined("stats_ui_1_combined"),
+                               mfa = mod_mfa_ui("mfa_ui_1_combined"),
+                               visual = mod_visual_ui_combined("visual_ui_1_combined"))
+      )
+    }
   })
 
   # Dynamic UI for customization based on active visual tab
