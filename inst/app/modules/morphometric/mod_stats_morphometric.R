@@ -104,16 +104,20 @@ mod_inferential_server_morphometric <- function(id, data_r) {
     pcatest_results_r <- reactiveVal(NULL) 
     
     # Reactive for PCA results
+    # Reactive for PCA results based on allometric data
     pca_results_r <- reactive({
-      df <- data_r()
+      df <- data_r()  # Get the data from the allometric module
+      req(df)  # Ensure data is available
+      
       # Ensure data_mat is numeric and has no NA values for PCA
       data_mat_numeric <- as.data.frame(lapply(df[, -1], as.numeric))
       complete_rows <- complete.cases(data_mat_numeric)
       
       if (sum(complete_rows) < 2 || ncol(data_mat_numeric) < 2) {
-        return(NULL) # Return NULL if data is insufficient
+        return(NULL)  # Return NULL if data is insufficient
       }
       
+      # Perform PCA
       prcomp(data_mat_numeric[complete_rows, ], center = TRUE, scale. = TRUE)
     })
     
@@ -174,7 +178,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
         loadings_df %>% rename(Metric = Trait_Loading) # Rename for consistent binding
       )
       
-      # Format numeric columns to 4 decimal places
+      # Format numeric columns to 4 decimal places for display/download
       numeric_cols <- names(combined_df)[sapply(combined_df, is.numeric)]
       combined_df[numeric_cols] <- lapply(combined_df[numeric_cols], function(x) round(x, 4))
       
@@ -200,6 +204,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
       cat("\nLoadings:\n")
       print(pca$rotation)
     })
+    
     
     
     # Univariate Tests 
@@ -806,7 +811,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           shinyjs::addClass(id = "run_permanova", class = "module-active")
           
           withProgress(message = 'PERMANOVA Analysis in progress', value = 0, {
-            
             incProgress(0.1, detail = "Checking data and parameters...")
             req(data_r())
             
@@ -817,7 +821,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             
             # Get numeric traits data
             traits_data_raw <- df_for_permanova %>% dplyr::select(where(is.numeric))
-            # Exclude the first column if it's numeric and represents the group 
+            
             if (group_col_name %in% names(traits_data_raw)) {
               traits_data_raw <- traits_data_raw %>% dplyr::select(-!!sym(group_col_name))
             }
@@ -858,26 +862,14 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             analysis_description <- "original trait space"
             
             if (input$use_pca) {
-              incProgress(0.2, detail = "Performing PCA for PERMANOVA...")
-              # Check for zero variance columns before PCA
-              zero_var_cols <- sapply(permanova_data_input, function(x) var(x, na.rm = TRUE) == 0)
-              if (any(zero_var_cols)) {
-                showNotification(paste0("Warning: Traits with zero variance found (",
-                                        paste(names(permanova_data_input)[zero_var_cols], collapse = ", "),
-                                        "). These will be removed before PCA."), type = "warning", duration = 8)
-                permanova_data_input <- permanova_data_input[, !zero_var_cols, drop = FALSE]
-                if (ncol(permanova_data_input) < 2) { # PCA needs at least 2 variables
-                  showNotification("After removing zero-variance traits, less than 2 traits remain. Cannot perform PCA. Please uncheck 'Use PCA Scores' or provide more variable traits.", type = "error", duration = 10)
-                  permanova_main_results_r(NULL)
-                  permanova_pairwise_results_r(NULL)
-                  shinyjs::removeClass(id = "run_permanova", class = "module-active")
-                  return()
-                }
-              }
+              incProgress(0.2, detail = "Using PCA for PERMANOVA...")
               
-              pca_result <- prcomp(permanova_data_input, scale. = TRUE, center = TRUE)
-              # Use all principal components (scores) that have variance
-              permanova_data_input <- pca_result$x[, apply(pca_result$x, 2, var) > 1e-9, drop = FALSE] # Filter out PCs with effectively zero variance
+              # Get PCA results from pca_results_r (already existing)
+              pca <- pca_results_r()
+              req(pca)
+              
+              # Use PCA scores for PERMANOVA
+              permanova_data_input <- pca$x[, apply(pca$x, 2, var) > 1e-9, drop = FALSE]  # Filter out PCs with effectively zero variance
               analysis_description <- "PCA scores space"
               
               if (ncol(permanova_data_input) == 0) {
@@ -889,7 +881,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
               }
             }
             
-            # Run main adonis2
+            # Run main adonis2 (PERMANOVA)
             incProgress(0.3, detail = paste("Calculating main PERMANOVA in", analysis_description, "..."))
             main_result <- tryCatch({
               vegan::adonis2(formula = permanova_data_input ~ species_data_clean,
@@ -905,7 +897,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             
             permanova_main_results_r(main_result)
             
-            # Update progress and detail based on main result significance
+            # Check if significant and run pairwise comparisons if necessary
             if (!is.null(main_result) && "Pr(>F)" %in% names(main_result) &&
                 main_result$`Pr(>F)`[1] < 0.05 && n_distinct(species_data_clean) > 2) {
               incProgress(0.5, detail = "Main PERMANOVA significant. Running pairwise comparisons...")
@@ -920,7 +912,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
               })
               permanova_pairwise_results_r(pairwise_result)
             } else {
-              reason <- if(is.null(main_result)) "Main PERMANOVA failed" else if(main_result$`Pr(>F)`[1] >= 0.05) "Main PERMANOVA not significant" else "Less than 3 groups"
+              reason <- if (is.null(main_result)) "Main PERMANOVA failed" else if (main_result$`Pr(>F)`[1] >= 0.05) "Main PERMANOVA not significant" else "Less than 3 groups"
               permanova_pairwise_results_r(data.frame(Message = paste("Pairwise test not performed (", reason, ").")))
               incProgress(0.9, detail = paste("Skipping pairwise test:", reason))
             }
@@ -929,7 +921,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             
             incProgress(1, detail = "Analysis complete.")
             showNotification("PERMANOVA analysis completed. Results are displayed below.", type = "default")
-          }) # 
+          })
           
           shinyjs::removeClass(id = "run_permanova", class = "module-active")
         })
