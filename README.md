@@ -6,6 +6,8 @@
 
 ## 🔧 Installation
 
+GroupStruct2 is compatible with MacOS and Windows 10 but has not been tested on Windows 11. 
+
 You can install the stable version of this package directly from GitHub using the `remotes` package:
 
 ```r
