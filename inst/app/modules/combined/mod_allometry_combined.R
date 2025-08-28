@@ -158,7 +158,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
           
           for (otu in unique(data_subset[[group_col_name]])) {
             idx <- which(data_subset[[group_col_name]] == otu)
-            z_mean <- mean(data_subset[[body_size_col_name]][idx], na.rm = TRUE)
+            z_mean <- mean(data_subset[[body_size_col_name]], na.rm = TRUE)
             log_z_mean <- log10(z_mean)
             adjusted_vals <- log10(data_subset[[trait]][idx]) - beta * (log10(data_subset[[body_size_col_name]][idx]) - log_z_mean)
             adjusted_df_output[idx, trait] <- adjusted_vals

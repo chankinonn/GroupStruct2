@@ -132,7 +132,7 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
           species_subsets_log <- df_log_internal[species_subsets_indices, ]
           
           log_y_subset <- species_subsets_log[[body_size_col_name]]
-          z_mean <- mean(data_ordered[[body_size_col_name]][species_subsets_indices])
+          z_mean <- mean(data_ordered[[body_size_col_name]])
           log_z_mean <- log10(z_mean)
           
           for (trait_name in trait_col_names) {
