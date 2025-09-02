@@ -14,8 +14,7 @@ mod_allometry_ui_morphometric <- function(id) {
                  choiceNames = list(
                    "Multispecies",
                    "Multipopulation",
-                   HTML("No correction (raw data) <span style='color:red; font-weight:bold; font-style:italic;'>*Not recommended</span>")
-                 ),
+                   "No correction (raw data)"),
                  choiceValues = list(
                    "species",
                    "population1",
