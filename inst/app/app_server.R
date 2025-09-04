@@ -93,21 +93,20 @@ app_server <- function(input, output, session) {
   # Prioritize allometry-adjusted data if available and valid, otherwise falls back to raw combined data.
   combined_data_with_adjusted_morphometrics_r <- reactive({
     message("Preparing combined data for visualization...")
-
-    # First try to use adjusted data if available
+    
+    # Try adjusted data (module returns a reactive that yields a data.frame)
     if (!is.null(allometry_combined_output())) {
-      adjusted_data <- tryCatch(
-        allometry_combined_output()()$adjusted_data,
+      adjusted_df <- tryCatch(
+        allometry_combined_output()(),   # <-- returns a data.frame
         error = function(e) NULL
       )
-
-      if (!is.null(adjusted_data) && is.data.frame(adjusted_data)) {
+      if (is.data.frame(adjusted_df)) {
         message("Using allometry-adjusted data")
-        return(adjusted_data)
+        return(adjusted_df)
       }
     }
-
-    # Fall back to raw combined data
+    
+    # Fallback to raw combined data
     req(combined_data_df_r())
     message("Using raw combined data")
     combined_data_df_r()
