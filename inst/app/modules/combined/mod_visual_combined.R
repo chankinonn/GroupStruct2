@@ -404,12 +404,19 @@ mod_visual_server_combined <- function(id, dataset_r,
     # Scatterplot
     plot_scatter_obj <- reactive({
       req(dataset_r(), input$scatter_xvar, input$scatter_yvar, input$scatter_group_filter, group_col_name_r())
+      
       df <- dataset_r()
       group_col <- group_col_name_r()
       
       df <- df[df[[group_col]] %in% input$scatter_group_filter, ]
       
-      p <- ggplot(df, aes_string(x = input$scatter_xvar, y = input$scatter_yvar, color = group_col)) +
+      # Convert string inputs to symbols using rlang::sym()
+      x_var_sym <- rlang::sym(input$scatter_xvar)
+      y_var_sym <- rlang::sym(input$scatter_yvar)
+      group_col_sym <- rlang::sym(group_col)
+      
+      # Use the symbols with the '!!' operator inside aes()
+      p <- ggplot(df, aes(x = !!x_var_sym, y = !!y_var_sym, color = !!group_col_sym)) +
         geom_point(size = 3, alpha = 0.8)
       
       if (isTRUE(input$scatter_show_lm)) {
@@ -422,7 +429,8 @@ mod_visual_server_combined <- function(id, dataset_r,
       
       p +
         get_color_scale_otu(plot_palette()) +
-        get_custom_theme()
+        get_custom_theme() +
+        labs(color = str_to_title(group_col))
     })
     
     # Reactive plot objects (Boxplot, Violin)
