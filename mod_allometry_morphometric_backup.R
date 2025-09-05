@@ -39,46 +39,6 @@ mod_allometry_ui_morphometric <- function(id) {
   )
 }
 
-mod_allometry_ui_morphometric <- function(id) { 
-  ns <- NS(id)
-  
-  tagList(
-    h3("Allometric Correction and Log Transformation"),
-    hr(),
-    p(strong("Important:"), "The first column must be Group/OTU names (e.g., species or population). Avoid special characters in trait names."),
-    p("Each Group/OTU must be represented by more than two individuals (to calculate mean) and missing data is not allowed. This adjustment should also be performed separately on different sexes to account for possible sexual dimorphism."),
-    p("Use the multispecies option if your dataset includes more than one species or putative species. Use the multipopulation option if your dataset includes more than one population from only ONE species."),
-    p("If you use this function, please cite the original paper: Chan, K. O., & Grismer, L. L. (2022). GroupStruct: An R package for allometric size correction. Zootaxa, 5124(4), 471–482."), # Removed hyperlink
-    hr(),
-    radioButtons(ns("correction_type"), "Select Correction Method:",
-                 choiceNames = list(
-                   "Multispecies",
-                   "Multipopulation",
-                   "No correction (raw data)"),
-                 choiceValues = list(
-                   "species",
-                   "population1",
-                   "none"
-                 ),
-                 selected = "species",
-                 inline = TRUE), 
-    hr(),
-    uiOutput(ns("body_size_selector_ui")),
-    p(strong("Important:"), "Make sure you select the variable that represents body size (e.g., snout-vent-length)"),
-    hr(),
-    br(),
-    h4("Size-Corrected Data Preview"),
-    DTOutput(ns("adjusted_data_preview")),
-    br(),
-    h4("Note on Adjusted Data:"),
-    p("The 'Body-size' column (your original 2nd column) in the adjusted data is now its log10-transformed value."),
-    p("Other trait columns contain their size-corrected and log10-transformed values, suitable for downdstream analyses where size effects need to be removed."),
-    br(),
-    downloadButton(ns("download_adjusted_data_csv"), "Download Size-adjusted Data"),
-    hr()
-  )
-}
-
 mod_allometry_server_morphometric <- function(id, raw_data_r) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -129,7 +89,7 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
         dplyr::mutate(dplyr::across(c(all_of(body_size_col_name), all_of(trait_col_names)), log10))
       
       if (type == "species") {
-        # Multi-species (per-OTU slopes, per-OTU reference mean on original scale)
+        # Multi-species (species-specific body-size mean)
         for (current_otu in unique(data_ordered[[otu_col_name]])) {
           species_subsets_indices <- which(data_ordered[[otu_col_name]] == current_otu)
           species_subsets_log <- df_log_internal[species_subsets_indices, ]
@@ -152,10 +112,10 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
             adjusted_df_output[species_subsets_indices, trait_name] <- log_x_subset - beta * (log_y_subset - log_z_mean)
           }
         }
-        
       } else if (type == "population1") {
-        # Multi-population (per-OTU slopes, single grand geometric-mean reference)
-        log_z_mean <- mean(log10(data_ordered[[body_size_col_name]]), na.rm = TRUE)  # grand geometric mean on log10 scale
+        # Multi-population (group-specific slopes, single grand body-size mean)
+        z_mean <- mean(data_ordered[[body_size_col_name]], na.rm = TRUE)  # grand mean on original scale
+        log_z_mean <- log10(z_mean)
         
         for (current_otu in unique(data_ordered[[otu_col_name]])) {
           species_subsets_indices <- which(data_ordered[[otu_col_name]] == current_otu)
@@ -167,7 +127,7 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
             log_x_subset <- species_subsets_log[[trait_name]]
             
             if (length(log_y_subset) > 1 && sd(log_y_subset) > 0 && length(unique(log_x_subset)) > 1) {
-              lm_model <- lm(log_x_subset ~ log_y_subset)  # OTU-specific slope
+              lm_model <- lm(log_x_subset ~ log_y_subset)         # OTU-specific slope
               beta <- as.numeric(lm_model$coefficients[2])
             } else {
               beta <- 0
@@ -175,12 +135,13 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
                             ". Assuming beta = 0 for adjustment."))
             }
             
-            # Thorpe adjustment on log10 scale with common grand geometric mean
+            # Thorpe adjustment on log10 scale with common grand mean
             adjusted_df_output[species_subsets_indices, trait_name] <- 
               log_x_subset - beta * (log_y_subset - log_z_mean)
           }
         }
-        
+      }
+      
       } else if (type == "population2") {
         y_full <- data_ordered[[body_size_col_name]]
         log_y_full <- log10(y_full)
