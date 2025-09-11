@@ -438,73 +438,92 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
     
     # Download All MFA Results
     output$download_all_mfa_results <- downloadHandler(
-      filename = function() {
-        paste0("mfa_results_", Sys.Date(), ".zip")
-      },
+      filename = function() paste0("mfa_results_", Sys.Date(), ".zip"),
       content = function(file) {
         req(mfa_results_r())
         mfa_res <- mfa_results_r()
         
-        owd <- setwd(tempdir())
-        on.exit(setwd(owd))
-        
+        owd <- setwd(tempdir()); on.exit(setwd(owd))
         files_to_zip <- c()
         
-        # Eigenvalues
-        if (!is.null(mfa_res$eig)) {
+        # helper: safely suffix colnames if object exists and has columns
+        suffix_df <- function(x, suffix) {
+          if (is.null(x)) return(NULL)
+          df <- as.data.frame(x)
+          if (NCOL(df) == 0) return(NULL)
+          names(df) <- paste0(names(df), suffix)
+          df
+        }
+        
+        # 1) Eigenvalues
+        if (!is.null(mfa_res$eig) && NCOL(mfa_res$eig) > 0) {
           eig_df <- as.data.frame(mfa_res$eig)
-          colnames(eig_df) <- c("Eigenvalue", "Percentage of variance", "Cumulative percentage of variance")
+          colnames(eig_df) <- c("Eigenvalue","Percentage of variance","Cumulative percentage of variance")
           write.csv(eig_df, "mfa_eigenvalues.csv", row.names = TRUE)
           files_to_zip <- c(files_to_zip, "mfa_eigenvalues.csv")
         }
         
-        # Individuals Coordinates
-        if (!is.null(mfa_res$ind$coord)) {
+        # 2) Individuals Coordinates
+        if (!is.null(mfa_res$ind$coord) && NCOL(mfa_res$ind$coord) > 0) {
           write.csv(as.data.frame(mfa_res$ind$coord), "mfa_individuals_coordinates.csv", row.names = TRUE)
           files_to_zip <- c(files_to_zip, "mfa_individuals_coordinates.csv")
         }
         
-        # Quantitative Variables Summary (Coord, Cos2, Contrib)
-        if (!is.null(mfa_res$quanti.var) && !is.null(mfa_res$quanti.var$coord)) {
-          quanti_var_df <- bind_cols(
-            as.data.frame(mfa_res$quanti.var$coord) %>% rename_with(~paste0(.x, "_coord")),
-            as.data.frame(mfa_res$quanti.var$cos2) %>% rename_with(~paste0(.x, "_cos2")),
-            as.data.frame(mfa_res$quanti.var$contrib) %>% rename_with(~paste0(.x, "_contrib"))
+        # 3) Quantitative Variables Summary (Coord, Cos2, Contrib)
+        if (!is.null(mfa_res$quanti.var)) {
+          parts <- list(
+            suffix_df(mfa_res$quanti.var$coord,  "_coord"),
+            suffix_df(mfa_res$quanti.var$cos2,   "_cos2"),
+            suffix_df(mfa_res$quanti.var$contrib,"_contrib")
           )
-          write.csv(quanti_var_df, "mfa_quantitative_variables_summary.csv", row.names = TRUE)
-          files_to_zip <- c(files_to_zip, "mfa_quantitative_variables_summary.csv")
+          parts <- Filter(Negate(is.null), parts)
+          if (length(parts) > 0) {
+            quanti_var_df <- dplyr::bind_cols(parts)
+            write.csv(quanti_var_df, "mfa_quantitative_variables_summary.csv", row.names = TRUE)
+            files_to_zip <- c(files_to_zip, "mfa_quantitative_variables_summary.csv")
+          }
         }
         
-        # Qualitative Variables Summary (Coord, Cos2, Contrib, V-test)
-        if (!is.null(mfa_res$quali.var) && !is.null(mfa_res$quali.var$coord)) {
-          quali_var_df <- bind_cols(
-            as.data.frame(mfa_res$quali.var$coord) %>% rename_with(~paste0(.x, "_coord")),
-            as.data.frame(mfa_res$quali.var$cos2) %>% rename_with(~paste0(.x, "_cos2")),
-            as.data.frame(mfa_res$quali.var$contrib) %>% rename_with(~paste0(.x, "_contrib")),
-            as.data.frame(mfa_res$quali.var$v.test) %>% rename_with(~paste0(.x, "_vtest"))
+        # 4) Qualitative Variables Summary (Coord, Cos2, Contrib, V-test)
+        if (!is.null(mfa_res$quali.var)) {
+          parts_q <- list(
+            suffix_df(mfa_res$quali.var$coord,  "_coord"),
+            suffix_df(mfa_res$quali.var$cos2,   "_cos2"),
+            suffix_df(mfa_res$quali.var$contrib,"_contrib"),
+            suffix_df(mfa_res$quali.var$v.test, "_vtest")
           )
-          write.csv(quali_var_df, "mfa_qualitative_variables_summary.csv", row.names = TRUE)
-          files_to_zip <- c(files_to_zip, "mfa_qualitative_variables_summary.csv")
+          parts_q <- Filter(Negate(is.null), parts_q)
+          if (length(parts_q) > 0) {
+            quali_var_df <- dplyr::bind_cols(parts_q)
+            write.csv(quali_var_df, "mfa_qualitative_variables_summary.csv", row.names = TRUE)
+            files_to_zip <- c(files_to_zip, "mfa_qualitative_variables_summary.csv")
+          }
         }
         
-        # Group Summary (Coord, Cos2, Contrib)
-        if (!is.null(mfa_res$group) && !is.null(mfa_res$group$coord)) {
-          group_df <- bind_cols(
-            as.data.frame(mfa_res$group$coord) %>% rename_with(~paste0(.x, "_coord")),
-            as.data.frame(mfa_res$group$cos2) %>% rename_with(~paste0(.x, "_cos2")),
-            as.data.frame(mfa_res$group$contrib) %>% rename_with(~paste0(.x, "_contrib"))
+        # 5) Group Summary (Coord, Cos2, Contrib)
+        if (!is.null(mfa_res$group)) {
+          parts_g <- list(
+            suffix_df(mfa_res$group$coord, "_coord"),
+            suffix_df(mfa_res$group$cos2,  "_cos2"),
+            suffix_df(mfa_res$group$contrib,"_contrib")
           )
-          write.csv(group_df, "mfa_group_summary.csv", row.names = TRUE)
-          files_to_zip <- c(files_to_zip, "mfa_group_summary.csv")
+          parts_g <- Filter(Negate(is.null), parts_g)
+          if (length(parts_g) > 0) {
+            group_df <- dplyr::bind_cols(parts_g)
+            write.csv(group_df, "mfa_group_summary.csv", row.names = TRUE)
+            files_to_zip <- c(files_to_zip, "mfa_group_summary.csv")
+          }
         }
         
         if (length(files_to_zip) > 0) {
           zip(file, files_to_zip, flags = "-j")
         } else {
-          file.create(file)
+          # create an info file so the download isn't empty
+          writeLines("No MFA result tables were available to export for this run.", con = file)
         }
       }
     )
+    
     
     # PERMANOVA on MFA Scores Logic
     observeEvent(input$run_permanova_mfa, {
