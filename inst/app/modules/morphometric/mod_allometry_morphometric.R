@@ -3,7 +3,7 @@ mod_allometry_ui_morphometric <- function(id) {
   ns <- NS(id)
   
   tagList(
-    h3("Allometric Correction and Log Transformation"),
+    h3("XXX Allometric Correction and Log Transformation"),
     hr(),
     p(strong("Important:"), "The first column must be Group/OTU names (e.g., species or population). Avoid special characters in trait names."),
     p("Each Group/OTU must be represented by more than two individuals (to calculate mean) and missing data is not allowed. This adjustment should also be performed separately on different sexes to account for possible sexual dimorphism."),
