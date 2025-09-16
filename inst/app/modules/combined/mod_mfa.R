@@ -347,6 +347,28 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       
       message("MFA is about to be performed...") 
       
+      ## ncp selection
+      # Active trait columns (exclude the supplementary species/group column)
+      active_cols <- setdiff(names(data_for_mfa), group_col)
+      
+      # Effective dimensionality contributed by active variables:
+      # - numeric variables contribute 1 df each
+      # - factors contribute (levels - 1) df each (MCA-style)
+      p_quanti <- sum(sapply(data_for_mfa[active_cols], is.numeric))
+      p_quali  <- sum(sapply(data_for_mfa[active_cols], function(x) {
+        if (is.factor(x)) max(0, nlevels(x) - 1) else 0
+      }))
+      
+      # Rank is limited by both the variables' effective df and sample size (n - 1)
+      n         <- nrow(data_for_mfa)
+      rank_max  <- max(1, min(n - 1, p_quanti + p_quali))
+      
+      # Practical ceiling to keep objects/UI snappy; tweak if you like
+      ncp_cap     <- 30
+      ncp_to_use  <- min(rank_max, ncp_cap)
+      message(sprintf("MFA: using ncp = %d (rank_max = %d, cap = %d)", ncp_to_use, rank_max, ncp_cap))
+      ## --- end ncp selection ---
+      
       # Perform MFA
       mfa_res <- tryCatch({
         FactoMineR::MFA(
@@ -355,7 +377,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           type = group_types,
           name.group = group_names,
           num.group.sup = 1, # Designate the first group (species) as supplementary
-          ncp = 5,
+          ncp = ncp_to_use,
           graph = FALSE
         )
       }, error = function(e) {
