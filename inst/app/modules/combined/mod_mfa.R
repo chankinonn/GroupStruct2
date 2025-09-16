@@ -4,7 +4,8 @@ mod_mfa_ui <- function(id) {
   tagList(
     h3("Multiple Factor Analysis (MFA)"),
     hr(),
-    p("If you use this module, please cite: Grismer (2025) Introducing multiple factor analysis (MFA) as a diagnostic taxonomic tool complementing principal component analysis (PCA). ZooKeys, in press"),
+    p("The number of dimensions to retain for the MFA (ncp) is dynamically selected based on what the data can support, but capped at 30. All retained dimensions are used in the PERMANOVA analysis."),
+    p("If you use this module, please cite: Grismer, L. L. (2025). Introducing multiple factor analysis (MFA) as a diagnostic taxonomic tool complementing principal component analysis (PCA). ZooKeys, 1248, 93–109."),
     br(),
     tabsetPanel(id = ns("mfa_main_tabs"), 
                 tabPanel("MFA Analysis & Results", 
