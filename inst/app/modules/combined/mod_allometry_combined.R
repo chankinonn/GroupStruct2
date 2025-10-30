@@ -125,7 +125,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
     allom_modified <- function(data_subset, type, group_col_name, body_size_col_name, trait_col_names) {
       if (type == "none" || length(trait_col_names) == 0) return(data_subset)
       
-      If log10 transformation only (no allometric correction)
+      #If log10 transformation only (no allometric correction)
       if (type == "log10_only") {
         adjusted_df_output <- data_subset
         
