@@ -14,11 +14,13 @@ mod_allometry_ui_morphometric <- function(id) {
                  choiceNames = list(
                    "Multispecies",
                    "Multipopulation",
-                   "No correction (raw data)"),
+                   "No correction (raw data)",
+                   "No correction (log10-transformed)"),
                  choiceValues = list(
                    "species",
                    "population1",
-                   "none"
+                   "none",
+                   "log10_only"
                  ),
                  selected = "species",
                  inline = TRUE), 
@@ -57,6 +59,27 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
       # If no correction, return raw data directly
       if (type == "none") {
         return(data_ordered)
+      }
+      
+      # If log10 transformation only (no allometric correction)
+      if (type == "log10_only") {
+        adjusted_df_output <- data_ordered
+        
+        # Ensure body-size column and trait columns are positive
+        if (any(data_ordered[[body_size_col_name]] <= 0)) {
+          stop("Error: Body-size column must contain only positive values for log transformation.")
+        }
+        if (any(data_ordered[, trait_col_names] <= 0)) {
+          stop("Error: Trait columns must contain only positive values for log transformation.")
+        }
+        
+        # Log-transform body-size column and all trait columns
+        adjusted_df_output[[body_size_col_name]] <- log10(data_ordered[[body_size_col_name]])
+        for (trait_name in trait_col_names) {
+          adjusted_df_output[[trait_name]] <- log10(data_ordered[[trait_name]])
+        }
+        
+        return(adjusted_df_output)
       }
       
       # Checks for minimum individuals per OTU (only relevant for correction types)
