@@ -35,11 +35,13 @@ mod_allometry_ui_combined <- function(id) {
                  choiceNames = list(
                    "Multispecies",
                    "Multipopulation",
-                   "No correction (raw data)"),
+                   "No correction (raw data)",
+                   "No correction (log10-transformed)"),
                  choiceValues = list(
                    "species",
                    "population1",
-                   "none"
+                   "none",
+                   "log10_only"
                  ),
                  selected = "species",
                  inline = TRUE
@@ -122,6 +124,27 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
     # Correction function
     allom_modified <- function(data_subset, type, group_col_name, body_size_col_name, trait_col_names) {
       if (type == "none" || length(trait_col_names) == 0) return(data_subset)
+      
+      If log10 transformation only (no allometric correction)
+      if (type == "log10_only") {
+        adjusted_df_output <- data_subset
+        
+        # Ensure body-size column and trait columns are positive
+        if (any(data_subset[[body_size_col_name]] <= 0, na.rm = TRUE)) {
+          stop("Error: Body-size column must contain only positive values for log transformation.")
+        }
+        if (any(data_subset[, trait_col_names] <= 0, na.rm = TRUE)) {
+          stop("Error: Trait columns must contain only positive values for log transformation.")
+        }
+        
+        # Log-transform body-size column and all trait columns
+        adjusted_df_output[[body_size_col_name]] <- log10(data_subset[[body_size_col_name]])
+        for (trait in trait_col_names) {
+          adjusted_df_output[[trait]] <- log10(data_subset[[trait]])
+        }
+        
+        return(adjusted_df_output)
+      }
       
       adjusted_df_output <- data_subset
       adjusted_df_output[[body_size_col_name]] <- log10(data_subset[[body_size_col_name]])
