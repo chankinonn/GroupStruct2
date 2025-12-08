@@ -3,6 +3,7 @@ mod_data_ui_meristic <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Input Meristic Data"),
+    hr(),
     p("The first column should be Group/OTU names (e.g., species or population). Other traits should be in the 2nd column onwards"),
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),

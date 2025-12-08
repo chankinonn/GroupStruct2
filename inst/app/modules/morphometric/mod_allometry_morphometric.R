@@ -28,6 +28,8 @@ mod_allometry_ui_morphometric <- function(id) {
     uiOutput(ns("body_size_selector_ui")),
     p(strong("Important:"), "Make sure you select the variable that represents body size (e.g., snout-vent-length)"),
     hr(),
+    actionButton(ns("run_correction"), "Run Allometric Correction", icon = icon("play")),  
+    hr(),
     br(),
     h4("Size-Corrected Data Preview"),
     DTOutput(ns("adjusted_data_preview")),
@@ -200,32 +202,39 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
                    selected = choices[1], inline = TRUE)
     })
     
-    # Observe inputs and run correction
-    observe({
+    # CHANGE: Run correction only when button is clicked
+    observeEvent(input$run_correction, {
       req(raw_data_r(), input$correction_type, input$body_size_col)
       
-      df_raw <- raw_data_r()
-      
-      if (ncol(df_raw) < 3) {
-        showNotification("Error: Data must have at least 3 columns (OTU, Body-size, and at least one trait) for allometric correction.", type = "error")
-        adjusted_data_r(NULL)
-        return()
-      }
-      
-      adjusted_df <- tryCatch({
-        allom_modified(data = df_raw,
-                       type = input$correction_type,
-                       body_size_col_name = input$body_size_col)
-      }, error = function(e) {
-        showNotification(paste("Correction failed:", e$message), type = "error")
-        return(NULL)
+      withProgress(message = 'Running allometric correction...', value = 0, {
+        
+        df_raw <- raw_data_r()
+        
+        if (ncol(df_raw) < 3) {
+          showNotification("Error: Data must have at least 3 columns (OTU, Body-size, and at least one trait) for allometric correction.", type = "error")
+          adjusted_data_r(NULL)
+          return()
+        }
+        
+        incProgress(0.5, detail = "Applying correction...")
+        
+        adjusted_df <- tryCatch({
+          allom_modified(data = df_raw,
+                         type = input$correction_type,
+                         body_size_col_name = input$body_size_col)
+        }, error = function(e) {
+          showNotification(paste("Correction failed:", e$message), type = "error")
+          return(NULL)
+        })
+        
+        incProgress(0.5, detail = "Finalizing...")
+        
+        adjusted_data_r(adjusted_df)
+        
+        if (!is.null(adjusted_df)) {
+          showNotification("Allometric correction completed successfully!", type = "message")
+        }
       })
-      
-      adjusted_data_r(adjusted_df)
-      
-      if (!is.null(adjusted_df)) {
-        showNotification("Correction completed successfully!", type = "default")
-      }
     })
     
     # Display adjusted data preview

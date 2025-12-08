@@ -6,7 +6,8 @@ required_packages <- c(
   "RColorBrewer", "rstatix", "car", "readr", "adegenet", "FactoMineR", "factoextra",
   "shinyjs", "colourpicker", "forcats", "purrr", "scales", "PCAtest",
   "openxlsx", "shinyWidgets", "ggthemes", "broom", "tibble",
-  "htmltools", "stringr", "ggpubr", "ggrepel"
+  "htmltools", "stringr", "ggpubr", "ggrepel", "patchwork", "mclust", "conflicted", 
+  "Boruta", "ggridges"
 )
 
 # Source Meristic modules
@@ -20,6 +21,7 @@ source("modules/morphometric/mod_data_morphometric.R")
 source("modules/morphometric/mod_summary_morphometric.R")
 source("modules/morphometric/mod_allometry_morphometric.R")
 source("modules/morphometric/mod_stats_morphometric.R")
+source("modules/morphometric/mod_species_delim.R")
 source("modules/morphometric/mod_visual_morphometric.R")
 
 # Source Combined modules
@@ -61,6 +63,19 @@ check_and_install_packages <- function(packages) {
 # Load required packages
 check_and_install_packages(required_packages)
 
+# Resolve conflicts using conflicted package
+if (requireNamespace("conflicted", quietly = TRUE)) {
+  conflicted::conflict_prefer("select", "dplyr")
+  conflicted::conflict_prefer("filter", "dplyr")
+  conflicted::conflicts_prefer(dplyr::matches)
+  conflicted::conflict_prefer("rename", "dplyr")
+  conflicted::conflict_prefer("em", "shiny")
+  conflicted::conflict_prefer("count", "dplyr")
+  conflicted::conflict_prefer("map", "purrr")
+  conflicted::conflict_prefer("renderDataTable", "DT")
+  conflicted::conflict_prefer("colourInput", "colourpicker")
+}
+
 # Define %||% operator (if not already defined)
 `%||%` <- function(x, y) {
   if (is.null(x)) y else x
@@ -77,6 +92,148 @@ get_color_scale <- function(palette_choices) {
   } else { # Default to hue_pal if no specific palette function/colors
     return(scales::hue_pal())
   }
+}
+
+MclustBayesFactorClassMerge <- function(data, 
+                                        class, 
+                                        modelType = "EDDA", 
+                                        ...)
+{
+  ## Adapted from original code by: 
+  # Luca Scruccca luca.scrucca@unipg.it
+  
+  data <- data.matrix(data)
+  class <- cl <- as.factor(class)
+  lclass <- lcl <- levels(class)
+  nclass <- ncl <- nlevels(class)
+  
+  bestMod <- MclustDA(data = data, class = class, 
+                      modelType = modelType, ...)
+  BIC <- bestMod$bic
+  K <- nclass
+  combiClass <- list(lclass)
+  combiM <- list(diag(K))
+  
+  while(ncl > 1)
+  {
+    allTuples <- combn(ncl, 2, simplify = FALSE)
+    bic <- NULL
+    for(j in 1:length(allTuples))
+    {
+      merge <- allTuples[[j]]
+      # M <- combMat(ncl, merge[1], merge[2])
+      ly <- lcl
+      ly[merge] <- paste(lcl[merge], collapse = "-")
+      y <- factor(cl, levels = lcl, labels = ly)
+      mod <- MclustDA(data = data, class = y, 
+                      modelType = modelType, ...)
+      if(mod$bic > bestMod$bic) bestMod <- mod
+      bic <- c(bic, mod$bic)
+    }
+    j <- which.max(bic)
+    merge <- allTuples[[j]]
+    M <- combMat(ncl, merge[1], merge[2])
+    lcl[merge] <- paste(lcl[merge], collapse = "-")
+    cl <- factor(cl, levels = levels(cl), labels = lcl)
+    lcl <- levels(cl)
+    ncl <- nlevels(cl)
+    #
+    BIC <- c(BIC, bic[j])
+    combiM <- append(combiM, list(M))
+    K <- c(K, ncl)
+    combiClass <- append(combiClass, list(lcl))
+  }
+  #
+  BIC_diff <- max(BIC) - BIC 
+  BF <- exp(0.5*BIC_diff) 
+  logMarLik <- 0.5*BIC 
+  # Posterior model probability 
+  # (assuming equal a priori model probs)
+  post <- exp(logMarLik - mclust::logsumexp(logMarLik))
+  
+  tab <- data.frame("K" = K, "BIC" = BIC, 
+                    "∆BIC = 2logBF" = BIC_diff, 
+                    "BF = exp(∆BIC/2)" = BF, 
+                    "PostMod" = post,
+                    row.names = sapply(combiClass,
+                                       paste0, 
+                                       collapse = "|"),
+                    check.names = FALSE)
+  
+  M <- vector(mode = "list", length = nclass)
+  M[[1]] <- combiM[[1]]
+  for(k in 2:nclass)
+    M[[k]] <- combiM[[k]] %*% M[[k-1]]
+  
+  out <- list(tab = tab,
+              k = which.max(BIC),
+              modelType = modelType,
+              combiM = combiM,
+              M = M,
+              combiClass = combiClass,
+              class = class,
+              bestMod = bestMod)
+  return(out)
+} 
+
+### Fx to summarize results
+summarize_class_merge <- function(result, digits = 3) {
+  
+  tab <- result$tab
+  tab <- tab[order(tab$BIC, decreasing = TRUE), ]
+  
+  numeric_cols <- sapply(tab, is.numeric)
+  tab[numeric_cols] <- lapply(tab[numeric_cols], round, digits = digits)
+  
+  lumped_pops <- rownames(tab)
+  tab <- cbind("Lumped populations" = lumped_pops, tab)
+  rownames(tab) <- NULL
+  
+  return(tab)
+}
+
+# Bayesian species delimitation function
+GMMBayesFactorTable <- function(..., prior = NULL) {
+  stopifnot(requireNamespace("mclust", quietly = TRUE))
+  stopifnot(packageVersion("mclust") >= "6.1")
+  
+  models <- list(...)
+  model_names <- names(models) 
+  
+  stopifnot(all(sapply(models, function(mod) 
+    inherits(mod, "MclustDA"))))
+  classes <- sapply(models, function(mod) 
+    paste0(levels(mod$class), 
+           collapse = "|")) 
+  M <- length(models)
+  if(is.null(prior)) prior <- rep(1/M, M)
+  prior <- prior/sum(prior)
+  stopifnot("The sum of all the priors exceed 1"=
+              length(prior) == M)
+  
+  K <- sapply(models, 
+              function(mod) 
+                nlevels(mod$class)) 
+  BIC <- sapply(models, 
+                function(mod) 
+                  mod$bic)
+  BIC_diff <- max(BIC) - BIC
+  BF <- exp(0.5*BIC_diff) 
+  logMarLik <- 0.5*BIC 
+  
+  post <- exp(logMarLik + log(prior) - 
+                mclust::logsumexp(logMarLik + log(prior)))
+  
+  tab <- data.frame("Hypothesis" = model_names,  
+                    "Taxonomic groupings" = classes,
+                    "K" = K, "BIC" = BIC, 
+                    "∆BIC = 2logBF" = round(BIC_diff,2), 
+                    "BF = exp(∆BIC/2)" = round(BF,2), 
+                    "PriorMod" = prior,
+                    "PostMod" = post,
+                    check.names = FALSE)
+  row.names(tab) <- NULL
+  return(tab)
 }
 
 # Example datasets for landing page

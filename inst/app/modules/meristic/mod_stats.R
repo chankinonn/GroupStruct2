@@ -37,6 +37,9 @@ mod_inferential_ui_meristic <- function(id) {
                          p("This section shows the results of a standard PCA using the R base function prcomp()."),
                          br(),
                          verbatimTextOutput(ns("pca_summary_raw")),
+                         hr(),
+                         p(strong("Note:"), "See the",
+                           strong("Visualization > PCA/DAPC"), "tab for the PCA/DAPC plots."),
                          downloadButton(ns("download_pca_summary"), "Download PCA Summary"),
                          hr(),
                 ),
@@ -86,7 +89,8 @@ mod_inferential_ui_meristic <- function(id) {
                          br(),
                          h5("Pairwise PERMANOVA Results:"),
                          DTOutput(ns("permanova_pairwise_results")),
-                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results")
+                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results"),
+                         hr(),
                 )
       
     )

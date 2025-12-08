@@ -3,6 +3,7 @@ mod_data_combined_ui <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Input Mixed Data (Meristic, Morphological, Categorical)"),
+    hr(),
     p("The first column should be Group/OTU names (e.g., species or population)."),
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),

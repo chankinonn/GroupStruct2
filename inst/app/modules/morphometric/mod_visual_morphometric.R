@@ -159,6 +159,105 @@ mod_visual_ui_morphometric <- function(id) {
                                   hr()
                            )
                          )
+                ),
+                
+                tabPanel("Species Delimitation",
+                         tabsetPanel(
+                           id = ns("species_delim_subtab"),
+                           
+                           tabPanel("Unsupervised Clustering (Model Comparison)",
+                                    fluidRow(
+                                      column(9,
+                                             plotOutput(ns("plot_species_bic"))
+                                      ),
+                                      column(3,
+                                             br(),
+                                             numericInput(ns("plot_species_bic_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                             numericInput(ns("plot_species_bic_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
+                                             hr(),
+                                             downloadButton(ns("download_species_bic_pdf"), "Download PDF"),
+                                             br(),
+                                             downloadButton(ns("download_species_bic_jpeg"), "Download JPEG"),
+                                             hr()
+                                      )
+                                    )
+                           ),
+                           
+                           tabPanel("Unsupervised Clustering (PCA Clusters)",
+                                    fluidRow(
+                                      column(9,
+                                             plotOutput(ns("plot_species_pca"))
+                                      ),
+                                      column(3,
+                                             br(),
+                                             numericInput(ns("plot_species_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                             numericInput(ns("plot_species_pca_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
+                                             hr(),
+                                             numericInput(ns("species_pca_point_size"), "Point Size:", value = 4, min = 1, max = 10, width = '150px'),
+                                        
+                                             checkboxInput(ns("species_pca_centroids"), "Cluster Centroids", value = FALSE),
+                                             checkboxInput(ns("species_pca_ellipse"), "95% Confidence Ellipses", value = FALSE),
+                                             checkboxInput(ns("species_pca_convex"), "Convex Hulls", value = FALSE),
+                                             conditionalPanel(
+                                               condition = sprintf("input['%s'] || input['%s']", ns("species_pca_ellipse"), ns("species_pca_convex")),
+                                               checkboxInput(ns("species_pca_outline"), "Outline Ellipses/Hulls", value = FALSE)
+                                             ),
+                                             conditionalPanel(
+                                               condition = sprintf("input['%s']", ns("species_pca_outline")),
+                                               sliderInput(ns("species_pca_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                             ),
+                                             conditionalPanel(
+                                               condition = sprintf("input['%s'] || input['%s']", ns("species_pca_ellipse"), ns("species_pca_convex")),
+                                               sliderInput(ns("species_pca_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
+                                             ),
+                                             hr(),
+                                             downloadButton(ns("download_species_pca_pdf"), "Download PDF"),
+                                             br(),
+                                             downloadButton(ns("download_species_pca_jpeg"), "Download JPEG"),
+                                             hr()
+                                      )
+                                    )
+                           ),
+                           
+                           tabPanel("Boruta Ridge Plot",
+                                    fluidRow(
+                                      column(9,
+                                             plotOutput(ns("plot_boruta_ridge"))
+                                      ),
+                                      column(3,
+                                             br(),
+                                             numericInput(ns("plot_boruta_ridge_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                             numericInput(ns("plot_boruta_ridge_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
+                                             hr(),
+                                             numericInput(ns("boruta_ridge_scale"), "Ridge Scale:", value = 4, min = 1, max = 10, step = 0.5, width = '150px'),
+                                             sliderInput(ns("boruta_ridge_alpha"), "Fill Transparency:", min = 0, max = 1, value = 0.5, step = 0.05, width = '150px'),
+                                             hr(),
+                                             downloadButton(ns("download_boruta_ridge_pdf"), "Download PDF"),
+                                             br(),
+                                             downloadButton(ns("download_boruta_ridge_jpeg"), "Download JPEG"),
+                                             hr()
+                                      )
+                                    )
+                           ),
+                           
+                           tabPanel("Boruta Box Plot",
+                                    fluidRow(
+                                      column(9,
+                                             plotOutput(ns("plot_boruta_box"))
+                                      ),
+                                      column(3,
+                                             br(),
+                                             numericInput(ns("plot_boruta_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                             numericInput(ns("plot_boruta_box_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
+                                             hr(),
+                                             downloadButton(ns("download_boruta_box_pdf"), "Download PDF"),
+                                             br(),
+                                             downloadButton(ns("download_boruta_box_jpeg"), "Download JPEG"),
+                                             hr()
+                                      )
+                                    )
+                           )
+                         )
                 )
     )
   )
@@ -169,7 +268,9 @@ mod_visual_server_morphometric <- function(id, dataset,
                                            plot_palette, plot_axis_text_size,
                                            plot_axis_label_size, plot_x_angle, plot_facet_size,
                                            legend_text_size, legend_title_size,
-                                           manual_colors_r) {
+                                           manual_colors_r,
+                                           species_delim_results_r = reactive(NULL),
+                                           boruta_results_r = reactive(NULL)) {
   
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -706,6 +807,271 @@ mod_visual_server_morphometric <- function(id, dataset,
     })
     
     
+    # Plot objects for species delimitation
+    plot_species_bic_obj <- reactive({
+      req(species_delim_results_r())
+      
+      results <- species_delim_results_r()
+      req(results$unsupervised)
+      
+      unsupervised <- results$unsupervised
+      data_mod <- unsupervised$model  
+      
+      # Extract BIC values and reshape for plotting
+      DF <- data.frame(data_mod$BIC[], G = 1:nrow(data_mod$BIC))
+      DF <- tidyr::pivot_longer(DF, cols = 1:14, names_to = "Model", values_to = "BIC")
+      DF$Model <- factor(DF$Model, levels = mclust::mclust.options("emModelNames"))
+      
+      ggplot(DF, aes(x = G, y = BIC, colour = Model, shape = Model)) +
+        geom_point(size = 10) +
+        geom_line() +
+        scale_shape_manual(values = mclust::mclust.options("bicPlotSymbols")) +
+        scale_color_manual(values = mclust::mclust.options("bicPlotColors")) +
+        get_color_scale(plot_palette()) +
+        scale_x_continuous(breaks = unique(DF$G)) +
+        labs(x = "Number of mixture components", y = "BIC") +
+        guides(shape = guide_legend(nrow = 2)) +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                         legend_text_size(), legend_title_size(), theme_choice = input$plot_theme) +
+        theme(legend.position = "bottom")
+    })
+    
+    plot_species_pca_obj <- reactive({
+      req(species_delim_results_r(), input$species_pca_point_size)
+      
+      results <- species_delim_results_r()
+      req(results$unsupervised)  
+      
+      unsupervised <- results$unsupervised
+      morpho_data <- unsupervised$morpho_data  
+      species_col <- unsupervised$species_col  
+      data_mod <- unsupervised$model  
+      
+      # Get PCA coordinates
+      pca <- prcomp(morpho_data, scale = TRUE)
+      pca_df <- data.frame(
+        PC1 = pca$x[,1],
+        PC2 = pca$x[,2],
+        Species = species_col,
+        Cluster = as.factor(data_mod$classification)
+      )
+      
+      # Calculate % variance explained
+      var_explained <- round(100 * (pca$sdev^2 / sum(pca$sdev^2)), 1)
+      pc1_label <- paste0("PC1 (", var_explained[1], "%)")
+      pc2_label <- paste0("PC2 (", var_explained[2], "%)")
+      
+      p <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
+        xlab(pc1_label) +
+        ylab(pc2_label)
+      
+      # Add ellipses first (so they're behind points)
+      if (isTRUE(input$species_pca_ellipse)) {
+        if (isTRUE(input$species_pca_outline)) {
+          p <- p + stat_ellipse(
+            aes(group = Cluster, fill = Cluster, color = Cluster),
+            type = "norm",
+            geom = "polygon",
+            alpha = input$species_pca_alpha_ellipse,
+            size = input$species_pca_outline_stroke,
+            show.legend = FALSE
+          )
+        } else {
+          p <- p + stat_ellipse(
+            aes(group = Cluster, fill = Cluster),
+            color = NA,
+            type = "norm",
+            geom = "polygon",
+            alpha = input$species_pca_alpha_ellipse,
+            show.legend = FALSE
+          )
+        }
+      }
+      
+      # Add convex hulls
+      if (isTRUE(input$species_pca_convex)) {
+        hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Cluster), function(df) {
+          df[chull(df$PC1, df$PC2), ]
+        }), .id = "Cluster")
+        
+        if (isTRUE(input$species_pca_outline)) {
+          p <- p + geom_polygon(
+            data = hull_df,
+            aes(x = PC1, y = PC2, group = Cluster, fill = Cluster, color = Cluster),
+            alpha = input$species_pca_alpha_ellipse,
+            size = input$species_pca_outline_stroke,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          )
+        } else {
+          p <- p + geom_polygon(
+            data = hull_df,
+            aes(x = PC1, y = PC2, group = Cluster, fill = Cluster),
+            color = NA,
+            alpha = input$species_pca_alpha_ellipse,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          )
+        }
+      }
+      
+      # Add points (color by Cluster, shape by Species)
+      if (isTRUE(input$species_pca_outline_points)) {
+        p <- p + geom_point(
+          aes(fill = Cluster, shape = Species),
+          size = input$species_pca_point_size,
+          color = "black",
+          stroke = input$species_pca_point_stroke
+        )
+      } else {
+        p <- p + geom_point(
+          aes(color = Cluster, shape = Species),
+          size = input$species_pca_point_size
+        )
+      }
+      
+      # Add centroids
+      if (isTRUE(input$species_pca_centroids)) {
+        centroids <- pca_df %>%
+          dplyr::group_by(Cluster) %>%
+          dplyr::summarize(PC1 = mean(PC1), PC2 = mean(PC2), .groups = "drop")
+        
+        p <- p + geom_point(
+          data = centroids,
+          aes(x = PC1, y = PC2),
+          shape = 8,
+          size = 4,
+          color = "black",
+          fill = "white",
+          stroke = 1,
+          inherit.aes = FALSE
+        )
+      }
+      
+      # Add scales
+      if (isTRUE(input$species_pca_outline_points)) {
+        p <- p + get_fill_scale(plot_palette())
+        p <- p + get_color_scale(plot_palette()) + guides(color = "none")
+      } else {
+        p <- p + get_color_scale(plot_palette())
+        p <- p + get_fill_scale(plot_palette()) + guides(fill = "none")
+      }
+      
+      # Add title and caption
+      p <- p + 
+        labs(
+          caption = "Mismatches = points where color and shape don't correspond"
+        ) +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                         legend_text_size(), legend_title_size(), theme_choice = input$plot_theme)
+      
+      p
+    })
+    
+    # Boruta ridge plot
+    plot_boruta_ridge_obj <- reactive({
+      req(boruta_results_r())
+      
+      boruta_data <- boruta_results_r()  # This IS the boruta data already
+      req(boruta_data$boruta_object) 
+      
+      boruta_obj <- boruta_data$boruta_object 
+      
+      # Prepare data
+      final_decision <- tibble::tibble(
+        var = names(boruta_obj$finalDecision), 
+        decision = as.character(boruta_obj$finalDecision)
+      ) %>%
+        dplyr::mutate(ID = dplyr::row_number())
+      
+      # Create ridge plot
+      boruta_obj$ImpHistory %>% 
+        tibble::as_tibble() %>% 
+        tidyr::gather(var, value) %>% 
+        dplyr::left_join(final_decision, by = "var") %>% 
+        dplyr::mutate(value = replace(value, value == "-Inf", NA)) %>%  
+        ggplot(aes(x = value, y = reorder(var, value, na.rm = TRUE), fill = decision)) +
+        ggridges::geom_density_ridges(
+          scale = input$boruta_ridge_scale, 
+          alpha = input$boruta_ridge_alpha,
+          rel_min_height = 0.005
+        ) + 
+        scale_y_discrete(expand = c(0, 0)) +     
+        scale_x_continuous(expand = c(0, 0)) + 
+        get_fill_scale(plot_palette()) +
+        
+        coord_cartesian(clip = "off") +
+        labs(x = "Importance", y = "Variable", fill = "Decision") +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                         legend_text_size(), legend_title_size(), theme_choice = input$plot_theme)
+    })
+    
+    # Boruta box plot
+    # Boruta box plot
+    plot_boruta_box_obj <- reactive({
+      req(boruta_results_r())
+      
+      boruta_data <- boruta_results_r()
+      req(boruta_data$boruta_object)
+      
+      boruta_obj <- boruta_data$boruta_object
+      
+      # Extract importance data
+      imp_history <- boruta_obj$ImpHistory
+      final_decision <- boruta_obj$finalDecision
+      
+      # Prepare data frame for ggplot
+      imp_df <- as.data.frame(imp_history)
+      imp_df_long <- tidyr::pivot_longer(
+        imp_df,
+        cols = everything(),
+        names_to = "Variable",
+        values_to = "Importance"
+      )
+      
+      # Add decision information
+      imp_df_long$Decision <- factor(
+        final_decision[imp_df_long$Variable],
+        levels = c("Confirmed", "Tentative", "Rejected", "shadowMax", "shadowMean", "shadowMin")
+      )
+      
+      # Separate shadow variables
+      shadow_vars <- c("shadowMax", "shadowMean", "shadowMin")
+      imp_df_long$VarType <- ifelse(imp_df_long$Variable %in% shadow_vars, "Shadow", "Attribute")
+      
+      # Order variables by median importance
+      var_order <- imp_df_long %>%
+        dplyr::group_by(Variable) %>%
+        dplyr::summarise(median_imp = median(Importance, na.rm = TRUE)) %>%
+        dplyr::arrange(median_imp) %>%
+        dplyr::pull(Variable)
+      
+      imp_df_long$Variable <- factor(imp_df_long$Variable, levels = var_order)
+      
+      # Create plot
+      p <- ggplot(imp_df_long, aes(x = Variable, y = Importance, fill = Decision)) +
+        geom_boxplot(outlier.size = 1) +
+        get_fill_scale(plot_palette()) +  # USE PALETTE SELECTOR
+        coord_flip() +
+        labs(
+          x = "Variable",
+          y = "Importance",
+          fill = "Decision"
+        ) +
+        get_custom_theme(
+          plot_axis_text_size(), 
+          plot_axis_label_size(), 
+          0,
+          plot_facet_size(),
+          legend_text_size(), 
+          legend_title_size(), 
+          theme_choice = input$plot_theme
+        )
+      
+      p
+    })
+    
+    
     # Render plots with dynamic height and width
     output$plot_scatter <- renderPlot({
       plot_scatter_obj()
@@ -731,6 +1097,22 @@ mod_visual_server_morphometric <- function(id, dataset,
       height = function() input$plot_dapc_height,
       width = function() input$plot_dapc_width
     )
+    
+    output$plot_species_bic <- renderPlot({
+      plot_species_bic_obj()
+    }, height = function() input$plot_species_bic_height, width = function() input$plot_species_bic_width)
+    
+    output$plot_species_pca <- renderPlot({
+      plot_species_pca_obj()
+    }, height = function() input$plot_species_pca_height, width = function() input$plot_species_pca_width)
+    
+    output$plot_boruta_ridge <- renderPlot({
+      plot_boruta_ridge_obj()
+    }, height = function() input$plot_boruta_ridge_height, width = function() input$plot_boruta_ridge_width)
+    
+    output$plot_boruta_box <- renderPlot({
+      plot_boruta_box_obj()
+    }, height = function() input$plot_boruta_box_height, width = function() input$plot_boruta_box_width)
     
     # Default download dimensions (in inches)
     DEFAULT_DOWNLOAD_WIDTH <- 10
@@ -788,5 +1170,17 @@ mod_visual_server_morphometric <- function(id, dataset,
    
     output$download_dapc_pdf <- create_download_handler(plot_dapc_obj, "dapc_morphometric", "pdf", "plot_dapc_height", "plot_dapc_width")
     output$download_dapc_jpeg <- create_download_handler(plot_dapc_obj, "dapc_morphometric", "jpeg", "plot_dapc_height", "plot_dapc_width")
+    output$download_species_bic_pdf <- create_download_handler(plot_species_bic_obj, "species_delim_bic", "pdf", "plot_species_bic_height", "plot_species_bic_width")
+    output$download_species_bic_jpeg <- create_download_handler(plot_species_bic_obj, "species_delim_bic", "jpeg", "plot_species_bic_height", "plot_species_bic_width")
+    
+    output$download_species_pca_pdf <- create_download_handler(plot_species_pca_obj, "species_delim_pca", "pdf", "plot_species_pca_height", "plot_species_pca_width")
+    output$download_species_pca_jpeg <- create_download_handler(plot_species_pca_obj, "species_delim_pca", "jpeg", "plot_species_pca_height", "plot_species_pca_width")
+    
+    output$download_boruta_ridge_pdf <- create_download_handler(plot_boruta_ridge_obj, "boruta_ridge", "pdf", "plot_boruta_ridge_height", "plot_boruta_ridge_width")
+    output$download_boruta_ridge_jpeg <- create_download_handler(plot_boruta_ridge_obj, "boruta_ridge", "jpeg", "plot_boruta_ridge_height", "plot_boruta_ridge_width")
+    
+    output$download_boruta_box_pdf <- create_download_handler(plot_boruta_box_obj, "boruta_box", "pdf", "plot_boruta_box_height", "plot_boruta_box_width")
+    output$download_boruta_box_jpeg <- create_download_handler(plot_boruta_box_obj, "boruta_box", "jpeg", "plot_boruta_box_height", "plot_boruta_box_width")
+    
   })
 }

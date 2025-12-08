@@ -83,6 +83,7 @@ app_ui <- function(request) {
             uiOutput("allometry_button_ui"),
             uiOutput("stats_button_ui"),
             uiOutput("mfa_button_ui"),
+            uiOutput("species_delim_button_ui"),
             actionButton("go_visual", "Visualization", width = "100%"),
             hr(),
             uiOutput("visual_customization_ui")

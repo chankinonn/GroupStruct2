@@ -3,6 +3,7 @@ mod_data_ui_morphometric <- function(id) {
   ns <- NS(id)
   tagList(
     h3("Input Morphometric Data"),
+    hr(),
     p("The first column must be the Group/OTU labels (e.g., species or population). Other traits should be in the 3rd column onwards"),
     p(strong("Missing values and singletons are not allowed.")),
     p("A preview of the data will be shown as soon as it is uploaded."),
