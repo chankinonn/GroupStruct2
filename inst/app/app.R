@@ -1,6 +1,6 @@
 # inst/app/app.R
 
-source("global.R", local = TRUE)
+source("global.R")
 source("app_ui.R", local = TRUE)
 source("app_server.R", local = TRUE)
 

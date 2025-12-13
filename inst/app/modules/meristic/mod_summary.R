@@ -7,6 +7,9 @@ mod_summary_ui_meristic <- function(id) {
     br(),
     h4("Summary Table by OTU (Mean ± SD, Min–Max)"),
     DTOutput(ns("summary_table")),
+    hr(),
+    p(strong("Note:"), "See the",
+      strong("Visualization"), "tab for scatter, box, and violin plots."),
     downloadButton(ns("download_summary"), "Download Table"),
     hr(),
   )

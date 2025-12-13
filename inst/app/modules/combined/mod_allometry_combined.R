@@ -46,7 +46,9 @@ mod_allometry_ui_combined <- function(id) {
                  selected = "species",
                  inline = TRUE
     ),
-    
+    hr(),
+    actionButton(ns("run_correction"), "Run Allometric Correction", icon = icon("play"), class = "btn-primary"),
+    hr(),
     br(),
     h4("Combined Data Preview (Size-corrected Morphometric + All Other Traits)"),
     DTOutput(ns("adjusted_data_preview")),
@@ -65,6 +67,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
+    # Disable trait selection when "none" is selected
     observeEvent(input$correction_type, {
       if (input$correction_type == "none") {
         updateCheckboxGroupInput(session, "morphometric_traits_to_correct", selected = character(0))
@@ -125,7 +128,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
     allom_modified <- function(data_subset, type, group_col_name, body_size_col_name, trait_col_names) {
       if (type == "none" || length(trait_col_names) == 0) return(data_subset)
       
-      #If log10 transformation only (no allometric correction)
+      # If log10 transformation only (no allometric correction)
       if (type == "log10_only") {
         adjusted_df_output <- data_subset
         
@@ -149,8 +152,9 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       adjusted_df_output <- data_subset
       adjusted_df_output[[body_size_col_name]] <- log10(data_subset[[body_size_col_name]])
       
+      # Fix tidyselect warning here:
       df_log_internal <- data_subset %>%
-        mutate(across(c(body_size_col_name, all_of(trait_col_names)), log10)) %>%
+        mutate(across(all_of(c(body_size_col_name, trait_col_names)), log10)) %>%
         filter(complete.cases(.))
       
       if (nrow(df_log_internal) == 0) stop("No complete cases available after log transform.")
@@ -190,49 +194,79 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       return(adjusted_df_output)
     }
     
-    # Apply correction
-    observe({
-      req(raw_combined_data_r(), input$correction_type, input$morphometric_traits_to_correct, input$body_size_col)
+    # Apply correction ONLY when button is clicked
+    observeEvent(input$run_correction, {
+      req(raw_combined_data_r(), input$correction_type, input$body_size_col)
       
-      df_raw_full <- raw_combined_data_r()$data
-      group_col_name <- raw_combined_data_r()$group_col
-      body_size_col_name <- input$body_size_col
-      selected_morph_traits <- input$morphometric_traits_to_correct
-      
-      if (input$correction_type == "none") {
-        adjusted_data_output_r(df_raw_full)
-        showNotification("No correction applied. Raw data returned.", type = "message")
-        return()
-      }
-      
-      non_numeric <- selected_morph_traits[!sapply(df_raw_full[, selected_morph_traits, drop = FALSE], is.numeric)]
-      if (length(non_numeric) > 0) {
-        showNotification("Allometric correction cannot be performed on categorical or meristic data. Please select morphometric data only.", type = "error")
-        return()
-      }
-      
-      columns_to_select <- c(group_col_name, body_size_col_name, selected_morph_traits)
-      df_subset <- df_raw_full %>% dplyr::select(all_of(columns_to_select))
-      
-      tryCatch({
-        adjusted_df <- allom_modified(
-          data_subset = df_subset,
-          type = input$correction_type,
-          group_col_name = group_col_name,
-          body_size_col_name = body_size_col_name,
-          trait_col_names = selected_morph_traits
-        )
+      withProgress(message = 'Running allometric correction...', value = 0, {
         
+        df_raw_full <- raw_combined_data_r()$data
+        group_col_name <- raw_combined_data_r()$group_col
+        body_size_col_name <- input$body_size_col
+        selected_morph_traits <- input$morphometric_traits_to_correct
+        
+        # Validation
+        if (ncol(df_raw_full) < 3) {
+          showNotification("Error: Data must have at least 3 columns (OTU, Body-size, and at least one trait) for allometric correction.", type = "error")
+          adjusted_data_output_r(NULL)
+          return()
+        }
+        
+        if (input$correction_type == "none") {
+          adjusted_data_output_r(df_raw_full)
+          showNotification("No correction applied. Raw data returned.", type = "message")
+          return()
+        }
+        
+        if (length(selected_morph_traits) == 0 && input$correction_type != "none") {
+          showNotification("Please select at least one morphometric trait for correction.", type = "warning")
+          return()
+        }
+        
+        incProgress(0.3, detail = "Validating data...")
+        
+        non_numeric <- selected_morph_traits[!sapply(df_raw_full[, selected_morph_traits, drop = FALSE], is.numeric)]
+        if (length(non_numeric) > 0) {
+          showNotification("Allometric correction cannot be performed on categorical or meristic data. Please select morphometric data only.", type = "error")
+          return()
+        }
+        
+        incProgress(0.3, detail = "Applying correction...")
+        
+        columns_to_select <- c(group_col_name, body_size_col_name, selected_morph_traits)
+        df_subset <- df_raw_full %>% dplyr::select(all_of(columns_to_select))
+        
+        adjusted_df <- tryCatch({
+          allom_modified(
+            data_subset = df_subset,
+            type = input$correction_type,
+            group_col_name = group_col_name,
+            body_size_col_name = body_size_col_name,
+            trait_col_names = selected_morph_traits
+          )
+        }, error = function(e) {
+          showNotification(paste("Correction failed:", e$message), type = "error")
+          return(NULL)
+        })
+        
+        if (is.null(adjusted_df)) {
+          adjusted_data_output_r(NULL)
+          return()
+        }
+        
+        incProgress(0.3, detail = "Finalizing...")
+        
+        # Merge corrected columns back into full dataset
         df_raw_full[[body_size_col_name]] <- adjusted_df[[body_size_col_name]]
         for (trait in selected_morph_traits) {
           df_raw_full[[trait]] <- adjusted_df[[trait]]
         }
         
         adjusted_data_output_r(df_raw_full)
-        showNotification("Allometric Correction completed successfully! Data updated.", type = "default")
-      }, error = function(e) {
-        showNotification(paste("Allometric Correction failed:", e$message), type = "error")
-        adjusted_data_output_r(NULL)
+        
+        if (!is.null(df_raw_full)) {
+          showNotification("Allometric correction completed successfully!", type = "message")
+        }
       })
     })
     
@@ -240,9 +274,11 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
     output$adjusted_data_preview <- renderDT({
       data_to_display <- adjusted_data_output_r()
       if (is.null(data_to_display)) {
-        return(datatable(data.frame("Status" = "."), options = list(dom = 't', paging = FALSE, searching = FALSE, info = FALSE)))
+        return(datatable(data.frame("Status" = "No data available. Click 'Run Allometric Correction' to process."), 
+                         options = list(dom = 't', paging = FALSE, searching = FALSE, info = FALSE)))
       } else {
-        return(datatable(data_to_display, options = list(pageLength = 10, scrollX = TRUE)))
+        return(datatable(data_to_display, 
+                         options = list(pageLength = 10, scrollX = TRUE, lengthMenu = c(10, 25, 50, 100))))
       }
     })
     

@@ -10,7 +10,7 @@ mod_inferential_ui_morphometric <- function(id) {
                 tabPanel("Univariate",
                          br(), 
                          h4("Univariate Analysis"),
-                         p("Perform univariate analyses to determine which traits are (or are not) statistically different between groups. This module automatically detects the number of groups, tests for assumptions of normality and homogeneity of variance, and selects the appropriate statistical tests (t-test or Wilcoxon/Mann-Whitney if only two groups are detected, ANOVA or Kruskal-Wallis if >2 groups, followed by the appropriate ad hoc tests)."),
+                         p("Perform univariate analyses to determine which traits are (or are not) statistically different between groups. This module automatically detects the number of groups, tests for assumptions of normality and homogeneity of variance, and selects the appropriate statistical tests (t-test or Wilcoxon/Mann-Whitney if only 2 groups are detected, ANOVA or Kruskal-Wallis if >2 groups, followed by the appropriate ad hoc tests)."),
                          
                          div(style = "white-space: nowrap;",
                              checkboxInput(ns("force_parametric"),
@@ -50,7 +50,7 @@ mod_inferential_ui_morphometric <- function(id) {
                            "Caveat: The PCAtest can be overly conservative and misleading if a disproportionately large amount of variation is captured in the first few PCs, as is common in phenotypic data. For the DAPC plot, we recommend using the number of PCs that capture 80–90% of variation instead of the number of significant PCs inferred from the PCAtest. We encourage users to compare results using different methods and strategies."
                          ),
                          p("If you use PCAtest, please cite:"),
-                         p(em("Camargo, A. (2022). PCAtest: testing the statistical significance of Principal Component Analysis in R. PeerJ, 10:e12967. https://doi.org/10.7717/peerj.12967")),
+                         p("Camargo, A. (2022). PCAtest: testing the statistical significance of Principal Component Analysis in R. PeerJ, 10:e12967. https://doi.org/10.7717/peerj.12967"),
                          numericInput(ns("pcatest_permutations"), "Number of Permutations:", value = 1000, min = 100, step = 100),
                          actionButton(ns("run_pcatest"), "Run PCAtest"),
                          br(), br(),

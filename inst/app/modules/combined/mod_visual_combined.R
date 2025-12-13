@@ -16,6 +16,14 @@ mod_visual_ui_combined <- function(id) {
                                   numericInput(ns("plot_scatter_width"), "Plot Width (px)", value = 700, min = 200, step = 50),
                                   hr(),
                                   uiOutput(ns("scatter_controls")),
+                                  hr(),
+                                  numericInput(ns("scatter_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                  checkboxInput(ns("scatter_outline_points"), "Outline Points", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("scatter_outline_points")),
+                                    sliderInput(ns("scatter_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                  ),
+                                  hr(),
                                   checkboxInput(ns("scatter_show_labels"), "Show Individual Labels", value = FALSE),
                                   checkboxInput(ns("scatter_show_lm"), "Show Regression Line", value = TRUE),
                                   checkboxInput(ns("scatter_show_lm_se"), "Show Confidence Interval", value = TRUE),
@@ -404,6 +412,7 @@ mod_visual_server_combined <- function(id, dataset_r,
     # Scatterplot
     plot_scatter_obj <- reactive({
       req(dataset_r(), input$scatter_xvar, input$scatter_yvar, input$scatter_group_filter, group_col_name_r())
+      req(input$scatter_point_size)
       
       df <- dataset_r()
       group_col <- group_col_name_r()
@@ -416,8 +425,24 @@ mod_visual_server_combined <- function(id, dataset_r,
       group_col_sym <- rlang::sym(group_col)
       
       # Use the symbols with the '!!' operator inside aes()
-      p <- ggplot(df, aes(x = !!x_var_sym, y = !!y_var_sym, color = !!group_col_sym)) +
-        geom_point(size = 3, alpha = 0.8)
+      p <- ggplot(df, aes(x = !!x_var_sym, y = !!y_var_sym, color = !!group_col_sym))
+      
+      # Add points with outline option
+      if (isTRUE(input$scatter_outline_points)) {
+        p <- p + geom_point(
+          aes(fill = !!group_col_sym),
+          shape = 21,
+          size = input$scatter_point_size,
+          color = "black",
+          stroke = input$scatter_point_stroke,
+          alpha = 0.8
+        )
+      } else {
+        p <- p + geom_point(
+          size = input$scatter_point_size,
+          alpha = 0.8
+        )
+      }
       
       if (isTRUE(input$scatter_show_lm)) {
         p <- p + geom_smooth(method = "lm", se = isTRUE(input$scatter_show_lm_se), linetype = "solid")
@@ -427,10 +452,17 @@ mod_visual_server_combined <- function(id, dataset_r,
         p <- p + geom_text(aes(label = rownames(df)), hjust = 1.1, vjust = 1.1, size = 3, check_overlap = TRUE)
       }
       
+      # Update color/fill scales based on outline option
+      if (isTRUE(input$scatter_outline_points)) {
+        p <- p + get_fill_scale_otu(plot_palette())
+        p <- p + get_color_scale_otu(plot_palette()) + guides(color = "none")
+      } else {
+        p <- p + get_color_scale_otu(plot_palette())
+      }
+      
       p +
-        get_color_scale_otu(plot_palette()) +
         get_custom_theme() +
-        labs(color = str_to_title(group_col))
+        labs(color = str_to_title(group_col), fill = str_to_title(group_col))
     })
     
     # Reactive plot objects (Boxplot, Violin)
@@ -472,7 +504,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         dplyr::select(all_of(c(group_var_name, traits_to_plot))) %>%
         pivot_longer(-all_of(group_var_name), names_to = "Trait", values_to = "Value")
       
-      ggplot(df_long, aes_string(x = group_var_name, y = "Value", fill = group_var_name)) +
+      ggplot(df_long, aes(x = .data[[group_var_name]], y = .data[["Value"]], fill = .data[[group_var_name]])) +
         geom_boxplot(outlier.shape = NA, alpha = 0.7) +
         facet_wrap(~Trait, scales = "free_y") +
         get_fill_scale_otu(plot_palette()) + # Use OTU-specific fill scale
@@ -518,12 +550,12 @@ mod_visual_server_combined <- function(id, dataset_r,
         dplyr::select(all_of(c(group_var_name, traits_to_plot))) %>%
         pivot_longer(-all_of(group_var_name), names_to = "Trait", values_to = "Value")
       
-      # Outline color and size depend on input$violin_outline and input$violin_point_stroke
+      # Outline color and linewidth depend on input$violin_outline and input$violin_point_stroke
       violin_outline_color <- if (isTRUE(input$violin_outline)) "black" else NA
-      violin_outline_size  <- if (isTRUE(input$violin_outline)) input$violin_point_stroke else 0
+      violin_outline_width  <- if (isTRUE(input$violin_outline)) input$violin_point_stroke else 0
       
-      ggplot(df_long, aes_string(x = group_var_name, y = "Value", fill = group_var_name)) +
-        geom_violin(width = 0.9, alpha = 0.6, color = violin_outline_color, size = violin_outline_size) +
+      ggplot(df_long, aes(x = .data[[group_var_name]], y = .data[["Value"]], fill = .data[[group_var_name]])) +
+        geom_violin(width = 0.9, alpha = 0.6, color = violin_outline_color, linewidth = violin_outline_width) +
         facet_wrap(~Trait, scales = "free_y") +
         get_fill_scale_otu(plot_palette()) + # Use OTU-specific fill scale
         get_custom_theme() +
@@ -809,7 +841,7 @@ mod_visual_server_combined <- function(id, dataset_r,
             aes(group = Group, fill = Group, color = Group),
             type = "norm", level = 0.95, geom = "polygon",
             alpha = input$mfa_ellipse_alpha, 
-            size = input$mfa_outline_stroke,
+            linewidth = input$mfa_outline_stroke,
             show.legend = FALSE
           ) + get_fill_scale_otu(plot_palette()) + get_color_scale_otu(plot_palette())
         } else {
@@ -835,7 +867,7 @@ mod_visual_server_combined <- function(id, dataset_r,
             data = hull_df,
             aes(x = Dim.1, y = Dim.2, group = Group, fill = Group, color = Group),
             alpha = input$mfa_ellipse_alpha,
-            size = input$mfa_outline_stroke,
+            linewidth = input$mfa_outline_stroke,
             inherit.aes = FALSE, show.legend = FALSE
           ) + get_fill_scale_otu(plot_palette()) + get_color_scale_otu(plot_palette())
         } else {

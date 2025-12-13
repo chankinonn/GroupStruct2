@@ -5,8 +5,8 @@ mod_allometry_ui_morphometric <- function(id) {
     h3("Allometric Correction and Log Transformation"),
     hr(),
     p(strong("Important:"), "The first column must be Group/OTU names (e.g., species or population). Avoid special characters in trait names."),
-    p("Each Group/OTU must be represented by more than two individuals (to calculate mean) and missing data is not allowed. This adjustment should also be performed separately on different sexes to account for possible sexual dimorphism."),
-    p(strong("Multispecies:"), "Use this option if the OTUs in your dataset represent DIFFERENT SPECIES i.e., different geographic populations/localities have been pooled under a single OTU/species name (pooled populations). Traits are adjusted according to an OTU-specific standard size and OTU-specific regression slope. The caveat is that the OTU-specific regression slope is calculated from pooled populations, which assumes that variation among populations of the same species is homogenous and can be represented by a common regression slope. If there is substantial variation among populations of the same species, such that different populations have significantly different regression slopes, use the multipopulation option. The multispecies option is also useful when population sample size is small."),
+    p("Each Group/OTU must be represented by more than two individuals (to calculate mean) and missing data are not allowed. This adjustment should also be performed separately on different sexes to account for possible sexual dimorphism."),
+    p(strong("Multispecies:"), "Use this option if the OTUs in your dataset represent DIFFERENT SPECIES i.e., different geographic populations/localities have been pooled under a single OTU/species name (pooled populations). Traits are adjusted according to an OTU-specific standard size and an OTU-specific regression slope. The caveat is that the OTU-specific regression slope is calculated from pooled populations, which assumes that variation among populations of the same species is homogenous and can be represented by a common regression slope. If there is substantial variation among populations of the same species, such that different populations have significantly different regression slopes, use the multipopulation option. The multispecies option is also useful when population sample size is small."),
     p(strong("Multipopulation:"), "Use this option if the OTUs in your dataset represent different populations of ONE SPECIES. If you use this option, each uploaded dataset comprises ONE SPECIES. If more than one species are to be analyzed, do them separately. The multipopulation option is used when populations within a single species vary significantly, such that they have different slopes. Because each OTU represents a population, a separate slope is calculated for each population. However, a single grand mean for body size is calculated across all populations. CAVEAT: calculating accurate population-specific slopes require large sample sizes. Low population sample sizes will skew the slope and affect the correction. In this case, consider the multispecies option that pools populations to boost sample size."),    
     p("If you use this function, please cite the original paper: Chan, K. O., & Grismer, L. L. (2022). GroupStruct: An R package for allometric size correction. Zootaxa, 5124(4), 471–482."), # Removed hyperlink
     hr(),
@@ -27,6 +27,8 @@ mod_allometry_ui_morphometric <- function(id) {
     hr(),
     uiOutput(ns("body_size_selector_ui")),
     p(strong("Important:"), "Make sure you select the variable that represents body size (e.g., snout-vent-length)"),
+    hr(),
+    actionButton(ns("run_correction"), "Run Allometric Correction", icon = icon("play")),  
     hr(),
     br(),
     h4("Size-Corrected Data Preview"),
@@ -200,32 +202,39 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
                    selected = choices[1], inline = TRUE)
     })
     
-    # Observe inputs and run correction
-    observe({
+    # Run correction only when button is clicked
+    observeEvent(input$run_correction, {
       req(raw_data_r(), input$correction_type, input$body_size_col)
       
-      df_raw <- raw_data_r()
-      
-      if (ncol(df_raw) < 3) {
-        showNotification("Error: Data must have at least 3 columns (OTU, Body-size, and at least one trait) for allometric correction.", type = "error")
-        adjusted_data_r(NULL)
-        return()
-      }
-      
-      adjusted_df <- tryCatch({
-        allom_modified(data = df_raw,
-                       type = input$correction_type,
-                       body_size_col_name = input$body_size_col)
-      }, error = function(e) {
-        showNotification(paste("Correction failed:", e$message), type = "error")
-        return(NULL)
+      withProgress(message = 'Running allometric correction...', value = 0, {
+        
+        df_raw <- raw_data_r()
+        
+        if (ncol(df_raw) < 3) {
+          showNotification("Error: Data must have at least 3 columns (OTU, Body-size, and at least one trait) for allometric correction.", type = "error")
+          adjusted_data_r(NULL)
+          return()
+        }
+        
+        incProgress(0.5, detail = "Applying correction...")
+        
+        adjusted_df <- tryCatch({
+          allom_modified(data = df_raw,
+                         type = input$correction_type,
+                         body_size_col_name = input$body_size_col)
+        }, error = function(e) {
+          showNotification(paste("Correction failed:", e$message), type = "error")
+          return(NULL)
+        })
+        
+        incProgress(0.5, detail = "Finalizing...")
+        
+        adjusted_data_r(adjusted_df)
+        
+        if (!is.null(adjusted_df)) {
+          showNotification("Allometric correction completed successfully!", type = "message")
+        }
       })
-      
-      adjusted_data_r(adjusted_df)
-      
-      if (!is.null(adjusted_df)) {
-        showNotification("Correction completed successfully!", type = "default")
-      }
     })
     
     # Display adjusted data preview

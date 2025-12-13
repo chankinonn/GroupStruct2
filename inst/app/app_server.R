@@ -14,6 +14,7 @@ app_server <- function(input, output, session) {
   observeEvent(input$go_stats, current_module("stats"))
   observeEvent(input$go_visual, current_module("visual"))
   observeEvent(input$go_mfa, current_module("mfa"))
+  observeEvent(input$go_species_delim, current_module("species_delim"))
 
   # Render example datasets for landing page
   output$example_meristic <- renderTable({
@@ -248,23 +249,25 @@ app_server <- function(input, output, session) {
   })
 
   # Morphometric module servers
+  
+  # Capture the results from species delimitation module
+  species_delim_output <- reactiveVal(NULL)
+  
   observe({
     req(input$data_type == "morphometric")
     req(morphometric_data_r()) # Ensure raw data is loaded
-
+    
     mod_summary_server_morphometric("summary_ui_1_morphometric", morphometric_data_r)
-
+    
     # Initialize allometry, which will return a reactive with adjusted data
     if (is.null(allometry_module_output())) { # Prevent re-running if module is already assigned
       allometry_module_output(mod_allometry_server_morphometric("allometry_ui_1_morphometric", morphometric_data_r))
     }
-
-    # Determine which data to pass to inferential stats and visual
+    
+    # Determine which data to pass to inferential stats, visual, AND species delimitation
     stats_visual_data_source_r <- reactive({
-      # If adjusted_data_r() has data 
-      # AND the user is in the 'stats' or 'visual' module, use adjusted data.
-      # Otherwise use raw data.
-      if (current_module() %in% c("stats", "visual") && !is.null(adjusted_data_r())) {
+      # Add species_delim to the list of modules that use adjusted data
+      if (current_module() %in% c("stats", "visual", "species_delim") && !is.null(adjusted_data_r())) {
         # Check if adjusted_data_r() actually has data and is a data.frame
         if (is.data.frame(adjusted_data_r()) && nrow(adjusted_data_r()) > 0) {
           adjusted_data_r()
@@ -275,9 +278,13 @@ app_server <- function(input, output, session) {
         morphometric_data_r()
       }
     })
-
+    
     mod_inferential_server_morphometric("inferential_ui_1_morphometric", stats_visual_data_source_r)
-
+    
+    # Remove the if (is.null(...)) check to allow re-initialization when data changes
+    # This will make it reactive to allometry corrections
+    species_delim_output(mod_species_delim_server("species_delim_ui_1", stats_visual_data_source_r))
+    
     mod_visual_server_morphometric(
       "visual_ui_1_morphometric",
       dataset = stats_visual_data_source_r,
@@ -288,7 +295,27 @@ app_server <- function(input, output, session) {
       plot_facet_size = reactive(input[["visual_ui_1_morphometric-plot_facet_size"]]),
       legend_text_size = reactive(input[["visual_ui_1_morphometric-legend_text_size"]]),
       legend_title_size = reactive(input[["visual_ui_1_morphometric-legend_title_size"]]),
-      manual_colors_r = manual_colors_r
+      manual_colors_r = manual_colors_r,
+      species_delim_results_r = reactive({
+        if (!is.null(species_delim_output())) {
+          species_delim_output()()
+        } else {
+          NULL
+        }
+      }),
+      
+      boruta_results_r = reactive({
+        if (!is.null(species_delim_output())) {
+          results <- species_delim_output()()
+          if (!is.null(results$boruta)) {
+            results$boruta  # Changed from results$boruta_results to results$boruta
+          } else {
+            NULL
+          }
+        } else {
+          NULL
+        }
+      })
     )
   })
 
@@ -337,7 +364,7 @@ app_server <- function(input, output, session) {
 
   # Observer to manage active button styling
   observe({
-    all_button_ids <- c("go_data", "go_summary", "go_allometry", "go_mfa", "go_visual", "go_stats")
+    all_button_ids <- c("go_data", "go_summary", "go_allometry", "go_mfa", "go_visual", "go_stats","go_species_delim")
     active_mod <- current_module()
 
     for (btn_id in all_button_ids) {
@@ -406,6 +433,16 @@ app_server <- function(input, output, session) {
     }
   })
 
+  # Conditional UI for Species Delimitation button (morphometric only)
+  output$species_delim_button_ui <- renderUI({
+    req(input$data_type)
+    if (input$data_type == "morphometric") {
+      actionButton("go_species_delim", "Morphometric Delimitation", width = "100%")
+    } else {
+      NULL
+    }
+  })
+  
   # UI for module content
   output$module_ui <- renderUI({
     if (is.null(input$data_type) || input$data_type == "") {
@@ -426,6 +463,7 @@ app_server <- function(input, output, session) {
                                    summary = mod_summary_ui_morphometric("summary_ui_1_morphometric"),
                                    allometry = mod_allometry_ui_morphometric("allometry_ui_1_morphometric"),
                                    stats = mod_inferential_ui_morphometric("inferential_ui_1_morphometric"),
+                                   species_delim = mod_species_delim_ui("species_delim_ui_1"), 
                                    visual = mod_visual_ui_morphometric("visual_ui_1_morphometric")),
              
              combined = switch(current_module(),
