@@ -236,6 +236,34 @@ GMMBayesFactorTable <- function(..., prior = NULL) {
   return(tab)
 }
 
+# Helper function for GMM model interpretation
+get_model_interpretation <- function(model_name) {
+  interpretations <- c(
+    "EII" = "Spherical, equal volume",
+    "VII" = "Spherical, unequal volume",
+    "EEI" = "Diagonal, equal volume and shape",
+    "VEI" = "Diagonal, varying volume, equal shape",
+    "EVI" = "Diagonal, equal volume, varying shape",
+    "VVI" = "Diagonal, varying volume and shape",
+    "EEE" = "Ellipsoidal, equal volume, shape, and orientation",
+    "EVE" = "Ellipsoidal, equal volume and orientation",
+    "VEE" = "Ellipsoidal, equal shape and orientation",
+    "VVE" = "Ellipsoidal, equal orientation",
+    "EEV" = "Ellipsoidal, equal volume and shape",
+    "VEV" = "Ellipsoidal, equal shape",
+    "EVV" = "Ellipsoidal, equal volume",
+    "VVV" = "Ellipsoidal, varying volume, shape, and orientation"
+  )
+  
+  # Use %||% or a simple fallback
+  result <- interpretations[model_name]
+  if (is.na(result)) {
+    return("Unknown model type")
+  } else {
+    return(as.character(result))
+  }
+}
+
 # Example datasets for landing page
 example_meristic <- data.frame(
   Species = rep(c("Species A", "Species B", "Species C"), each = 3),

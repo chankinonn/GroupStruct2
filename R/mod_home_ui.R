@@ -16,15 +16,15 @@ landing_page_ui <- function() {
                br(),
                p("GroupStruct2 is a user-friendly application for morphological data analysis",
                  "in systematic biology and taxonomy. It contains statistical tools optimized for inferring and evaluating group structure",
-                 "to aid in species diagnosis/delimitation, and visualization of morphometric, meristic, and mixed datasets."),
+                 "to aid in species diagnosis, and visualization of morphometric, meristic, and mixed datasets."),
                
                h4("Available Analyses"),
                tags$ul(
                  tags$li(strong("Summary Statistics:"), "Descriptive statistics and data exploration"),
                  tags$li(strong("Allometric Correction (Morphometric data only):"), "Body-size correction for morphometric data using the Thorpe method"),
                  tags$li(strong("Inferential Statistics:"), "Univariate/multivariate tests (e.g., t-test, ANOVA, PERMANOVA) and PCA/DAPC"),
-                 tags$li(strong("Species Delimitation (Morphometric data only):"), 
-                         "A Bayesian framework for species delimitation using Gaussian Mixture Models and diagnostic character identification using machine learning"),
+                 tags$li(strong("Morphometric Delimitation (Morphometric data only):"), 
+                         "A Bayesian framework for delimitating morphometric clusters using Gaussian Mixture Models and diagnostic character identification using machine learning"),
                  tags$li(strong("Multiple Factor Analysis (Mixed data only):"), 
                          "Simultaneous analysis of quantitative and qualitative variables"),
                  tags$li(strong("Visualization:"), "Customizable plots including scatterplots, boxplots, violin plots, PCA, DAPC, and more")
@@ -122,10 +122,10 @@ landing_page_ui <- function() {
                                    tags$li("Run PCA to visualize morphological variation"),
                                    tags$li("Run PERMANOVA to test overall group differences")
                                  )),
-                         tags$li(strong("Species Delimitation"),
+                         tags$li(strong("Morphometric Delimitation"),
                                  tags$ul(
-                                   tags$li(strong("Unsupervised Clustering:"), "Discover natural clusters in the data without using pre-defined OTU"),
-                                   tags$li(strong("Supervised Clustering:"), "Exhaustively test all combinations of lumping scenarios based on pre-defined OTUs"),
+                                   tags$li(strong("Unsupervised Clustering:"), "Discover natural clusters in the data without using pre-defined OTUs"),
+                                   tags$li(strong("Supervised Clustering:"), "Iteratively test pairwise mergings of pre-defined OTUs to identify the best-supported delimitation scheme"),
                                    tags$li(strong("Model-based Hypothesis Testing:"), "Compare specific user-defined taxonomic hypotheses"),
                                    tags$li(strong("Diagnostic Characters (Machine Learning):"), "Identify which traits best distinguish groups using Random Forest")
                                  )),
@@ -145,9 +145,9 @@ landing_page_ui <- function() {
                                      tags$li("Provides p-values and effect sizes for trait differences"),
                                      tags$li("Visualizes morphological variation and group overlap/separation")
                                    )),
-                           tags$li(strong("Species Delimitation"), "(Bayesian GMM approaches):",
+                           tags$li(strong("Morphometric Delimitation"), "(Bayesian GMM approaches):",
                                    tags$ul(
-                                     tags$li("Explores how well the data fits different taxonomic model within a Bayesian framework"),
+                                     tags$li("Explores how well the morphometric data fits different taxonomic models using a Bayesian framework"),
                                      tags$li("Compares competing hypotheses using BIC and Bayes Factors"),
                                      tags$li("Evaluates relative model support as opposed to relying on p-values")
                                    )),
@@ -171,7 +171,7 @@ landing_page_ui <- function() {
                tags$div(
                  style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
                  p(style = "margin: 0;", 
-                   strong("Key Point:"), "Bayesian analyses", em("which"), "taxonomic hypothesis is best supported.",
+                   strong("Key Point:"), "Bayesian analyses indicate", em("which"), "taxonomic hypothesis is best supported.",
                    "Inferential statistics tests", em("whether"), "groups differ significantly.",
                    "Both provide valuable but different types of evidence to aid species delimitation.")
                ),
@@ -196,7 +196,12 @@ landing_page_ui <- function() {
                                    tags$li("Visualize group separation in factor space"),
                                    tags$li("Identify which variable types contribute most to differentiation")
                                  )),
-                         tags$li(strong("Visualization"), "→ Create plots including MFA-specific visualizations")
+                         tags$li(strong("Visualization"), 
+                                 tags$ul(
+                                   tags$li("Visualize OTU differentiation in morphospace"),
+                                   tags$li("Visualize which variable types contribute most fo differentiation"),
+                                   tags$li("Visualize which character contributes most to differentiation"),
+                                 )),
                  )
                ),
                
@@ -297,10 +302,10 @@ mod_home_ui_morphometric <- function(id) {
   tagList(
     h3("Morphometric Data (numeric data only)"),
     hr(),
-    p("Morphometric data are continuous measurements such as lengths and widths."),
+    p("Morphometric data are continuous measurements such as lengths and widths. Non-morphometric data that can contribute to group structure such as continuous physiological data can also be analyzed in this module."),
     p(strong("Allometric adjustments should be performed to correct for body-size variation in the Allometric Correction module.")),
     p("The first column must contain Group/OTU names (e.g., species or population) and the second column must be the body-size measurement (e.g., snout-vent length)."),
-    p("Each Group/OTU must be represented by more than two individuals (to calculate mean) and missing data are NOT ALLOWED for allometric correction."),
+    p("Each Group/OTU must be represented by more than one individual and missing data are NOT ALLOWED for allometric correction."),
     br(),
     h4("Proceed to Input Data")
   )

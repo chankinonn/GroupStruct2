@@ -16,6 +16,13 @@ mod_visual_ui_meristic <- function(id) {
                                   numericInput(ns("plot_scatter_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
                                   uiOutput(ns("scatter_controls")),
                                   hr(),
+                                  numericInput(ns("scatter_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                  checkboxInput(ns("scatter_outline_points"), "Outline Points", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("scatter_outline_points")),
+                                    sliderInput(ns("scatter_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                  ),
+                                  hr(),
                                   checkboxInput(ns("scatter_show_labels"), "Show Individual Labels", value = FALSE),
                                   checkboxInput(ns("scatter_show_lm"), "Show Regression Line", value = TRUE),
                                   checkboxInput(ns("scatter_show_lm_se"), "Show Confidence Interval", value = TRUE),
@@ -358,13 +365,32 @@ mod_visual_server_meristic <- function(id, dataset,
     # Reactive plot objects
     plot_scatter_obj <- reactive({
       req(dataset(), input$scatter_xvar, input$scatter_yvar, input$scatter_group_filter)
+      req(input$scatter_point_size)  # Add this requirement
       
       df <- dataset()
       group_col <- names(df)[1]
       df <- df[df[[group_col]] %in% input$scatter_group_filter, ]
       
-      p <- ggplot(df, aes_string(x = input$scatter_xvar, y = input$scatter_yvar, color = group_col)) +
-        geom_point(size = 3, alpha = 0.8)
+      p <- ggplot(df, aes(x = .data[[input$scatter_xvar]], 
+                          y = .data[[input$scatter_yvar]], 
+                          color = .data[[group_col]]))
+      
+      # Add points with outline option
+      if (isTRUE(input$scatter_outline_points)) {
+        p <- p + geom_point(
+          aes(fill = .data[[group_col]]),
+          shape = 21,
+          size = input$scatter_point_size,
+          color = "black",
+          stroke = input$scatter_point_stroke,
+          alpha = 0.8
+        )
+      } else {
+        p <- p + geom_point(
+          size = input$scatter_point_size,
+          alpha = 0.8
+        )
+      }
       
       if (input$scatter_show_lm) {
         p <- p + geom_smooth(method = "lm", 
@@ -378,10 +404,17 @@ mod_visual_server_meristic <- function(id, dataset,
                            size = 3, check_overlap = TRUE)
       }
       
-      p + get_color_scale(plot_palette()) +
-        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 
-                         plot_x_angle(), plot_facet_size(), 
-                         legend_text_size(), legend_title_size(),input$plot_theme)
+      # Update color/fill scales based on outline option
+      if (isTRUE(input$scatter_outline_points)) {
+        p <- p + get_fill_scale(plot_palette())
+        p <- p + get_color_scale(plot_palette()) + ggplot2::guides(color = "none")
+      } else {
+        p <- p + get_color_scale(plot_palette())
+      }
+      
+      p + get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 
+                           plot_x_angle(), plot_facet_size(), 
+                           legend_text_size(), legend_title_size(), input$plot_theme)
     })
     
     
@@ -396,14 +429,17 @@ mod_visual_server_meristic <- function(id, dataset,
       
       df_long <- tidyr::pivot_longer(df, cols = all_of(traits_to_plot), names_to = "Trait", values_to = "Value")
       
-      ggplot2::ggplot(df_long, ggplot2::aes_string(x = names(df)[1], y = "Value", fill = names(df)[1])) +
+      ggplot2::ggplot(df_long, ggplot2::aes(x = .data[[names(df)[1]]], 
+                                            y = .data[["Value"]], 
+                                            fill = .data[[names(df)[1]]])) +
         ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0.7) +
         ggplot2::facet_wrap(~Trait, scales = "free_y") +
-        get_fill_scale(plot_palette()) + # Removed prefix
+        get_fill_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
                          plot_x_angle(), plot_facet_size(),
                          legend_text_size(), legend_title_size(),input$plot_theme)
     })
+    
     
     plot_violin_obj <- reactive({
       req(dataset(), common_plot_inputs_ready(), input$selected_violin_traits)
@@ -419,10 +455,14 @@ mod_visual_server_meristic <- function(id, dataset,
       df_long <- tidyr::pivot_longer(df, cols = all_of(traits_to_plot), names_to = "Trait", values_to = "Value")
       
       violin_outline_color <- if (isTRUE(input$violin_outline)) "black" else NA
-      violin_outline_size  <- if (isTRUE(input$violin_outline)) input$violin_point_stroke else 0
+      violin_outline_width  <- if (isTRUE(input$violin_outline)) input$violin_point_stroke else 0
       
-      ggplot2::ggplot(df_long, ggplot2::aes_string(x = names(df)[1], y = "Value", fill = names(df)[1])) +
-        ggplot2::geom_violin(width = 0.7, alpha = 0.6, color = violin_outline_color, size = violin_outline_size) +
+      ggplot2::ggplot(df_long, ggplot2::aes(x = .data[[names(df)[1]]], 
+                                            y = .data[["Value"]], 
+                                            fill = .data[[names(df)[1]]])) +
+        ggplot2::geom_violin(width = 0.7, alpha = 0.6, 
+                             color = violin_outline_color, 
+                             linewidth = violin_outline_width) +
         ggplot2::facet_wrap(~Trait, scales = "free_y") +
         get_fill_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
@@ -496,7 +536,7 @@ mod_visual_server_meristic <- function(id, dataset,
             type = "norm",
             geom = "polygon",
             alpha = input$pca_alpha_ellipse,
-            size = input$pca_outline_stroke,
+            linewidth = input$pca_outline_stroke,
             show.legend = FALSE
           )
         } else {
@@ -521,7 +561,7 @@ mod_visual_server_meristic <- function(id, dataset,
             data = hull_df,
             aes(x = PC1, y = PC2, group = Group, fill = Group, color = Group),
             alpha = input$pca_alpha_ellipse,
-            size = input$pca_outline_stroke,
+            linewidth = input$pca_outline_stroke,
             inherit.aes = FALSE,
             show.legend = FALSE
           )
@@ -637,7 +677,7 @@ mod_visual_server_meristic <- function(id, dataset,
             level = 0.67,
             geom = "polygon",
             alpha = input$dapc_alpha_ellipse,
-            size = input$dapc_outline_stroke,
+            linewidth = input$dapc_outline_stroke,
             show.legend = FALSE
           )
         } else {
@@ -663,7 +703,7 @@ mod_visual_server_meristic <- function(id, dataset,
             data = hull_df,
             aes(x = LD1, y = LD2, group = Group, fill = Group, color = Group),
             alpha = input$dapc_alpha_ellipse,
-            size = input$dapc_outline_stroke,
+            linewidth = input$dapc_outline_stroke, 
             inherit.aes = FALSE,
             show.legend = FALSE
           )

@@ -5,8 +5,8 @@ mod_species_delim_ui <- function(id) {
   tagList(
     h3("Gaussian Mixture Models (GMM) for Morphometric Species Delimitation"),
     hr(),
-    p("Traditional morphometric analyses uses univariate/multivariate statistics",
-      "to test the significance of trait differences among pre-defined OTUs.",
+    p("Traditional morphometric analyses use univariate/multivariate statistics",
+      "to test the significance of trait differences between pre-defined OTUs.",
       "In contrast, the GMM approach uses unsupervised and supervised methods under a Bayesian framework,",
       "allowing for rigorous testing of competing taxonomic hypotheses."),
     
@@ -30,7 +30,7 @@ mod_species_delim_ui <- function(id) {
         "Morphological structure may reflect population-level or geographic variation,",
         "rather than species boundaries.",
         strong("Other independent lines of evidence"), 
-        "(e.g., genetics, ecology, geographic/eproductive isolation)",
+        "(e.g., genetics, ecology, geographic/reproductive isolation)",
         "that support lineage independence are needed to distinguish between population structure and species boundaries.",
         "Use these methods as a hypothesis-generating tool, or as additional support for other lines of evidence."
       )
@@ -46,7 +46,7 @@ mod_species_delim_ui <- function(id) {
                         h4("Unsupervised Model-Based Clustering"),
                         p("This analysis uses unsupervised Gaussian Mixture Models (GMM)", 
                           "to discover morphological clusters in the data", 
-                          strong("without relying on pre-designated species groupings"), 
+                          strong("without relying on pre-designated species groupings."), 
                           "The algorithm tests different numbers of clusters (G) and covariance structures,",
                           "selecting the best model using Bayesian Information Criterion (BIC)."),
                         hr(),
@@ -64,26 +64,77 @@ mod_species_delim_ui <- function(id) {
                         actionButton(ns("run_unsupervised"), 
                                      "Run Unsupervised Analysis", 
                                      icon = icon("play")),
-                        h4("Unsupervised Model-Based Clustering"),
                         hr(),
                         h4("Results"),
-                        verbatimTextOutput(ns("cluster_summary")),
-                        hr(),
-                        h4("Cluster-Species Correspondence"),
-                        tableOutput(ns("cluster_species_table")),
-                        br(),
-                        h5("Interpretation Guide:"),
-                        p("The correspondence table shows how unsupervised clusters inferred from the data align with your OTUs.",
-                          "Each column represents a cluster discovered by the algorithm, and the rows show",
-                          "how many specimens from each OTU fall into that cluster."),
-                        tags$ul(
-                          tags$li(strong("Perfect correspondence:"), "Each cluster contains specimens from only one OTU,",
-                                  "indicating strong morphological differentiation between OTUs"),
-                          tags$li(strong("Mixed clusters:"), "A cluster contains specimens from multiple OTUs,",
-                                  "suggesting morphological overlap or similarity between those OTUs"),
-                          tags$li(strong("Split species:"), "One OTU is distributed across multiple clusters,",
-                                  "indicating potential cryptic diversity or intraspecific variation that rivals interspecific differences.")
+                        
+                        # Add tabset for different result views
+                        tabsetPanel(
+                          id = ns("unsupervised_results_tabs"),
+                          
+                          tabPanel("Summary",
+                                   br(),
+                                   verbatimTextOutput(ns("cluster_summary")),
+                                   hr(),
+                                   h4("Cluster-Species Correspondence"),
+                                   tableOutput(ns("cluster_species_table")),
+                                   br(),
+                                   h5("Interpretation Guide:"),
+                                   p("The correspondence table shows how unsupervised clusters inferred from the data align with your OTUs.",
+                                     "Each column represents a cluster discovered by the algorithm, and the rows show",
+                                     "how many specimens from each OTU fall into that cluster."),
+                                   tags$ul(
+                                     tags$li(strong("Perfect correspondence:"), "Each cluster contains specimens from only one OTU,",
+                                             "indicating strong morphological differentiation between OTUs"),
+                                     tags$li(strong("Mixed clusters:"), "A cluster contains specimens from multiple OTUs,",
+                                             "suggesting morphological overlap or similarity between those OTUs"),
+                                     tags$li(strong("Split species:"), "One OTU is distributed across multiple clusters,",
+                                             "indicating potential cryptic diversity or intraspecific variation that rivals interspecific differences.")
+                                   )
+                          ),
+                          
+                          tabPanel("Top Models",
+                                   br(),
+                                   h4("Model Comparison"),
+                                   p("All models tested, ranked by BIC. Models with ∆BIC < 2 have substantial support,",
+                                     "∆BIC 2-6 have moderate support, ∆BIC 6-10 have weak support, and ∆BIC > 10 have essentially no support."),
+                                   DT::dataTableOutput(ns("top_models_table")),
+                                   hr(),
+                                   downloadButton(ns("download_top_models_csv"), "Download Top Models Table"),
+                                   hr()
+                          ),
+                          
+                          tabPanel("Model Details",
+                                   br(),
+                                   h4("Best Model Details"),
+                                   verbatimTextOutput(ns("model_details")),
+                                   hr(),
+                                   h4("Covariance Model Interpretation"),
+                                   p("The covariance structure determines how clusters can differ in volume, shape, and orientation:"),
+                                   tags$ul(
+                                     tags$li(strong("E (Equal)"), "= parameter is the same across all clusters"),
+                                     tags$li(strong("V (Variable)"), "= parameter varies across clusters"),
+                                     tags$li(strong("I (Identity)"), "= special constraint (spherical or diagonal)")
+                                   ),
+                                   p("Model code interpretation:"),
+                                   tags$ul(
+                                     tags$li(strong("EII"), "= Spherical, equal volume"),
+                                     tags$li(strong("VII"), "= Spherical, unequal volume"),
+                                     tags$li(strong("EEI"), "= Diagonal, equal volume and shape"),
+                                     tags$li(strong("VEI"), "= Diagonal, varying volume, equal shape"),
+                                     tags$li(strong("EVI"), "= Diagonal, equal volume, varying shape"),
+                                     tags$li(strong("VVI"), "= Diagonal, varying volume and shape"),
+                                     tags$li(strong("EEE"), "= Ellipsoidal, equal volume, shape, and orientation"),
+                                     tags$li(strong("EVE"), "= Ellipsoidal, equal volume and orientation"),
+                                     tags$li(strong("VEE"), "= Ellipsoidal, equal shape and orientation"),
+                                     tags$li(strong("VVE"), "= Ellipsoidal, equal orientation"),
+                                     tags$li(strong("EEV"), "= Ellipsoidal, equal volume and shape"),
+                                     tags$li(strong("VEV"), "= Ellipsoidal, equal shape"),
+                                     tags$li(strong("EVV"), "= Ellipsoidal, equal volume"),
+                                     tags$li(strong("VVV"), "= Ellipsoidal, varying volume, shape, and orientation")
+                                   )
+                          )
                         ),
+                        
                         hr(),
                         
                         tags$div(
@@ -114,9 +165,9 @@ mod_species_delim_ui <- function(id) {
                         hr(),
                         
                         p(strong("Note:"), "For visualizations of these patterns, see the",
-                          strong("Visualization > Species Delimitation"), "tab for BIC plots and PCA cluster plots."),
+                          strong("Visualization > Morphometric Delimitation"), "tab for BIC plots and PCA cluster plots."),
                         hr(),
-                        downloadButton(ns("download_unsupervised_csv"), "Download CSV"),
+                        downloadButton(ns("download_unsupervised_csv"), "Download Correspondence Table"),
                         hr()
                  )
                )
@@ -125,20 +176,31 @@ mod_species_delim_ui <- function(id) {
       tabPanel("Supervised Clustering",
                fluidRow(
                  column(12,
-                        h4("Supervised Lumping"),
+                        h4("Supervised Clustering Based on Pre-defined OTU Groupings"),
                         p("This analysis uses supervised Gaussian Mixture Models (GMM)", 
-                          "to evaluate competing taxonomic hypotheses by", 
-                          strong("using assigned OTU labels"), 
-                          "to train discriminant models.",
-                          "Starting with the original OTU groupings, the algorithm systematically tests all possible ways of lumping taxa,",
-                          "computing Bayesian Information Criterion (BIC) and Bayes Factors for each delimitation scheme."),
+                          "to evaluate competing taxonomic hypotheses through a", 
+                          strong("stepwise merging algorithm."), 
+                          "Starting with the original OTU groupings, the algorithm iteratively tests all possible",
+                          strong("pairwise"), "mergings at each step,",
+                          "computing Bayesian Information Criterion (BIC) and Bayes Factors for each scenario.",
+                          "The best-supported merge is selected, and the process repeats with the reduced set of groups",
+                          "until all taxa are lumped into a single cluster."),
                         
                         p(strong("Method:"), 
-                          "Based on the original OTU groupings, the algorithm iteratively generates all possible pairs of taxa for merging",
-                          "using the EDDA (Eigenvalue Decomposition Discriminant Analysis) model,",
-                          "assessing model fit with BIC at each step until only one taxon remains.",
-                          "Higher BIC indicates better fit; Bayes Factors quantify strength of evidence between competing models.",
-                          "For best results, assign the most plausible splitty grouping scheme to your  original uploaded data."),
+                          "At each iteration, the algorithm generates all possible pairs of taxa for merging",
+                          "using the EDDA (Eigenvalue Decomposition Discriminant Analysis) model",
+                          "and selects the merge with the highest BIC.",
+                          "This continues until only one taxon remains, generating a hierarchical sequence",
+                          "of increasingly lumped delimitation schemes ranked by BIC.",
+                          "Higher BIC indicates better fit; Bayes Factors quantify strength of evidence between competing models."),
+                        
+                        p(strong("Important:"), 
+                          "This is a", strong("greedy stepwise search"), "that follows a single optimal merging path,",
+                          "not an exhaustive test of all possible partitions.",
+                          "For comprehensive hypothesis testing of specific delimitation schemes,",
+                          "use the", strong("Hypothesis Testing"), "tab where you can define and compare",
+                          "all taxonomic hypotheses of interest.",
+                          "For best results, assign the most plausible splitty grouping scheme to your original uploaded data."),
                         
                         tags$div(
                           style = "background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px; margin: 15px 0;",
@@ -164,7 +226,7 @@ mod_species_delim_ui <- function(id) {
                             "This analysis uses your", strong("pre-assigned OTU labels"), "to fit discriminant models.",
                             "Because group membership is known, discriminant analysis can detect morphological structure",
                             "that unsupervised clustering might miss. Supervised clustering often achieves higher BIC values",
-                            "than unsupervised methods because it doesn't need to simultaneously infer both groups and structure.",
+                            "than unsupervised methods because it doesn't need to simultaneously infer both group and structure.",
                             "If unsupervised found G=1 but supervised supports K≥2, this indicates",
                             strong("weak but real differentiation"), "detectable when groups are defined.")
                         ),
@@ -178,10 +240,10 @@ mod_species_delim_ui <- function(id) {
                )
       ),
       
-      tabPanel("Model-based Hypothesis Testing",
+      tabPanel("Hypothesis Testing",
                fluidRow(
                  column(12,
-                        h4("Bayesian Model-based Testing of Explicit Taxonomic Hypotheses"),
+                        h4("Bayesian Model-testing of Explicit Taxonomic Hypotheses"),
                         p("This analysis evaluates competing taxonomic hypotheses using Bayesian model comparison.",
                           "In a separate file, the user defines multiple hypotheses about how OTUs should be grouped (lumped or split),",
                           "and the algorithm computes Bayesian Information Criterion (BIC) and posterior probabilities",
@@ -248,6 +310,17 @@ mod_species_delim_ui <- function(id) {
                                   "Choose CSV File", 
                                   accept = ".csv"),
                         
+                        actionButton(ns("load_example_hyp"), 
+                                     "Load Example Hypothesis File",
+                                     icon = icon("table")),
+                        br(), 
+                        p(style = "color: #856404; font-style: italic; margin-top: 10px;",
+                          strong("Note:"), 
+                          "The example hypothesis file is designed to work with the example morphometric dataset.",
+                          "Please load the example morphometric dataset from the 'Input Data' module before loading this hypothesis file."),
+                        
+                        br(),
+                        
                         uiOutput(ns("hyp_upload_status")),
                         
                         conditionalPanel(
@@ -281,7 +354,7 @@ mod_species_delim_ui <- function(id) {
                fluidRow(
                  column(12,
                         h3("Diagnostic Character Identification using Machine Learning"),
-                        p("Boruta is a feature selection algorithm that uses Random Forest to identify",
+                        p("This analysis is based on the Boruta feature selection algorithim that uses Random Forest to identify",
                           "morphometric variables that are statistically important for distinguishing between",
                           "taxonomic groups. It compares the importance of real variables against randomly",
                           "permuted 'shadow' variables to determine which features are truly informative."),
@@ -296,8 +369,9 @@ mod_species_delim_ui <- function(id) {
                           "Importance measures how much a variable contributes to correctly classifying specimens into groups.",
                           "The Random Forest algorithm calculates importance by randomly shuffling each variable's values",
                           "and measuring how much classification accuracy drops.",
-                          "A large drop in accuracy means the variable is important for distinguishing groups.",
-                          "Boruta compares each real variable's importance to randomized 'shadow' variables:",
+                          "Variables that cause large accuracy drops when shuffled are considered important because they contain",
+                          "information that helps distinguish groups.",
+                          "The Boruta algorithm compares each real variable's importance to randomized 'shadow' variables:",
                           tags$ul(
                             tags$li("Variables consistently more important than the best shadow → ", strong("Confirmed")),
                             tags$li("Variables less important than the best shadow → ", strong("Rejected")),
@@ -742,6 +816,92 @@ mod_species_delim_server <- function(id, dataset_r) {
       })
     })
     
+    # Load example hypothesis file
+    observeEvent(input$load_example_hyp, {
+      
+      # Check if morphometric data is loaded first
+      if (is.null(dataset_r()) || nrow(dataset_r()) == 0) {
+        showModal(modalDialog(
+          title = "No Data Loaded",
+          "Please load morphometric data in the 'Input Data' module before loading hypothesis file.",
+          easyClose = TRUE,
+          footer = modalButton("OK")
+        ))
+        return(NULL)
+      }
+      
+      example_path <- system.file("examples", "Gekko_hypothesis_file.csv", package = "GroupStruct2")
+      
+      if (!file.exists(example_path)) {
+        output$hyp_upload_status <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   "Error: Example hypothesis file not found in package")
+        })
+        return()
+      }
+      
+      tryCatch({
+        hyp_df <- read.csv(example_path, stringsAsFactors = FALSE)
+        
+        # Validate file has at least one column
+        if (ncol(hyp_df) < 1) {
+          output$hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     "Error: File must have at least 1 hypothesis column")
+          })
+          hypothesis_data(NULL)
+          return()
+        }
+        
+        # Check that columns are not purely numeric (to prevent uploading morphometric data)
+        all_numeric_cols <- sapply(hyp_df, function(col) {
+          all(grepl("^-?[0-9]*\\.?[0-9]+$", col[!is.na(col)]))
+        })
+        
+        if (any(all_numeric_cols)) {
+          problematic_cols <- names(hyp_df)[all_numeric_cols]
+          output$hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: The following columns contain only numeric values: ",
+                            paste(problematic_cols, collapse = ", "),
+                            ". Hypothesis labels should be categorical."))
+          })
+          hypothesis_data(NULL)
+          return()
+        }
+        
+        # Check if number of rows matches input data
+        if (nrow(hyp_df) != nrow(dataset_r())) {
+          output$hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-warning",
+                     paste0("Warning: Example hypothesis file has ", nrow(hyp_df), 
+                            " rows but your current data has ", nrow(dataset_r()), 
+                            " rows. Please load the corresponding example morphometric dataset first.",
+                            " This example hypothesis file is designed to work with 'Morphometric-only.csv'."))
+          })
+          hypothesis_data(NULL)
+          return()
+        }
+        
+        # Store hypothesis data
+        hypothesis_data(hyp_df)
+        
+        output$hyp_upload_status <- renderUI({
+          tags$div(class = "alert alert-success",
+                   paste0("✓ Example hypothesis file loaded successfully. Found ", 
+                          ncol(hyp_df), " hypotheses: ", 
+                          paste(colnames(hyp_df), collapse = ", ")))
+        })
+        
+      }, error = function(e) {
+        output$hyp_upload_status <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   paste0("Error loading example file: ", e$message))
+        })
+        hypothesis_data(NULL)
+      })
+    })
+    
     # Preview hypothesis data
     output$hyp_preview <- renderDT({
       req(hypothesis_data())
@@ -871,7 +1031,7 @@ mod_species_delim_server <- function(id, dataset_r) {
         h5("Interpretation Guide:"),
         tags$ul(
           tags$li(strong("BIC (Bayesian Information Criterion):"),
-                  "Higher values indicate better model fit. The best hypothesis has the highest BIC (∆BIC = 0)."),
+                  "Higher values indicate better model fit (note: this follows the mclust convention where BIC = 2·log-likelihood - penalty). The best hypothesis has the highest BIC (∆BIC = 0)."),
           tags$li(strong("∆BIC:"),
                   "Difference from the best model.",
                   tags$ul(
@@ -932,7 +1092,6 @@ mod_species_delim_server <- function(id, dataset_r) {
     # Run unsupervised clustering
     observeEvent(input$run_unsupervised, {
       
-      # Check if data is loaded
       if (is.null(dataset_r()) || nrow(dataset_r()) == 0) {
         showModal(modalDialog(
           title = "No Data Loaded",
@@ -945,39 +1104,102 @@ mod_species_delim_server <- function(id, dataset_r) {
       
       withProgress(message = 'Running unsupervised clustering...', value = 0, {
         
-        data <- dataset_r()
-        
-        # Identify morphometric columns (numeric, exclude first column which is grouping)
-        morpho_cols <- sapply(data[-1], is.numeric)
-        morpho_data <- data[, c(FALSE, morpho_cols), drop = FALSE]
-        
-        # Check if we have data
-        if (ncol(morpho_data) == 0) {
-          showNotification("No morphometric columns found in data", type = "error")
-          return(NULL)
-        }
-        
-        incProgress(0.3, detail = "Fitting models...")
-        
-        # Fit Mclust
         tryCatch({
+          data <- dataset_r()
+          
+          # Identify morphometric columns (numeric, exclude first column which is grouping)
+          morpho_cols <- sapply(data[-1], is.numeric)
+          morpho_data <- data[, c(FALSE, morpho_cols), drop = FALSE]
+          
+          # Check if we have data
+          if (ncol(morpho_data) == 0) {
+            showNotification("No morphometric columns found in data", type = "error")
+            return(NULL)
+          }
+          
+          incProgress(0.2, detail = "Fitting GMM models...")
+          
+          # Fit Mclust
           data_mod <- mclust::Mclust(morpho_data, G = 1:input$max_clusters)
           
-          incProgress(0.4, detail = "Creating cluster-species table...")
+          if (is.null(data_mod)) {
+            showNotification("Mclust failed to fit models. Check your data for issues.", type = "error")
+            return(NULL)
+          }
+          
+          incProgress(0.2, detail = "Computing model comparisons...")
+          
+          # Extract BIC for all models
+          if (is.null(data_mod$BIC)) {
+            showNotification("No BIC values available from Mclust. Check data quality.", type = "error")
+            return(NULL)
+          }
+          
+          # Convert BIC to long format manually (more robust)
+          bic_matrix <- data_mod$BIC
+          n_G <- nrow(bic_matrix)
+          model_names <- colnames(bic_matrix)
+          
+          # Create long format manually
+          bic_list <- list()
+          for (i in 1:n_G) {
+            for (j in 1:length(model_names)) {
+              bic_value <- bic_matrix[i, j]
+              if (!is.na(bic_value)) {
+                bic_list[[length(bic_list) + 1]] <- data.frame(
+                  G = as.numeric(rownames(bic_matrix)[i]),
+                  Model = model_names[j],
+                  BIC = bic_value
+                )
+              }
+            }
+          }
+          
+          # Combine all into one dataframe
+          bic_long <- dplyr::bind_rows(bic_list) %>%
+            dplyr::arrange(desc(BIC))
+          
+          if (nrow(bic_long) == 0) {
+            showNotification("No valid BIC values after filtering", type = "error")
+            return(NULL)
+          }
+          
+          # Calculate delta BIC from best model
+          best_bic <- max(bic_long$BIC, na.rm = TRUE)
+          bic_long <- bic_long %>%
+            dplyr::mutate(
+              Delta_BIC = best_bic - BIC,
+              Rank = row_number()
+            )
+          
+          # Get top models (top 20 or all within delta BIC < 10)
+          top_models <- bic_long %>%
+            dplyr::filter(Rank <= 20 | Delta_BIC < 10) %>%
+            dplyr::select(Rank, G, Model, BIC, Delta_BIC)
+          
+          incProgress(0.2, detail = "Creating cluster-species table...")
           
           # Create cluster-species correspondence table
           species_col <- data[[1]]
+          
+          if (is.null(data_mod$classification)) {
+            showNotification("No classification available from Mclust", type = "error")
+            return(NULL)
+          }
+          
           cluster_table <- table(Species = species_col, 
                                  Cluster = data_mod$classification)
           
-          incProgress(0.3, detail = "Finalizing results...")
+          incProgress(0.2, detail = "Finalizing results...")
           
           # Store results
           results <- list(
             model = data_mod,
             cluster_table = cluster_table,
             species_col = species_col,
-            morpho_data = morpho_data
+            morpho_data = morpho_data,
+            top_models = top_models,
+            all_bic = bic_long
           )
           
           unsupervised_results(results)
@@ -985,12 +1207,95 @@ mod_species_delim_server <- function(id, dataset_r) {
           showNotification("Unsupervised clustering complete!", type = "message")
           
         }, error = function(e) {
-          showNotification(paste("Error:", e$message), type = "error")
+          # Show the actual error message
+          showNotification(paste("Error in unsupervised clustering:", e$message), 
+                           type = "error", 
+                           duration = 10)
+          # Also print to console for debugging
+          message("Full error in unsupervised clustering:")
+          print(e)
         })
       })
     })
     
-    # Run supervised GMM
+    # Display top models table
+    output$top_models_table <- DT::renderDataTable({
+      req(unsupervised_results())
+      
+      results <- unsupervised_results()
+      req(results$top_models)
+      
+      DT::datatable(
+        results$top_models,
+        options = list(
+          pageLength = 15,
+          scrollX = TRUE,
+          dom = 'tip'
+        ),
+        rownames = FALSE
+      ) %>%
+        DT::formatRound(columns = c("BIC", "Delta_BIC"), digits = 2) %>%
+        DT::formatStyle(
+          'Delta_BIC',
+          backgroundColor = DT::styleInterval(
+            cuts = c(2, 6, 10),
+            values = c('#90EE90', '#FFFFE0', '#FFE4B5', '#FFB6C1')
+          )
+        )
+    })
+    
+    # Display detailed model summary
+    output$model_details <- renderPrint({
+      req(unsupervised_results())
+      
+      results <- unsupervised_results()
+      model <- results$model
+      
+      cat("═══════════════════════════════════════════════════════\n")
+      cat("           BEST MODEL DETAILED SUMMARY\n")
+      cat("═══════════════════════════════════════════════════════\n\n")
+      
+      cat("Model Selection:\n")
+      cat("  Model Type:    ", model$modelName, "\n", sep = "")
+      cat("  # Clusters:    ", model$G, "\n", sep = "")
+      cat("  BIC:           ", round(model$bic, 2), "\n", sep = "")
+      cat("  Log-likelihood:", round(model$loglik, 2), "\n", sep = "")
+      cat("  # Parameters:  ", model$df, "\n", sep = "")
+      cat("  # Observations:", model$n, "\n\n", sep = "")
+      
+      cat("Classification:\n")
+      cat("  Cluster sizes:\n")
+      sizes <- table(model$classification)
+      for (i in seq_along(sizes)) {
+        cat(sprintf("    Cluster %d: %d specimens\n", i, sizes[i]))
+      }
+      cat("\n")
+      
+      cat("Model Interpretation:\n")
+      interpretation <- get_model_interpretation(model$modelName)
+      cat("  ", model$modelName, " = ", interpretation, "\n\n", sep = "")
+      
+      # Show top 5 alternative models
+      if (!is.null(results$top_models)) {
+        top_5 <- results$top_models[1:min(5, nrow(results$top_models)), ]
+        cat("Top 5 Models by BIC:\n")
+        print(top_5, row.names = FALSE)
+      }
+    })
+    
+    # Download top models
+    output$download_top_models_csv <- downloadHandler(
+      filename = function() {
+        paste0("unsupervised_top_models_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        req(unsupervised_results())
+        req(unsupervised_results()$top_models)
+        write.csv(unsupervised_results()$top_models, file, row.names = FALSE)
+      }
+    )
+    
+     # Run supervised GMM
     observeEvent(input$run_supervised, {
       
       # Check if data is loaded
@@ -1099,6 +1404,7 @@ mod_species_delim_server <- function(id, dataset_r) {
       )
     })
     
+    
     # Display interpretation guide
     output$supervised_interpretation <- renderUI({
       req(supervised_results())
@@ -1106,7 +1412,7 @@ mod_species_delim_server <- function(id, dataset_r) {
       tagList(
         h4("Interpretation Guide:"),
         p(strong("BIC (Bayesian Information Criterion):"), 
-          "Higher BIC values indicate better model fit. The model with the highest BIC is considered the best-supported delimitation scheme. K = number of clusters"),
+          "Higher BIC values indicate better model fit. The model with the highest BIC is considered the best-supported delimitation scheme (note: this follows the mclust convention where BIC = 2·log-likelihood - penalty). K = number of clusters"),
         p(strong("∆BIC (BIC difference):"), 
           "Difference from the best model. The best model has ∆BIC = 0.",
           tags$ul(
@@ -1161,7 +1467,7 @@ mod_species_delim_server <- function(id, dataset_r) {
         
         # Cluster-species table
         cluster_species <- as.data.frame.matrix(results$cluster_table)
-        cluster_species <- cbind(Species = rownames(cluster_species), cluster_species)
+        cluster_species <- cbind(Cluster = rownames(cluster_species), cluster_species)
         
         # Write to CSV (multiple tables)
         write.csv(summary_df, file, row.names = FALSE)
@@ -1173,6 +1479,7 @@ mod_species_delim_server <- function(id, dataset_r) {
         write.csv(cluster_species, file, append = TRUE, row.names = FALSE)
       }
     )
+    
     
     # Download supervised CSV
     output$download_supervised_csv <- downloadHandler(

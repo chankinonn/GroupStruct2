@@ -437,7 +437,7 @@ app_server <- function(input, output, session) {
   output$species_delim_button_ui <- renderUI({
     req(input$data_type)
     if (input$data_type == "morphometric") {
-      actionButton("go_species_delim", "Species Delimitation", width = "100%")
+      actionButton("go_species_delim", "Morphometric Delimitation", width = "100%")
     } else {
       NULL
     }
