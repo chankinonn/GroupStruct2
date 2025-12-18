@@ -91,6 +91,14 @@ mod_visual_ui_morphometric <- function(id) {
                            ),
                            column(3,
                                   br(),
+                                  
+                                  h5("Grouping Selection"),
+                                  uiOutput(ns("pca_hypothesis_grouping_selector")),
+                                  p(style = "color: #666; font-size: 0.9em; font-style: italic;",
+                                    "Select which taxonomic hypothesis to visualize. PC coordinates remain the same - only group assignments change."),
+                                  
+                                  hr(),
+                                  
                                   numericInput(ns("plot_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
                                   numericInput(ns("plot_pca_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
                                   hr(),
@@ -576,6 +584,46 @@ mod_visual_server_morphometric <- function(id, dataset,
       prcomp(data_mat_numeric[complete_rows, ], center = TRUE, scale. = TRUE)
     })
     
+    ## =========================================================================
+    ## HYPOTHESIS GROUPING SELECTOR FOR PCA PLOT
+    ## =========================================================================
+    
+    # Render hypothesis grouping selector for PCA plot
+    output$pca_hypothesis_grouping_selector <- renderUI({
+      
+      # Check if species delimitation results (with hypothesis data) are available
+      delim_results <- species_delim_results_r()
+      
+      if (!is.null(delim_results) && !is.null(delim_results$hypothesis_data)) {
+        # Get hypothesis names from hypothesis data
+        hyp_data <- delim_results$hypothesis_data
+        hyp_names <- colnames(hyp_data)
+        
+        # Create choices: Original + all hypotheses
+        choices <- c("Original OTU Labels" = "original", setNames(hyp_names, hyp_names))
+        
+        selectInput(
+          session$ns("pca_grouping_hypothesis"),
+          "Color by:",
+          choices = choices,
+          selected = "original"
+        )
+        
+      } else {
+        # No hypothesis data available
+        p(style = "color: #666; font-style: italic;",
+          "Using original OTU labels. To visualize alternative grouping schemes:",
+          tags$br(),
+          "1. Go to", strong("Morphometric Delimitation > Bayesian Hypothesis Testing"), 
+          tags$br(),
+          "2. Upload and run hypothesis file",
+          tags$br(),
+          "3. Return here to see hypothesis dropdown")
+      }
+    })
+    
+    ## =========================================================================
+    
     plot_pca_obj <- reactive({
       req(pca_results_r(), common_plot_inputs_ready())
       req(input$pca_point_size)
@@ -589,7 +637,32 @@ mod_visual_server_morphometric <- function(id, dataset,
       complete_rows <- complete.cases(data_mat_numeric)
       
       pca_df <- as.data.frame(pca$x)
-      pca_df$Group <- df[[otu_col]][complete_rows]
+      
+      # Determine grouping: use hypothesis if selected, otherwise original OTUs
+      if (!is.null(input$pca_grouping_hypothesis) && input$pca_grouping_hypothesis != "original") {
+        # User selected a hypothesis - use hypothesis grouping
+        delim_results <- species_delim_results_r()
+        
+        if (!is.null(delim_results) && !is.null(delim_results$hypothesis_data)) {
+          hyp_data <- delim_results$hypothesis_data
+          selected_hyp <- input$pca_grouping_hypothesis
+          
+          # Check if hypothesis exists
+          if (selected_hyp %in% colnames(hyp_data)) {
+            # Use hypothesis grouping (filter to complete cases)
+            pca_df$Group <- factor(hyp_data[[selected_hyp]][complete_rows])
+          } else {
+            # Fallback to original
+            pca_df$Group <- df[[otu_col]][complete_rows]
+          }
+        } else {
+          # Fallback to original
+          pca_df$Group <- df[[otu_col]][complete_rows]
+        }
+      } else {
+        # Use original grouping (default)
+        pca_df$Group <- df[[otu_col]][complete_rows]
+      }
       
       # Calculate % variance explained
       var_explained <- round(100 * (pca$sdev^2 / sum(pca$sdev^2)), 1)
@@ -1043,7 +1116,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         p <- p + get_color_scale(plot_palette())
         p <- p + get_fill_scale(plot_palette()) + guides(fill = "none")
       }
- 
+      
       
       p <- p + 
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
@@ -1251,7 +1324,7 @@ mod_visual_server_morphometric <- function(id, dataset,
     
     output$download_pca_pdf <- create_download_handler(plot_pca_obj, "pca_morphometric", "pdf", "plot_pca_height", "plot_pca_width")
     output$download_pca_jpeg <- create_download_handler(plot_pca_obj, "pca_morphometric", "jpeg", "plot_pca_height", "plot_pca_width")
-   
+    
     output$download_dapc_pdf <- create_download_handler(plot_dapc_obj, "dapc_morphometric", "pdf", "plot_dapc_height", "plot_dapc_width")
     output$download_dapc_jpeg <- create_download_handler(plot_dapc_obj, "dapc_morphometric", "jpeg", "plot_dapc_height", "plot_dapc_width")
     output$download_species_bic_pdf <- create_download_handler(plot_species_bic_obj, "species_delim_bic", "pdf", "plot_species_bic_height", "plot_species_bic_width")

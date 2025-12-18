@@ -5,7 +5,15 @@ mod_mfa_ui <- function(id) {
     h3("Multiple Factor Analysis (MFA)"),
     hr(),
     p("The number of dimensions to retain for the MFA (ncp) is dynamically selected based on what the data can support, but capped at 30. All retained dimensions are used in the PERMANOVA analysis."),
-    p("If you use this module, please cite: Grismer, L. L. (2025). Introducing multiple factor analysis (MFA) as a diagnostic taxonomic tool complementing principal component analysis (PCA). ZooKeys, 1248, 93–109."),
+    
+    tags$div(
+      style = "background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 15px 0;",
+      p(style = "margin: 0;",
+        strong("Citation:"),
+        "If you use this module, please cite: Grismer, L. L. (2025). Introducing multiple factor analysis (MFA) as a diagnostic taxonomic tool complementing principal component analysis (PCA).",
+        em("ZooKeys"), ", 1248, 93–109.")
+    ),
+    
     br(),
     tabsetPanel(id = ns("mfa_main_tabs"), 
                 tabPanel("MFA Analysis & Results", 
@@ -33,7 +41,7 @@ mod_mfa_ui <- function(id) {
                            tabPanel("Quantitative Variable Contributions",
                                     DTOutput(ns("mfa_quanti_contrib_table"))
                            ),
-                        
+                           
                            tabPanel("Individuals Coordinates",
                                     DTOutput(ns("mfa_ind_coord_table"))
                            )
@@ -64,7 +72,181 @@ mod_mfa_ui <- function(id) {
                          h5("Pairwise PERMANOVA Results on MFA Scores:"),
                          DTOutput(ns("permanova_pairwise_results_mfa")),
                          downloadButton(ns("download_permanova_pairwise_mfa"), "Download Pairwise Results")
-                ) 
+                ),
+                
+                tabPanel("Bayesian Hypothesis Testing",
+                         br(),
+                         h4("Bayesian Hypothesis Testing on MFA Scores"),
+                         
+                         p("This analysis evaluates competing taxonomic hypotheses using Bayesian model comparison",
+                           "on", strong("MFA factor scores"), "(continuous variables derived from mixed data types).",
+                           "The algorithm applies EDDA (Eigenvalue Decomposition Discriminant Analysis) to the MFA scores",
+                           "and computes Bayesian Information Criterion (BIC) to determine which hypothesis",
+                           "is best supported by the multivariate morphological structure."),
+                         
+                         tags$div(
+                           style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
+                           p(style = "margin: 0; margin-bottom: 10px;",
+                             strong("Methodological Note:"),
+                             "This approach applies discriminant analysis to transformed coordinates (MFA scores),",
+                             "then compares competing hypotheses via BIC.",
+                             "While PERMANOVA (previous tab) tests", em("if"), "groups differ,",
+                             "this Bayesian framework tests", em("which grouping scheme"), "best fits the data,",
+                             "providing complementary hypothesis-driven inference."),
+                           p(style = "margin: 0;",
+                             strong("How this works:"),
+                             tags$ol(
+                               tags$li("MFA transforms your mixed data (morphometric + meristic + categorical) into continuous factor scores"),
+                               tags$li("EDDA models these scores under different taxonomic hypotheses"),
+                               tags$li("BIC comparison identifies which hypothesis best fits the data"),
+                               tags$li("This extends Bayesian species delimitation to datasets with mixed data types")
+                             ))
+                         ),
+                         
+                         tags$div(
+                           style = "background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 10px; margin: 15px 0;",
+                           p(style = "margin: 0;",
+                             icon("info-circle"), strong(" Visualization:"),
+                             "After running this analysis, you can visualize how different hypotheses",
+                             "group specimens in MFA space by going to",
+                             strong("Visualization > MFA: Individuals"), "tab.",
+                             "A 'Grouping Selection' dropdown will appear, allowing you to toggle between",
+                             "different taxonomic hypotheses. The MFA coordinates remain constant - only",
+                             "the grouping/coloring changes based on the selected hypothesis.")
+                         ),
+                         
+                         p(strong("Important:"), 
+                           "You must run MFA first (see 'MFA Analysis & Results' tab) before performing this analysis.",
+                           "The hypothesis file must have the same number of rows as your original dataset."),
+                         
+                         hr(),
+                         
+                         h4("Upload Hypothesis File"),
+                         p("Upload a CSV file with your taxonomic hypotheses.",
+                           strong("Important:"), "The order of rows in this file", 
+                           strong("must match exactly"), "the order of specimens in your original input data."),
+                         
+                         p("File format: Each column represents one hypothesis to be tested.",
+                           "Column names are hypothesis names (e.g., HYP_1, HYP_2, Lump_AB, Split_A, etc.)."),
+                         p(strong("DO NOT include morphometric data in the hypothesis file.")),
+                         
+                         p(strong("Example:")),
+                         
+                         # Table showing example format
+                         div(style = "overflow-x: auto; margin-bottom: 20px;",
+                             tags$table(class = "table table-bordered table-condensed", 
+                                        style = "width: auto; font-size: 12px;",
+                                        tags$thead(
+                                          tags$tr(
+                                            tags$th("Original OTU"),
+                                            tags$th("1 species"),
+                                            tags$th("Lump A_B"),
+                                            tags$th("Lump B_C"),
+                                            tags$th("Split A")
+                                          )
+                                        ),
+                                        tags$tbody(
+                                          tags$tr(tags$td("A"), tags$td("A"), tags$td("A+B"), tags$td("A"), tags$td("A1")),
+                                          tags$tr(tags$td("A"), tags$td("A"), tags$td("A+B"), tags$td("A"), tags$td("A1")),
+                                          tags$tr(tags$td("A"), tags$td("A"), tags$td("A+B"), tags$td("A"), tags$td("A2")),
+                                          tags$tr(tags$td("A"), tags$td("A"), tags$td("A+B"), tags$td("A"), tags$td("A2")),
+                                          tags$tr(tags$td("B"), tags$td("A"), tags$td("A+B"), tags$td("B+C"), tags$td("B")),
+                                          tags$tr(tags$td("B"), tags$td("A"), tags$td("A+B"), tags$td("B+C"), tags$td("B")),
+                                          tags$tr(tags$td("B"), tags$td("A"), tags$td("A+B"), tags$td("B+C"), tags$td("B")),
+                                          tags$tr(tags$td("B"), tags$td("A"), tags$td("A+B"), tags$td("B+C"), tags$td("B")),
+                                          tags$tr(tags$td("C"), tags$td("A"), tags$td("C"), tags$td("B+C"), tags$td("C")),
+                                          tags$tr(tags$td("C"), tags$td("A"), tags$td("C"), tags$td("B+C"), tags$td("C")),
+                                          tags$tr(tags$td("C"), tags$td("A"), tags$td("C"), tags$td("B+C"), tags$td("C")),
+                                          tags$tr(tags$td("C"), tags$td("A"), tags$td("C"), tags$td("B+C"), tags$td("C"))
+                                        )
+                             )
+                         ),
+                         
+                         fileInput(ns("mfa_hyp_file"), 
+                                   "Choose CSV File", 
+                                   accept = ".csv"),
+                         
+                         actionButton(ns("load_example_mfa_hyp"), 
+                                      "Load Example Hypothesis File",
+                                      icon = icon("table")),
+                         br(),
+                         p(style = "color: #856404; font-style: italic; margin-top: 10px;",
+                           strong("Note:"), 
+                           "The example hypothesis file is designed to work with the example mixed data dataset."),
+                         
+                         br(),
+                         
+                         uiOutput(ns("mfa_hyp_upload_status")),
+                         
+                         conditionalPanel(
+                           condition = sprintf("output['%s']", ns("mfa_hyp_file_loaded")),
+                           h5("Preview of Loaded Hypotheses:"),
+                           DTOutput(ns("mfa_hyp_preview"))
+                         ),
+                         
+                         hr(),
+                         
+                         h4("MFA Dimension Selection"),
+                         p("Select which MFA dimensions to include in the analysis.",
+                           "Using fewer dimensions reduces complexity and can improve model stability."),
+                         
+                         radioButtons(ns("mfa_dim_selection_method"),
+                                      "Dimension Selection Method:",
+                                      choices = c(
+                                        "Cumulative Variance Explained (%)" = "variance",
+                                        "Fixed Number of Dimensions" = "fixed",
+                                        "All Dimensions" = "all"
+                                      ),
+                                      selected = "variance"),
+                         
+                         conditionalPanel(
+                           condition = sprintf("input['%s'] == 'variance'", ns("mfa_dim_selection_method")),
+                           sliderInput(ns("mfa_variance_threshold"),
+                                       "Cumulative Variance Threshold (%):",
+                                       min = 70, max = 100, value = 90, step = 5),
+                           p(style = "color: #666; font-size: 0.9em;",
+                             em("Retains dimensions until cumulative variance reaches threshold. Default 90% is recommended."))
+                         ),
+                         
+                         conditionalPanel(
+                           condition = sprintf("input['%s'] == 'fixed'", ns("mfa_dim_selection_method")),
+                           numericInput(ns("mfa_n_dimensions"),
+                                        "Number of Dimensions:",
+                                        value = 5, min = 2, max = 30, step = 1),
+                           p(style = "color: #666; font-size: 0.9em;",
+                             em("Manually specify number of dimensions. Use with caution."))
+                         ),
+                         
+                         tags$div(
+                           style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
+                           p(style = "margin: 0;",
+                             strong("Recommendation:"), 
+                             "Start with 90% variance threshold (default). Use fewer dimensions if:",
+                             tags$ul(
+                               tags$li("Sample size is small (<50)"),
+                               tags$li("Results appear unstable"),
+                               tags$li("You have many MFA dimensions (>20)")
+                             ))
+                         ),
+                         
+                         hr(),
+                         
+                         actionButton(ns("run_mfa_bayesian"), 
+                                      "Run Bayesian Hypothesis Testing on MFA Scores", 
+                                      icon = icon("play"),
+                                      style = "background-color: white; color: black;"),
+                         
+                         hr(),
+                         
+                         h4("Results"),
+                         DT::dataTableOutput(ns("mfa_bayesian_results_table")),
+                         hr(),
+                         uiOutput(ns("mfa_bayesian_interpretation")),
+                         hr(),
+                         downloadButton(ns("download_mfa_bayesian_csv"), "Download CSV"),
+                         downloadButton(ns("download_mfa_bayesian_xlsx"), "Download Excel"),
+                         hr()
+                )
     ) 
   )
 }
@@ -83,6 +265,11 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
     # Reactive values for PERMANOVA results
     permanova_main_mfa_results_r <- reactiveVal(NULL)
     permanova_pairwise_mfa_results_r <- reactiveVal(NULL)
+    
+    # Reactive values for Bayesian hypothesis testing
+    mfa_hypothesis_data <- reactiveVal(NULL)
+    mfa_bayesian_results <- reactiveVal(NULL)
+    mfa_dimension_info <- reactiveVal(NULL)  # Store dimension selection info
     
     # UI to display the MFA status message
     output$mfa_status_message <- renderText({
@@ -235,7 +422,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       all_active_traits <- unlist(group_map)
       
       print(custom_trait_groups$groups)
-
+      
       
       missing_traits <- setdiff(all_active_traits, names(df))
       if (length(missing_traits) > 0) {
@@ -317,7 +504,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           }
         }
       }
-
+      
       # Check for missing values AFTER all type conversions
       if (any(is.na(data_for_mfa))) {
         mfa_status_message_r("Error: Missing values detected in selected traits after type conversion. MFA requires complete cases. Please clean your data first (e.g., using 'Impute Missing Data' module).")
@@ -416,7 +603,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           tabPanel("Quantitative Variable Contributions",
                    DTOutput(ns("mfa_quanti_contrib_table"))
           ),
-         
+          
           tabPanel("Individuals Coordinates",
                    DTOutput(ns("mfa_ind_coord_table"))
           )
@@ -677,9 +864,451 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       }
     )
     
+    ## ============================================================================
+    ## BAYESIAN HYPOTHESIS TESTING ON MFA SCORES
+    ## ============================================================================
+    
+    # Flag for conditional panel
+    output$mfa_hyp_file_loaded <- reactive({
+      !is.null(mfa_hypothesis_data())
+    })
+    outputOptions(output, "mfa_hyp_file_loaded", suspendWhenHidden = FALSE)
+    
+    # Load hypothesis file
+    observeEvent(input$mfa_hyp_file, {
+      req(input$mfa_hyp_file)
+      
+      tryCatch({
+        hyp_df <- read.csv(input$mfa_hyp_file$datapath, stringsAsFactors = FALSE)
+        
+        # Validate file has at least one column
+        if (ncol(hyp_df) < 1) {
+          output$mfa_hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     "Error: File must have at least 1 hypothesis column")
+          })
+          mfa_hypothesis_data(NULL)
+          return()
+        }
+        
+        # Check that columns are not purely numeric
+        all_numeric_cols <- sapply(hyp_df, function(col) {
+          all(grepl("^-?[0-9]*\\.?[0-9]+$", col[!is.na(col)]))
+        })
+        
+        if (any(all_numeric_cols)) {
+          problematic_cols <- names(hyp_df)[all_numeric_cols]
+          output$mfa_hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: The following columns contain only numeric values: ",
+                            paste(problematic_cols, collapse = ", "),
+                            ". Hypothesis labels should be categorical (e.g., 'Species_A', 'Lump_AB')."))
+          })
+          mfa_hypothesis_data(NULL)
+          return()
+        }
+        
+        # Check if number of rows matches original input data
+        original_data <- data_for_mfa_source_r()
+        req(original_data)
+        if (nrow(hyp_df) != nrow(original_data)) {
+          output$mfa_hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: Hypothesis file has ", nrow(hyp_df), 
+                            " rows but input data has ", nrow(original_data), 
+                            " rows. They must match exactly."))
+          })
+          mfa_hypothesis_data(NULL)
+          return()
+        }
+        
+        # Store hypothesis data
+        mfa_hypothesis_data(hyp_df)
+        
+        output$mfa_hyp_upload_status <- renderUI({
+          tags$div(class = "alert alert-success",
+                   paste0("✓ Hypothesis file loaded successfully. Found ", 
+                          ncol(hyp_df), " hypotheses: ", 
+                          paste(colnames(hyp_df), collapse = ", ")))
+        })
+        
+      }, error = function(e) {
+        output$mfa_hyp_upload_status <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   paste0("Error loading file: ", e$message))
+        })
+        mfa_hypothesis_data(NULL)
+      })
+    })
+    
+    # Load example hypothesis file
+    observeEvent(input$load_example_mfa_hyp, {
+      
+      # Check if data is loaded first
+      original_data <- data_for_mfa_source_r()
+      if (is.null(original_data) || nrow(original_data) == 0) {
+        showModal(modalDialog(
+          title = "No Data Loaded",
+          "Please load data in the 'Input Data' module before loading hypothesis file.",
+          easyClose = TRUE,
+          footer = modalButton("OK")
+        ))
+        return(NULL)
+      }
+      
+      example_path <- system.file("examples", "Gekko_hypothesis_file.csv", package = "GroupStruct2")
+      
+      if (!file.exists(example_path)) {
+        output$mfa_hyp_upload_status <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   "Error: Example hypothesis file not found in package")
+        })
+        return()
+      }
+      
+      tryCatch({
+        hyp_df <- read.csv(example_path, stringsAsFactors = FALSE)
+        
+        # Validate
+        if (ncol(hyp_df) < 1) {
+          output$mfa_hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     "Error: File must have at least 1 hypothesis column")
+          })
+          mfa_hypothesis_data(NULL)
+          return()
+        }
+        
+        # Check that columns are not purely numeric
+        all_numeric_cols <- sapply(hyp_df, function(col) {
+          all(grepl("^-?[0-9]*\\.?[0-9]+$", col[!is.na(col)]))
+        })
+        
+        if (any(all_numeric_cols)) {
+          problematic_cols <- names(hyp_df)[all_numeric_cols]
+          output$mfa_hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-danger",
+                     paste0("Error: The following columns contain only numeric values: ",
+                            paste(problematic_cols, collapse = ", "),
+                            ". Hypothesis labels should be categorical."))
+          })
+          mfa_hypothesis_data(NULL)
+          return()
+        }
+        
+        # Check if number of rows matches input data
+        if (nrow(hyp_df) != nrow(original_data)) {
+          output$mfa_hyp_upload_status <- renderUI({
+            tags$div(class = "alert alert-warning",
+                     paste0("Warning: Example hypothesis file has ", nrow(hyp_df), 
+                            " rows but your current data has ", nrow(original_data), 
+                            " rows. Please load the corresponding example dataset first."))
+          })
+          mfa_hypothesis_data(NULL)
+          return()
+        }
+        
+        # Store hypothesis data
+        mfa_hypothesis_data(hyp_df)
+        
+        output$mfa_hyp_upload_status <- renderUI({
+          tags$div(class = "alert alert-success",
+                   paste0("✓ Example hypothesis file loaded successfully. Found ", 
+                          ncol(hyp_df), " hypotheses: ", 
+                          paste(colnames(hyp_df), collapse = ", ")))
+        })
+        
+      }, error = function(e) {
+        output$mfa_hyp_upload_status <- renderUI({
+          tags$div(class = "alert alert-danger",
+                   paste0("Error loading example file: ", e$message))
+        })
+        mfa_hypothesis_data(NULL)
+      })
+    })
+    
+    # Preview hypothesis data
+    output$mfa_hyp_preview <- renderDT({
+      req(mfa_hypothesis_data())
+      
+      DT::datatable(
+        mfa_hypothesis_data(),
+        options = list(
+          pageLength = 10,
+          scrollX = TRUE,
+          dom = 'tip'
+        ),
+        rownames = FALSE
+      )
+    })
+    
+    # Run Bayesian hypothesis testing on MFA scores
+    observeEvent(input$run_mfa_bayesian, {
+      
+      # Check if MFA has been run
+      if (is.null(mfa_results_r()) || is.null(mfa_results_r()$ind$coord)) {
+        showModal(modalDialog(
+          title = "No MFA Results",
+          "Please run MFA first (see 'MFA Analysis & Results' tab) before performing Bayesian hypothesis testing.",
+          easyClose = TRUE,
+          footer = modalButton("OK")
+        ))
+        return(NULL)
+      }
+      
+      # Check if hypotheses are loaded
+      if (is.null(mfa_hypothesis_data())) {
+        showNotification("Please upload a hypothesis file", type = "error")
+        return()
+      }
+      
+      withProgress(message = 'Running Bayesian hypothesis testing on MFA scores...', value = 0, {
+        
+        mfa_res <- mfa_results_r()
+        hyp_df <- mfa_hypothesis_data()
+        
+        # Get all hypothesis names
+        hyp_names <- colnames(hyp_df)
+        
+        # Set flat priors (equal for all hypotheses)
+        n_hyp <- length(hyp_names)
+        priors <- rep(1/n_hyp, n_hyp)
+        names(priors) <- hyp_names
+        
+        # Extract MFA scores (individual coordinates)
+        mfa_scores_full <- mfa_res$ind$coord
+        
+        # Ensure MFA scores are numeric matrix
+        if (!is.numeric(mfa_scores_full)) {
+          showNotification("Error: MFA scores are not numeric", type = "error")
+          return(NULL)
+        }
+        
+        if (ncol(mfa_scores_full) == 0) {
+          showNotification("No MFA dimensions found", type = "error")
+          return(NULL)
+        }
+        
+        # ======================================================================
+        # DIMENSION SELECTION
+        # ======================================================================
+        
+        # Get eigenvalues and variance explained
+        eigenvalues <- mfa_res$eig[, 1]
+        variance_explained <- mfa_res$eig[, 2]  # Percentage of variance
+        cumvar <- cumsum(variance_explained)
+        
+        # Select dimensions based on user input
+        if (input$mfa_dim_selection_method == "variance") {
+          # Use cumulative variance threshold
+          n_dims <- which(cumvar >= input$mfa_variance_threshold)[1]
+          
+          if (is.na(n_dims)) {
+            n_dims <- ncol(mfa_scores_full)  # Use all if threshold not reached
+            showNotification(
+              sprintf("Variance threshold (%.0f%%) not reached. Using all %d dimensions (%.1f%% variance).",
+                      input$mfa_variance_threshold, n_dims, cumvar[n_dims]),
+              type = "warning", duration = 5
+            )
+          } else {
+            showNotification(
+              sprintf("Using first %d dimensions (%.1f%% cumulative variance)",
+                      n_dims, cumvar[n_dims]),
+              type = "message", duration = 5
+            )
+          }
+          
+          mfa_scores <- mfa_scores_full[, 1:n_dims, drop = FALSE]
+          
+        } else if (input$mfa_dim_selection_method == "fixed") {
+          # Use fixed number of dimensions
+          n_dims <- min(input$mfa_n_dimensions, ncol(mfa_scores_full))
+          mfa_scores <- mfa_scores_full[, 1:n_dims, drop = FALSE]
+          
+          showNotification(
+            sprintf("Using first %d dimensions (%.1f%% cumulative variance)",
+                    n_dims, cumvar[n_dims]),
+            type = "message", duration = 5
+          )
+          
+        } else {  # "all"
+          # Use all dimensions
+          mfa_scores <- mfa_scores_full
+          n_dims <- ncol(mfa_scores)
+          
+          showNotification(
+            sprintf("Using all %d dimensions (%.1f%% cumulative variance)",
+                    n_dims, cumvar[n_dims]),
+            type = "message", duration = 5
+          )
+        }
+        
+        # Store dimension info for later display
+        mfa_dimension_info(list(
+          n_dims_used = n_dims,
+          total_dims = ncol(mfa_scores_full),
+          variance_used = cumvar[n_dims],
+          method = input$mfa_dim_selection_method,
+          threshold = if (input$mfa_dim_selection_method == "variance") input$mfa_variance_threshold else NA
+        ))
+        
+        incProgress(0.2, detail = paste("Fitting EDDA models on", n_dims, "dimensions..."))
+        
+        # Fit EDDA models for each hypothesis
+        tryCatch({
+          models <- list()
+          
+          for (i in seq_along(hyp_names)) {
+            hyp_name <- hyp_names[i]
+            
+            # Get class labels for this hypothesis
+            class_labels <- hyp_df[[hyp_name]]
+            
+            incProgress(0.6 / length(hyp_names), 
+                        detail = paste("Fitting", hyp_name))
+            
+            # Fit EDDA model (G=1, different covariance per class)
+            models[[hyp_name]] <- mclust::MclustDA(
+              mfa_scores,
+              class = factor(class_labels),
+              modelType = "EDDA",
+              verbose = FALSE
+            )
+          }
+          
+          incProgress(0.2, detail = "Computing Bayes Factors...")
+          
+          # Compute Bayes Factors with flat priors
+          results_table <- do.call(GMMBayesFactorTable, 
+                                   c(models, list(prior = priors)))
+          
+          # Sort by BIC (descending - best model first)
+          results_table <- results_table[order(-results_table$BIC), ]
+          
+          mfa_bayesian_results(results_table)
+          
+          showNotification("Bayesian hypothesis testing complete!", type = "message")
+          
+        }, error = function(e) {
+          showNotification(paste("Error:", e$message), type = "error")
+        })
+      })
+    })
+    
+    # Display results table
+    output$mfa_bayesian_results_table <- DT::renderDataTable({
+      req(mfa_bayesian_results())
+      
+      DT::datatable(
+        mfa_bayesian_results(),
+        options = list(
+          pageLength = 20,
+          scrollX = TRUE,
+          dom = 'tp'
+        ),
+        rownames = FALSE
+      )
+    })
+    
+    # Interpretation guide
+    output$mfa_bayesian_interpretation <- renderUI({
+      req(mfa_bayesian_results())
+      
+      # Get dimension info if available
+      dim_info <- mfa_dimension_info()
+      
+      tagList(
+        # Add dimension info box at top
+        if (!is.null(dim_info)) {
+          tags$div(
+            style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
+            p(style = "margin: 0;",
+              strong("Dimensions Used:"), 
+              sprintf("%d of %d MFA dimensions (%.1f%% cumulative variance)", 
+                      dim_info$n_dims_used, dim_info$total_dims, dim_info$variance_used),
+              br(),
+              if (dim_info$method == "variance") {
+                sprintf("Selection method: Cumulative variance threshold (%.0f%%)", dim_info$threshold)
+              } else if (dim_info$method == "fixed") {
+                "Selection method: Fixed number of dimensions"
+              } else {
+                "Selection method: All dimensions"
+              })
+          )
+        },
+        
+        h5("Interpretation Guide:"),
+        tags$ul(
+          tags$li(strong("BIC (Bayesian Information Criterion):"),
+                  "Higher values indicate better model fit. The best hypothesis has the highest BIC (∆BIC = 0)."),
+          tags$li(strong("∆BIC:"),
+                  "Difference from the best model.",
+                  tags$ul(
+                    tags$li("∆BIC < 2: Weak evidence against the hypothesis"),
+                    tags$li("∆BIC 2-6: Positive evidence against"),
+                    tags$li("∆BIC 6-10: Strong evidence against"),
+                    tags$li("∆BIC > 10: Very strong evidence against")
+                  )),
+          tags$li(strong("Bayes Factor (BF):"),
+                  "Strength of evidence against each hypothesis relative to the best (BF = exp(∆BIC/2)).",
+                  tags$ul(
+                    tags$li("BF = 1: Equally supported as best hypothesis"),
+                    tags$li("BF > 3: Positive evidence against"),
+                    tags$li("BF > 20: Strong evidence against"),
+                    tags$li("BF > 150: Very strong evidence against")
+                  )),
+          tags$li(strong("PostMod (Posterior Model Probability):"),
+                  "Probability each hypothesis is correct, given the data and flat priors.",
+                  "The hypothesis with highest PostMod is most supported by the data.",
+                  tags$ul(
+                    tags$li("PostMod > 0.75: Strong support"),
+                    tags$li("PostMod 0.50-0.75: Moderate support"),
+                    tags$li("PostMod < 0.50: Weak support")
+                  ))
+        ),
+        
+        tags$div(
+          style = "background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px; margin: 15px 0;",
+          p(style = "margin: 0;",
+            strong("Important Note:"),
+            "This analysis assumes MFA scores are approximately multivariate Gaussian.",
+            "While MFA scores are continuous, they may violate normality assumptions.",
+            "Results should be interpreted as exploratory and validated with other evidence",
+            "(genetics, ecology, biogeography).")
+        )
+      )
+    })
+    
+    # Download CSV
+    output$download_mfa_bayesian_csv <- downloadHandler(
+      filename = function() {
+        paste0("mfa_bayesian_delimitation_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        req(mfa_bayesian_results())
+        write.csv(mfa_bayesian_results(), file, row.names = FALSE)
+      }
+    )
+    
+    # Download Excel
+    output$download_mfa_bayesian_xlsx <- downloadHandler(
+      filename = function() {
+        paste0("mfa_bayesian_delimitation_", Sys.Date(), ".xlsx")
+      },
+      content = function(file) {
+        req(mfa_bayesian_results())
+        
+        wb <- openxlsx::createWorkbook()
+        openxlsx::addWorksheet(wb, "Bayesian Results")
+        openxlsx::writeData(wb, "Bayesian Results", mfa_bayesian_results())
+        openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+      }
+    )
+    
     return(list(
       mfa_results_r = mfa_results_r,
-      trait_group_df_r = trait_group_df_r
+      trait_group_df_r = trait_group_df_r,
+      mfa_hypothesis_data_r = mfa_hypothesis_data  # ADD THIS
     ))
   })
 }

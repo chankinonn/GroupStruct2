@@ -109,6 +109,14 @@ mod_visual_ui_combined <- function(id) {
                            ),
                            column(3,
                                   br(),
+                                  
+                                  h5("Grouping Selection"),
+                                  uiOutput(ns("mfa_hypothesis_grouping_selector")),
+                                  p(style = "color: #666; font-size: 0.9em; font-style: italic;",
+                                    "Select which taxonomic hypothesis to visualize. MFA coordinates remain the same - only group assignments change."),
+                                  
+                                  hr(),
+                                  
                                   numericInput(ns("mfa_individuals_plot_height"), "Plot Height (px)", value = 500, min = 300, step = 50, width = '150px'), 
                                   numericInput(ns("mfa_individuals_plot_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'), 
                                   hr(),
@@ -194,7 +202,8 @@ mod_visual_server_combined <- function(id, dataset_r,
                                        mfa_point_size, mfa_point_shape, mfa_ellipse,
                                        mfa_ellipse_alpha,
                                        manual_colors_r, 
-                                       mfa_type_colors_r 
+                                       mfa_type_colors_r,
+                                       mfa_hypothesis_data_r = NULL  # ADD THIS
 ) {
   
   moduleServer(id, function(input, output, session) {
@@ -360,7 +369,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       # fallback
       return(ggplot2::scale_color_discrete())
     }
-  
+    
     # Theme generator (always classic, adjusted for x-axis label angle)
     get_custom_theme <- reactive({
       axis_text_size_val <- plot_axis_text_size()
@@ -407,6 +416,43 @@ mod_visual_server_combined <- function(id, dataset_r,
           legend_text_size(), legend_title_size(),input$plot_theme)
       TRUE
     })
+    
+    ## =========================================================================
+    ## HYPOTHESIS GROUPING SELECTOR FOR MFA INDIVIDUALS PLOT
+    ## =========================================================================
+    
+    # Render hypothesis grouping selector for MFA Individuals plot
+    output$mfa_hypothesis_grouping_selector <- renderUI({
+      
+      # Check if MFA hypothesis data is available
+      if (!is.null(mfa_hypothesis_data_r) && !is.null(mfa_hypothesis_data_r())) {
+        hyp_data <- mfa_hypothesis_data_r()
+        hyp_names <- colnames(hyp_data)
+        
+        # Create choices: Original + all hypotheses
+        choices <- c("Original OTU Labels" = "original", setNames(hyp_names, hyp_names))
+        
+        selectInput(
+          session$ns("mfa_grouping_hypothesis"),
+          "Color by:",
+          choices = choices,
+          selected = "original"
+        )
+        
+      } else {
+        # No hypothesis data available
+        p(style = "color: #666; font-style: italic;",
+          "Using original OTU labels. To visualize alternative grouping schemes:",
+          tags$br(),
+          "1. Go to", strong("MFA > Bayesian Hypothesis Testing"), 
+          tags$br(),
+          "2. Upload and run hypothesis file",
+          tags$br(),
+          "3. Return here to see hypothesis dropdown")
+      }
+    })
+    
+    ## =========================================================================
     
     
     # Scatterplot
@@ -614,7 +660,7 @@ mod_visual_server_combined <- function(id, dataset_r,
     })
     
     mfa_var_contrib_hist_obj <- reactive({
-
+      
       req(mfa_results_r())
       req(trait_group_df_r())
       req(common_plot_inputs_ready())
@@ -800,11 +846,44 @@ mod_visual_server_combined <- function(id, dataset_r,
       mfa_ind_coord <- mfa_ind_coord %>%
         tibble::rownames_to_column(var = "Individual_ID")
       
-      # Prepare original data for joining, ensuring group column is a factor
-      original_data_for_join <- df_original %>%
-        tibble::rownames_to_column(var = "Individual_ID") %>%
-        dplyr::select(Individual_ID, Group = !!sym(group_col_name)) %>%
-        dplyr::mutate(Group = as.factor(Group))
+      # Prepare original data for joining
+      # Check if user selected a hypothesis or original grouping
+      if (!is.null(input$mfa_grouping_hypothesis) && input$mfa_grouping_hypothesis != "original") {
+        # User selected a hypothesis - use hypothesis grouping
+        if (!is.null(mfa_hypothesis_data_r) && !is.null(mfa_hypothesis_data_r())) {
+          hyp_data <- mfa_hypothesis_data_r()
+          selected_hyp <- input$mfa_grouping_hypothesis
+          
+          # Check if hypothesis exists
+          if (selected_hyp %in% colnames(hyp_data)) {
+            # Use hypothesis grouping
+            original_data_for_join <- df_original %>%
+              tibble::rownames_to_column(var = "Individual_ID") %>%
+              dplyr::mutate(
+                Group = factor(hyp_data[[selected_hyp]])
+              ) %>%
+              dplyr::select(Individual_ID, Group)
+          } else {
+            # Fallback to original if hypothesis not found
+            original_data_for_join <- df_original %>%
+              tibble::rownames_to_column(var = "Individual_ID") %>%
+              dplyr::select(Individual_ID, Group = !!sym(group_col_name)) %>%
+              dplyr::mutate(Group = as.factor(Group))
+          }
+        } else {
+          # Fallback to original
+          original_data_for_join <- df_original %>%
+            tibble::rownames_to_column(var = "Individual_ID") %>%
+            dplyr::select(Individual_ID, Group = !!sym(group_col_name)) %>%
+            dplyr::mutate(Group = as.factor(Group))
+        }
+      } else {
+        # Use original grouping (default)
+        original_data_for_join <- df_original %>%
+          tibble::rownames_to_column(var = "Individual_ID") %>%
+          dplyr::select(Individual_ID, Group = !!sym(group_col_name)) %>%
+          dplyr::mutate(Group = as.factor(Group))
+      }
       
       mfa_ind_coord <- dplyr::left_join(mfa_ind_coord, original_data_for_join, by = "Individual_ID") %>%
         tibble::column_to_rownames(var = "Individual_ID") # Convert back if desired
@@ -977,7 +1056,7 @@ mod_visual_server_combined <- function(id, dataset_r,
     }, 
     height = function() input$mfa_var_contrib_hist_height,
     width = function() input$mfa_var_contrib_hist_width)
-
+    
     DEFAULT_DOWNLOAD_WIDTH <- 10
     DEFAULT_DOWNLOAD_HEIGHT <- 8 # This will mostly be overridden by user input
     
@@ -1037,6 +1116,6 @@ mod_visual_server_combined <- function(id, dataset_r,
     
     output$download_mfa_group_contrib_pdf <- create_download_handler(mfa_group_contrib_hist_obj, "mfa_group_contributions", "pdf", "mfa_group_contrib_hist_height", "mfa_group_contrib_hist_width")
     output$download_mfa_group_contrib_jpeg <- create_download_handler(mfa_group_contrib_hist_obj, "mfa_group_contributions", "jpeg", "mfa_group_contrib_hist_height", "mfa_group_contrib_hist_width")
-
+    
   }) 
 } 

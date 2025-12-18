@@ -240,28 +240,73 @@ mod_species_delim_ui <- function(id) {
                )
       ),
       
-      tabPanel("Hypothesis Testing",
+      tabPanel("Bayesian Hypothesis Testing",
                fluidRow(
                  column(12,
-                        h4("Bayesian Model-testing of Explicit Taxonomic Hypotheses"),
+                        h4("Bayesian Hypothesis Testing Using Gaussian Mixture Models"),
+                        
                         p("This analysis evaluates competing taxonomic hypotheses using Bayesian model comparison.",
-                          "In a separate file, the user defines multiple hypotheses about how OTUs should be grouped (lumped or split),",
-                          "and the algorithm computes Bayesian Information Criterion (BIC) and posterior probabilities",
-                          "to determine which hypothesis is best supported by the morphometric data."),
+                          "You can test hypotheses using either", strong("raw morphometric data"), 
+                          "or", strong("PCA scores.")),
+                        
+                        tags$div(
+                          style = "background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px; margin: 15px 0;",
+                          p(style = "margin: 0; margin-bottom: 10px;",
+                            strong("Why EDDA Instead of Classical DA?")),
+                          p(style = "margin: 0; margin-bottom: 8px;",
+                            strong("Classical Discriminant Analysis (DA/LDA)"), 
+                            "assumes all groups have the", strong("same covariance structure"), 
+                            "(homoscedasticity) - a single pooled covariance matrix across all groups."),
+                            
+                          p(style = "margin: 0;",
+                            strong("EDDA (Eigenvalue Decomposition Discriminant Analysis)"), 
+                            "allows each group to have its", strong("own covariance structure"), 
+                            "(heteroscedasticity), accommodating biological reality where taxonomic groups",
+                            "differ in their amount and pattern of variation.",
+                            "EDDA is more robust because: (1) classical DA is a special case of EDDA",
+                            "(equal covariances), so if groups truly have equal variance, EDDA will detect this",
+                            "and favor the simpler model via BIC; (2) if covariances differ, DA gives biased results",
+                            "while EDDA remains accurate; (3) EDDA naturally integrates with Bayesian model comparison",
+                            "via BIC.")
+                        ),
+                        
+                        tags$div(
+                          style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
+                          p(style = "margin: 0; margin-bottom: 10px;",
+                            strong("Two Analysis Options:")),
+                          tags$ul(style = "margin: 5px 0;",
+                                  tags$li(strong("Raw Morphometric Data (default):"), 
+                                          "EDDA applied directly to trait measurements. Provides direct biological interpretation.",
+                                          "Best when n > p (more specimens than traits) and you want to understand which specific traits drive delimitation."),
+                                  tags$li(strong("PCA Scores:"), 
+                                          "EDDA applied to principal component scores.",
+                                          "More robust when p ≈ n (high-dimensional data) and ensures methodological",
+                                          "consistency with the MFA-based approach (used for mixed data types).")
+                          )
+                        ),
+                        
+                        tags$div(
+                          style = "background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 10px; margin: 15px 0;",
+                          p(style = "margin: 0;",
+                            icon("info-circle"), strong(" Visualization:"),
+                            "After running this analysis, you can visualize how different hypotheses",
+                            "group specimens in PCA space by going to",
+                            strong("Visualization > PCA"), "tab.",
+                            "A 'Grouping Selection' dropdown will appear, allowing you to toggle between",
+                            "different taxonomic hypotheses. The PCA coordinates remain constant - only",
+                            "the grouping/coloring changes based on the selected hypothesis.")
+                        ),
                         
                         p(strong("Method:"), 
                           "The analysis uses", code("modelType = 'EDDA'"), 
                           "with G=1 (one Gaussian component per group), which assumes each taxonomic group",
                           "can be described by a single multivariate Gaussian distribution.",
-                          "If you suspect substructure within a group",
-                          "(e.g., cryptic species or distinct populations), test this by creating",
-                          "additional split hypotheses."),
+                          "BIC and Bayes Factors quantify support for competing hypotheses."),
                         
                         p(strong("Priors:"),
-                          "The analysis uses flat (uninformative) priors of 0.2 for each hypothesis,",
-                          "treating all hypotheses as equally likely before examining the data.",
-                          "Posterior probabilities are then calculated based solely on how well",
-                          "each hypothesis fits the morphometric data."),
+                          "The analysis uses flat (uninformative) priors, treating all hypotheses as equally likely",
+                          "before examining the data. Posterior probabilities are then calculated based solely on",
+                          "how well each hypothesis fits the morphometric data."),
                         
                         hr(),
                         
@@ -327,6 +372,61 @@ mod_species_delim_ui <- function(id) {
                           condition = sprintf("output['%s']", ns("hyp_file_loaded")),
                           h5("Preview of Loaded Hypotheses:"),
                           DTOutput(ns("hyp_preview"))
+                        ),
+                        
+                        hr(),
+                        
+                        h4("Analysis Options"),
+                        
+                        checkboxInput(ns("use_pca_scores"), 
+                                      "Use PCA scores instead of raw data", 
+                                      value = FALSE),
+                        
+                        conditionalPanel(
+                          condition = sprintf("input['%s']", ns("use_pca_scores")),
+                          
+                          h5("PC Selection Method:"),
+                          radioButtons(ns("pc_selection_method"),
+                                       NULL,
+                                       choices = c(
+                                         "Cumulative Variance Threshold" = "variance",
+                                         "Fixed Number of PCs" = "fixed",
+                                         "All PCs" = "all"
+                                       ),
+                                       selected = "variance"),
+                          
+                          conditionalPanel(
+                            condition = sprintf("input['%s'] == 'variance'", ns("pc_selection_method")),
+                            sliderInput(ns("pca_variance_threshold"),
+                                        "Variance to retain (%):",
+                                        min = 70, max = 100, value = 90, step = 5),
+                            p(style = "color: #666; font-style: italic; font-size: 0.9em;",
+                              "Minimum number of PCs needed to explain this percentage of variance will be used.")
+                          ),
+                          
+                          conditionalPanel(
+                            condition = sprintf("input['%s'] == 'fixed'", ns("pc_selection_method")),
+                            numericInput(ns("pca_n_components"),
+                                         "Number of PCs to use:",
+                                         value = 5, min = 2, max = 30, step = 1),
+                            p(style = "color: #666; font-style: italic; font-size: 0.9em;",
+                              "Manually specify how many principal components to use.")
+                          ),
+                          
+                          conditionalPanel(
+                            condition = sprintf("input['%s'] == 'all'", ns("pc_selection_method")),
+                            p(style = "color: #666; font-style: italic;",
+                              "All available PCs will be used (no dimensionality reduction).")
+                          ),
+                          
+                          tags$div(
+                            style = "background-color: #f8f9fa; border-left: 3px solid #6c757d; padding: 8px; margin: 10px 0;",
+                            p(style = "margin: 0; font-size: 0.9em;",
+                              strong("Recommendation:"), 
+                              "Use variance threshold (90%) as default. Use fixed number if you have",
+                              "a priori reasons. Use all PCs only if your sample size is much larger than",
+                              "the number of traits.")
+                          )
                         ),
                         
                         hr(),
@@ -486,7 +586,7 @@ mod_species_delim_ui <- function(id) {
 
 mod_species_delim_server <- function(id, dataset_r) {
   moduleServer(id, function(input, output, session) {
-
+    
     
     # Reactive values to store results
     unsupervised_results <- reactiveVal(NULL)
@@ -965,7 +1065,58 @@ mod_species_delim_server <- function(id, dataset_r) {
           return(NULL)
         }
         
-        incProgress(0.2, detail = "Fitting EDDA models...")
+        # Determine if using PCA or raw data
+        use_pca <- isTRUE(input$use_pca_scores)
+        
+        if (use_pca) {
+          incProgress(0.1, detail = "Performing PCA...")
+          
+          # Run PCA
+          pca_res <- prcomp(morpho_data, scale. = TRUE, center = TRUE)
+          
+          # Calculate cumulative variance for all PCs
+          cumvar <- cumsum(pca_res$sdev^2 / sum(pca_res$sdev^2) * 100)
+          total_pcs <- length(cumvar)
+          
+          # Determine number of PCs based on selection method
+          pc_method <- input$pc_selection_method
+          
+          if (pc_method == "variance") {
+            # Variance threshold method
+            n_pcs <- which(cumvar >= input$pca_variance_threshold)[1]
+            if (is.na(n_pcs)) {
+              n_pcs <- total_pcs  # Use all if threshold not reached
+            }
+            method_msg <- sprintf("Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
+            
+          } else if (pc_method == "fixed") {
+            # Fixed number method
+            n_pcs <- min(input$pca_n_components, total_pcs)
+            method_msg <- sprintf("Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
+            
+          } else if (pc_method == "all") {
+            # Use all PCs
+            n_pcs <- total_pcs
+            method_msg <- sprintf("Using all %d PCs (100%% variance)", n_pcs)
+            
+          } else {
+            # Default fallback
+            n_pcs <- which(cumvar >= 90)[1]
+            if (is.na(n_pcs)) n_pcs <- total_pcs
+            method_msg <- sprintf("Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
+          }
+          
+          # Use PC scores for analysis
+          data_for_edda <- pca_res$x[, 1:n_pcs, drop = FALSE]
+          
+          showNotification(method_msg, type = "message", duration = 5)
+          
+          incProgress(0.1, detail = paste("Fitting EDDA models on", n_pcs, "PCs..."))
+        } else {
+          # Use raw morphometric data
+          data_for_edda <- as.matrix(morpho_data)
+          incProgress(0.2, detail = "Fitting EDDA models on raw data...")
+        }
         
         # Fit EDDA models for each hypothesis
         tryCatch({
@@ -982,7 +1133,7 @@ mod_species_delim_server <- function(id, dataset_r) {
             
             # Fit EDDA model (G=1, different covariance per class)
             models[[hyp_name]] <- mclust::MclustDA(
-              as.matrix(morpho_data),
+              data_for_edda,
               factor(class_labels),
               modelType = "EDDA",
               verbose = FALSE
@@ -1295,7 +1446,7 @@ mod_species_delim_server <- function(id, dataset_r) {
       }
     )
     
-     # Run supervised GMM
+    # Run supervised GMM
     observeEvent(input$run_supervised, {
       
       # Check if data is loaded
@@ -1378,7 +1529,7 @@ mod_species_delim_server <- function(id, dataset_r) {
       
       cat("Cluster Sizes:\n")
       print(table(model$classification))
-
+      
     })
     
     # Display cluster-species table
@@ -1522,6 +1673,7 @@ mod_species_delim_server <- function(id, dataset_r) {
         unsupervised = unsupervised_results(),
         supervised = supervised_results(),
         bayesian = bayesian_results(),
+        hypothesis_data = hypothesis_data(),  
         boruta = boruta_results()
       )
     }))
