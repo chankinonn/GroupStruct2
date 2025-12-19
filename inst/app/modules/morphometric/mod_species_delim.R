@@ -198,7 +198,7 @@ mod_species_delim_ui <- function(id) {
                           "This is a", strong("greedy stepwise search"), "that follows a single optimal merging path,",
                           "not an exhaustive test of all possible partitions.",
                           "For comprehensive hypothesis testing of specific delimitation schemes,",
-                          "use the", strong("Hypothesis Testing"), "tab where you can define and compare",
+                          "use the", strong("Bayesian Hypothesis Testing"), "tab where you can define and compare",
                           "all taxonomic hypotheses of interest.",
                           "For best results, assign the most plausible splitty grouping scheme to your original uploaded data."),
                         
@@ -207,7 +207,7 @@ mod_species_delim_ui <- function(id) {
                           p(style = "margin: 0;", 
                             strong("⚠ Performance Warning:"),
                             "Datasets with >10 initial OTUs may take several minutes to hours to complete.",
-                            "For complex scenarios, consider using", strong("Bayesian Species Delimitation"), 
+                            "For complex scenarios, consider using", strong("Bayesian Hypothesis Testing"), 
                             "to test specific hypotheses instead of exhaustive search.")
                         ),
                         hr(),
@@ -246,29 +246,8 @@ mod_species_delim_ui <- function(id) {
                         h4("Bayesian Hypothesis Testing Using Gaussian Mixture Models"),
                         
                         p("This analysis evaluates competing taxonomic hypotheses using Bayesian model comparison.",
-                          "You can test hypotheses using either", strong("raw morphometric data"), 
+                          "You can test hypotheses using either", strong("raw morphometric data (recommended)"), 
                           "or", strong("PCA scores.")),
-                        
-                        tags$div(
-                          style = "background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px; margin: 15px 0;",
-                          p(style = "margin: 0; margin-bottom: 10px;",
-                            strong("Why EDDA Instead of Classical DA?")),
-                          p(style = "margin: 0; margin-bottom: 8px;",
-                            strong("Classical Discriminant Analysis (DA/LDA)"), 
-                            "assumes all groups have the", strong("same covariance structure"), 
-                            "(homoscedasticity) - a single pooled covariance matrix across all groups."),
-                            
-                          p(style = "margin: 0;",
-                            strong("EDDA (Eigenvalue Decomposition Discriminant Analysis)"), 
-                            "allows each group to have its", strong("own covariance structure"), 
-                            "(heteroscedasticity), accommodating biological reality where taxonomic groups",
-                            "differ in their amount and pattern of variation.",
-                            "EDDA is more robust because: (1) classical DA is a special case of EDDA",
-                            "(equal covariances), so if groups truly have equal variance, EDDA will detect this",
-                            "and favor the simpler model via BIC; (2) if covariances differ, DA gives biased results",
-                            "while EDDA remains accurate; (3) EDDA naturally integrates with Bayesian model comparison",
-                            "via BIC.")
-                        ),
                         
                         tags$div(
                           style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
@@ -296,17 +275,6 @@ mod_species_delim_ui <- function(id) {
                             "different taxonomic hypotheses. The PCA coordinates remain constant - only",
                             "the grouping/coloring changes based on the selected hypothesis.")
                         ),
-                        
-                        p(strong("Method:"), 
-                          "The analysis uses", code("modelType = 'EDDA'"), 
-                          "with G=1 (one Gaussian component per group), which assumes each taxonomic group",
-                          "can be described by a single multivariate Gaussian distribution.",
-                          "BIC and Bayes Factors quantify support for competing hypotheses."),
-                        
-                        p(strong("Priors:"),
-                          "The analysis uses flat (uninformative) priors, treating all hypotheses as equally likely",
-                          "before examining the data. Posterior probabilities are then calculated based solely on",
-                          "how well each hypothesis fits the morphometric data."),
                         
                         hr(),
                         
@@ -400,8 +368,14 @@ mod_species_delim_ui <- function(id) {
                             sliderInput(ns("pca_variance_threshold"),
                                         "Variance to retain (%):",
                                         min = 70, max = 100, value = 90, step = 5),
-                            p(style = "color: #666; font-style: italic; font-size: 0.9em;",
-                              "Minimum number of PCs needed to explain this percentage of variance will be used.")
+                            tags$div(
+                              style = "background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 8px; margin: 10px 0;",
+                              p(style = "margin: 0; font-size: 0.9em;",
+                                icon("info-circle"), strong(" Recommended:"),
+                                "90% variance threshold (default) is the standard approach in morphometric analyses",
+                                "(Jombart et al. 2010). This retains PCs that explain meaningful variation",
+                                "while excluding low-variance PCs that primarily contain noise.")
+                            )
                           ),
                           
                           conditionalPanel(
@@ -415,17 +389,37 @@ mod_species_delim_ui <- function(id) {
                           
                           conditionalPanel(
                             condition = sprintf("input['%s'] == 'all'", ns("pc_selection_method")),
+                            tags$div(
+                              style = "background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px; margin: 10px 0;",
+                              p(style = "margin: 0;",
+                                icon("exclamation-triangle"), strong(" Warning:"),
+                                "Using all PCs is generally", strong("not recommended"), "for hypothesis testing.",
+                                "Low-variance PCs contain mostly noise (measurement error, within-group variation)",
+                                "which can obscure real group differences and inflate BIC penalties, often favoring",
+                                "simpler models (fewer species) artificially. In high dimensions, discriminant analysis",
+                                "becomes unstable and overfitting becomes severe. Use this option only if you have strong",
+                                em("a priori"), "reasons or if sample size greatly exceeds the number of traits (n >> p).")
+                            ),
                             p(style = "color: #666; font-style: italic;",
                               "All available PCs will be used (no dimensionality reduction).")
                           ),
                           
                           tags$div(
-                            style = "background-color: #f8f9fa; border-left: 3px solid #6c757d; padding: 8px; margin: 10px 0;",
-                            p(style = "margin: 0; font-size: 0.9em;",
-                              strong("Recommendation:"), 
-                              "Use variance threshold (90%) as default. Use fixed number if you have",
-                              "a priori reasons. Use all PCs only if your sample size is much larger than",
-                              "the number of traits.")
+                            style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 10px 0;",
+                            p(style = "margin: 0;",
+                              strong("Best Practices:"),
+                              tags$ul(style = "margin: 5px 0;",
+                                      tags$li(strong("Default (90% variance):"), 
+                                              "Standard practice in morphometric analyses (Jombart et al. 2010).",
+                                              "Balances signal retention with noise exclusion."),
+                                      tags$li(strong("Lower threshold (70-80%):"), 
+                                              "Consider if sample size is small (<50) or you have many traits (>20)."),
+                                      tags$li(strong("Fixed number:"), 
+                                              "Use only if you have", em("a priori"), "justification from pilot studies or literature."),
+                                      tags$li(strong("All PCs:"), 
+                                              strong("Not recommended."), "Including noise dimensions can artificially favor",
+                                              "lumped models and reduce discriminatory power.")
+                              ))
                           )
                         ),
                         
@@ -439,6 +433,10 @@ mod_species_delim_ui <- function(id) {
                         hr(),
                         
                         h4("Results"),
+                        
+                        # Dimension selection info (if PCA was used)
+                        uiOutput(ns("dimension_selection_info")),
+                        
                         DT::dataTableOutput(ns("bayesian_results_table")),
                         hr(),
                         uiOutput(ns("bayesian_interpretation")),
@@ -594,6 +592,7 @@ mod_species_delim_server <- function(id, dataset_r) {
     hypothesis_data <- reactiveVal(NULL)
     bayesian_results <- reactiveVal(NULL)
     boruta_results <- reactiveVal(NULL)
+    dimension_selection_results <- reactiveVal(NULL)  # Store PCA dimension selection info
     
     ## Boruta analysis
     
@@ -1087,23 +1086,51 @@ mod_species_delim_server <- function(id, dataset_r) {
             if (is.na(n_pcs)) {
               n_pcs <- total_pcs  # Use all if threshold not reached
             }
-            method_msg <- sprintf("Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
+            
+            dimension_selection_results(list(
+              method = "Variance threshold",
+              n_components = n_pcs,
+              variance_explained = cumvar[n_pcs]
+            ))
+            
+            method_msg <- sprintf("Variance threshold: Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
             
           } else if (pc_method == "fixed") {
             # Fixed number method
             n_pcs <- min(input$pca_n_components, total_pcs)
-            method_msg <- sprintf("Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
+            
+            dimension_selection_results(list(
+              method = "Fixed number",
+              n_components = n_pcs,
+              variance_explained = cumvar[n_pcs]
+            ))
+            
+            method_msg <- sprintf("Fixed: Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
             
           } else if (pc_method == "all") {
             # Use all PCs
             n_pcs <- total_pcs
+            
+            dimension_selection_results(list(
+              method = "All PCs",
+              n_components = n_pcs,
+              variance_explained = 100
+            ))
+            
             method_msg <- sprintf("Using all %d PCs (100%% variance)", n_pcs)
             
           } else {
             # Default fallback
             n_pcs <- which(cumvar >= 90)[1]
             if (is.na(n_pcs)) n_pcs <- total_pcs
-            method_msg <- sprintf("Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
+            
+            dimension_selection_results(list(
+              method = "Default (90% variance)",
+              n_components = n_pcs,
+              variance_explained = cumvar[n_pcs]
+            ))
+            
+            method_msg <- sprintf("Default: Using %d PCs (%.1f%% variance)", n_pcs, cumvar[n_pcs])
           }
           
           # Use PC scores for analysis
@@ -1115,6 +1142,7 @@ mod_species_delim_server <- function(id, dataset_r) {
         } else {
           # Use raw morphometric data
           data_for_edda <- as.matrix(morpho_data)
+          dimension_selection_results(NULL)  # Clear any previous PCA info
           incProgress(0.2, detail = "Fitting EDDA models on raw data...")
         }
         
@@ -1157,6 +1185,24 @@ mod_species_delim_server <- function(id, dataset_r) {
           showNotification(paste("Error:", e$message), type = "error")
         })
       })
+    })
+    
+    # Display dimension selection info (if PCA was used)
+    output$dimension_selection_info <- renderUI({
+      dim_info <- dimension_selection_results()
+      
+      if (!is.null(dim_info)) {
+        tags$div(
+          style = "background-color: #d4edda; border-left: 4px solid #28a745; padding: 12px; margin: 15px 0;",
+          p(style = "margin: 0;",
+            icon("check-circle"), strong(" Dimension Selection:"),
+            sprintf("%s - %d PCs retained (%.1f%% variance).",
+                    dim_info$method, dim_info$n_components, dim_info$variance_explained)
+          )
+        )
+      } else {
+        NULL  # No PCA used, show nothing
+      }
     })
     
     # Display Bayesian results table

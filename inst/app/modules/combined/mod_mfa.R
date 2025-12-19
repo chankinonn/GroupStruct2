@@ -5,15 +5,7 @@ mod_mfa_ui <- function(id) {
     h3("Multiple Factor Analysis (MFA)"),
     hr(),
     p("The number of dimensions to retain for the MFA (ncp) is dynamically selected based on what the data can support, but capped at 30. All retained dimensions are used in the PERMANOVA analysis."),
-    
-    tags$div(
-      style = "background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 15px 0;",
-      p(style = "margin: 0;",
-        strong("Citation:"),
-        "If you use this module, please cite: Grismer, L. L. (2025). Introducing multiple factor analysis (MFA) as a diagnostic taxonomic tool complementing principal component analysis (PCA).",
-        em("ZooKeys"), ", 1248, 93–109.")
-    ),
-    
+    p("If you use this module, please cite: Grismer, L. L. (2025). Introducing multiple factor analysis (MFA) as a diagnostic taxonomic tool complementing principal component analysis (PCA). ZooKeys, 1248, 93–109."),
     br(),
     tabsetPanel(id = ns("mfa_main_tabs"), 
                 tabPanel("MFA Analysis & Results", 
@@ -79,20 +71,13 @@ mod_mfa_ui <- function(id) {
                          h4("Bayesian Hypothesis Testing on MFA Scores"),
                          
                          p("This analysis evaluates competing taxonomic hypotheses using Bayesian model comparison",
-                           "on", strong("MFA factor scores"), "(continuous variables derived from mixed data types).",
+                           "on the", strong("MFA factor scores"), "(continuous variables derived from mixed data types).",
                            "The algorithm applies EDDA (Eigenvalue Decomposition Discriminant Analysis) to the MFA scores",
                            "and computes Bayesian Information Criterion (BIC) to determine which hypothesis",
                            "is best supported by the multivariate morphological structure."),
                          
                          tags$div(
                            style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
-                           p(style = "margin: 0; margin-bottom: 10px;",
-                             strong("Methodological Note:"),
-                             "This approach applies discriminant analysis to transformed coordinates (MFA scores),",
-                             "then compares competing hypotheses via BIC.",
-                             "While PERMANOVA (previous tab) tests", em("if"), "groups differ,",
-                             "this Bayesian framework tests", em("which grouping scheme"), "best fits the data,",
-                             "providing complementary hypothesis-driven inference."),
                            p(style = "margin: 0;",
                              strong("How this works:"),
                              tags$ol(
@@ -101,18 +86,6 @@ mod_mfa_ui <- function(id) {
                                tags$li("BIC comparison identifies which hypothesis best fits the data"),
                                tags$li("This extends Bayesian species delimitation to datasets with mixed data types")
                              ))
-                         ),
-                         
-                         tags$div(
-                           style = "background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 10px; margin: 15px 0;",
-                           p(style = "margin: 0;",
-                             icon("info-circle"), strong(" Visualization:"),
-                             "After running this analysis, you can visualize how different hypotheses",
-                             "group specimens in MFA space by going to",
-                             strong("Visualization > MFA: Individuals"), "tab.",
-                             "A 'Grouping Selection' dropdown will appear, allowing you to toggle between",
-                             "different taxonomic hypotheses. The MFA coordinates remain constant - only",
-                             "the grouping/coloring changes based on the selected hypothesis.")
                          ),
                          
                          p(strong("Important:"), 
@@ -204,8 +177,13 @@ mod_mfa_ui <- function(id) {
                            sliderInput(ns("mfa_variance_threshold"),
                                        "Cumulative Variance Threshold (%):",
                                        min = 70, max = 100, value = 90, step = 5),
-                           p(style = "color: #666; font-size: 0.9em;",
-                             em("Retains dimensions until cumulative variance reaches threshold. Default 90% is recommended."))
+                           tags$div(
+                             style = "background-color: #e7f3ff; border-left: 4px solid #2196F3; padding: 8px; margin: 10px 0;",
+                             p(style = "margin: 0; font-size: 0.9em;",
+                               icon("info-circle"), strong(" Recommended:"),
+                               "90% variance threshold (default) retains dimensions that explain meaningful variation",
+                               "while excluding low-variance dimensions that primarily contain noise.")
+                           )
                          ),
                          
                          conditionalPanel(
@@ -217,15 +195,37 @@ mod_mfa_ui <- function(id) {
                              em("Manually specify number of dimensions. Use with caution."))
                          ),
                          
+                         conditionalPanel(
+                           condition = sprintf("input['%s'] == 'all'", ns("mfa_dim_selection_method")),
+                           tags$div(
+                             style = "background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px; margin: 10px 0;",
+                             p(style = "margin: 0;",
+                               icon("exclamation-triangle"), strong(" Warning:"),
+                               "Using all dimensions is generally", strong("not recommended"), "for hypothesis testing.",
+                               "Low-variance dimensions contain mostly noise (measurement error, within-group variation)",
+                               "which can obscure real group differences and inflate BIC penalties, often favoring",
+                               "simpler models (fewer species) artificially. In high dimensions, discriminant analysis",
+                               "becomes unstable and overfitting becomes severe. Use this option only if you have strong",
+                               em("a priori"), "reasons or if sample size greatly exceeds the number of dimensions (n >> p).")
+                           ),
+                           p(style = "color: #666; font-style: italic;",
+                             "All available MFA dimensions will be used (no dimensionality reduction).")
+                         ),
+                         
                          tags$div(
                            style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
                            p(style = "margin: 0;",
-                             strong("Recommendation:"), 
-                             "Start with 90% variance threshold (default). Use fewer dimensions if:",
-                             tags$ul(
-                               tags$li("Sample size is small (<50)"),
-                               tags$li("Results appear unstable"),
-                               tags$li("You have many MFA dimensions (>20)")
+                             strong("Best Practices:"),
+                             tags$ul(style = "margin: 5px 0;",
+                                     tags$li(strong("Default (90% variance):"), 
+                                             "Balances signal retention with noise exclusion."),
+                                     tags$li(strong("Lower threshold (70-80%):"), 
+                                             "Consider if sample size is small (<50) or you have many dimensions (>20)."),
+                                     tags$li(strong("Fixed number:"), 
+                                             "Use only if you have", em("a priori"), "justification from pilot studies or literature."),
+                                     tags$li(strong("All dimensions:"), 
+                                             strong("Not recommended."), "Including noise dimensions can artificially favor",
+                                             "lumped models and reduce discriminatory power.")
                              ))
                          ),
                          
