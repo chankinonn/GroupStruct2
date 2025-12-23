@@ -584,7 +584,7 @@ mod_visual_server_meristic <- function(id, dataset,
         
         p <- p + ggplot2::geom_point(data = centroids,
                                      aes(x = PC1, y = PC2),
-                                     shape = 8, size = 4, color = "black", fill = "white", stroke = 1,
+                                     shape = 8, size = 3, color = "black", fill = "white", stroke = 1,
                                      inherit.aes = FALSE)
       }
       
@@ -728,7 +728,7 @@ mod_visual_server_meristic <- function(id, dataset,
           data = centroids,
           aes(x = LD1, y = LD2),
           shape = 8,
-          size = 4,
+          size = 3,
           color = "black",
           fill = "white",
           stroke = 1,

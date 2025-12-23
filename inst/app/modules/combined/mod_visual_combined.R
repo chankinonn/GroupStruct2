@@ -890,7 +890,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         p <- p + geom_point(
           data = centroids,
           aes(x = Dim.1, y = Dim.2),
-          shape = 8, size = 4, color = "black", fill = "white", stroke = 1,
+          shape = 8, size = 3, color = "black", fill = "white", stroke = 1,
           inherit.aes = FALSE, show.legend = FALSE
         )
       }
