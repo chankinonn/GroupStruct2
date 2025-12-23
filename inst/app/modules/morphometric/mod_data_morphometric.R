@@ -77,7 +77,7 @@ mod_data_server_morphometric <- function(id) {
         return()
       }
       
-      df[[1]] <- as.character(df[[1]])
+      df[[1]] <- trimws(as.character(df[[1]]))
       df[[1]] <- factor(df[[1]])
       
       trait_cols <- df[, 2:ncol(df), drop = FALSE]
@@ -145,7 +145,7 @@ mod_data_server_morphometric <- function(id) {
         return()
       }
       
-      df[[1]] <- as.character(df[[1]])
+      df[[1]] <- trimws(as.character(df[[1]]))
       df[[1]] <- factor(df[[1]])
       
       trait_cols <- df[, 2:ncol(df), drop = FALSE]
