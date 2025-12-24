@@ -1,4 +1,4 @@
-#' @importFrom shiny tagList NS h3 hr p br h4 strong
+#' @importFrom shiny tagList NS h3 hr p br h4 strong h2 tabsetPanel tabPanel tags em HTML tableOutput
 NULL
 
 #' Landing UI
@@ -67,17 +67,17 @@ landing_page_ui <- function() {
                tags$div(
                  style = "background-color: #e9ecef; border-left: 4px solid #6c757d; padding: 15px; margin: 15px 0;",
                  tags$ol(
-                   tags$li(strong("Input Data"), "→ Load your dataset and perform the outlier test to check for erroneous data.",
+                   tags$li(strong("Input Data"), "-> Load your dataset and perform the outlier test to check for erroneous data.",
                            "Values flagged by the outlier test are not always wrong.",
                            "You know your data best, so use your own judgement to determine whether a data point is wrong or is a true outlier.",
                            "Remove/correct and reload the cleaned data before proceeding."),
-                   tags$li(strong("Summary Statistics"), "→ Explore descriptive statistics and data distributions.",
+                   tags$li(strong("Summary Statistics"), "-> Explore descriptive statistics and data distributions.",
                            "Use this step to understand your data structure and identify any remaining quality issues.")
                  ),
                  tags$div(
                    style = "background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; padding: 10px; margin-top: 15px;",
                    p(style = "margin: 0;",
-                     strong("💡 Pro Tip:"), 
+                     strong("Pro Tip:"), 
                      "After performing the outlier test and checking summary statistics, examine scatter plots, box plots, and violin plots in the",
                      strong("Visualization"), "module to visually identify outliers and erroneous data.",
                      "Visual inspection often reveals data quality issues that numerical summaries might miss.")
@@ -99,7 +99,7 @@ landing_page_ui <- function() {
                                    tags$li("Run PCA to visualize morphological variation"),
                                    tags$li("Run PERMANOVA to test overall group differences")
                                   )),
-                         tags$li(strong("Visualization"), "→ Create publication-ready plots")
+                         tags$li(strong("Visualization"), "-> Create publication-ready plots")
                  )
                ),
                
@@ -129,7 +129,7 @@ landing_page_ui <- function() {
                                    tags$li(strong("Model-based Hypothesis Testing:"), "Compare specific user-defined taxonomic hypotheses"),
                                    tags$li(strong("Diagnostic Characters (Machine Learning):"), "Identify which traits best distinguish groups using Random Forest")
                                  )),
-                         tags$li(strong("Visualization"), "→ Create publication-ready plots")
+                         tags$li(strong("Visualization"), "-> Create publication-ready plots")
                  )
                ),
                
@@ -164,7 +164,7 @@ landing_page_ui <- function() {
                      "Use inferential statistics to test significance and quantify differences.",
                      "Use Bayesian GMM analyses to evaluate alternative taxonomic arrangements.",
                      "Use Machine Learning in conjunction with univariate analyses to identify diagnostic characters for taxonomic keys.",
-                     "There is no single 'correct' workflow—explore your data using both frameworks to gain comprehensive insights.")
+                     "There is no single 'correct' workflow--explore your data using both frameworks to gain comprehensive insights.")
                  )
                ),
                
@@ -219,7 +219,7 @@ landing_page_ui <- function() {
                  tags$li("Before performing any analyses, check data quality and identify outliers"),
                  tags$li("For morphometric data,", strong("allometric correction"), "should be performed before downstream analyses. Select 'No Correction' if your organism does not exhibit allometric growth"),
                  tags$li("Use", strong("Visualization"), "at every step to understand your data and results"),
-                 tags$li("Statistical significance ≠ taxonomic validity. Always integrate multiple lines of evidence from other sources of data. Morphology is only a single line of evidence"),
+                 tags$li("Statistical significance != taxonomic validity. Always integrate multiple lines of evidence from other sources of data. Morphology is only a single line of evidence"),
                  ),
                hr(),
       ),
@@ -328,3 +328,4 @@ mod_home_ui_combined <- function(id) {
     h4("Proceed to Input Data")
   )
 }
+
