@@ -123,7 +123,7 @@ mod_visual_ui_combined <- function(id) {
                                   checkboxInput(ns("mfa_convex_hull"), "Convex Hulls", value = FALSE),
                                   conditionalPanel(
                                     condition = sprintf("input['%s']", ns("mfa_outline_shapes")),
-                                    sliderInput(ns("mfa_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 5, value = 1, step = 1, width = '150px')
+                                    sliderInput(ns("mfa_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
                                   ),
                                   conditionalPanel(
                                     condition = sprintf("input['%s'] || input['%s']", ns("mfa_ellipse"), ns("mfa_convex_hull")),
