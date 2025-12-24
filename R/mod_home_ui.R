@@ -38,7 +38,7 @@ landing_page_ui <- function() {
                  p(style = "margin: 0; margin-bottom: 10px;",
                    strong("If you use GroupStruct2, please cite:")),
                  p(style = "margin: 0; font-style: italic;",
-                   "Chan & Grismer (2026). GroupStruct2: A User-Friendly Graphical User Interface for Statistical and Visual Support in Species Diagnosis. Systematic Biology (In press)"),
+                   "Chan & Grismer (2025). GroupStruct2: A User-Friendly Graphical User Interface for Statistical and Visual Support in Species Diagnosis. Systematic Biology, syaf090. https://doi.org/10.1093/sysbio/syaf090"),
                ),
 
                hr(),
