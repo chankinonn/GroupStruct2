@@ -825,16 +825,16 @@ mod_visual_server_combined <- function(id, dataset_r,
           size = input$mfa_point_size,
           stroke = input$mfa_point_stroke,
           color = "black"
-        ) + get_fill_scale_otu(plot_palette())
+        )
       } else {
         p <- p + geom_point(
           aes(color = Group),
           shape = 19,
           size = input$mfa_point_size
-        ) + get_color_scale_otu(plot_palette())
+        )
       }
       
-      # ELLIPSE
+      # ELLIPSE 
       if (isTRUE(input$mfa_ellipse)) {
         if (isTRUE(input$mfa_outline_shapes)) {
           p <- p + stat_ellipse(
@@ -843,18 +843,18 @@ mod_visual_server_combined <- function(id, dataset_r,
             alpha = input$mfa_ellipse_alpha, 
             linewidth = input$mfa_outline_stroke,
             show.legend = FALSE
-          ) + get_fill_scale_otu(plot_palette()) + get_color_scale_otu(plot_palette())
+          )
         } else {
           p <- p + stat_ellipse(
             aes(group = Group, fill = Group),
             type = "norm", level = 0.95, geom = "polygon",
             alpha = input$mfa_ellipse_alpha, color = NA,
             show.legend = FALSE
-          ) + get_fill_scale_otu(plot_palette())
+          )
         }
       }
       
-      # HULL
+      # HULL 
       if (isTRUE(input$mfa_convex_hull)) {
         hull_df <- mfa_ind_coord %>%
           dplyr::group_by(Group) %>%
@@ -869,7 +869,7 @@ mod_visual_server_combined <- function(id, dataset_r,
             alpha = input$mfa_ellipse_alpha,
             linewidth = input$mfa_outline_stroke,
             inherit.aes = FALSE, show.legend = FALSE
-          ) + get_fill_scale_otu(plot_palette()) + get_color_scale_otu(plot_palette())
+          )
         } else {
           p <- p + geom_polygon(
             data = hull_df,
@@ -877,7 +877,7 @@ mod_visual_server_combined <- function(id, dataset_r,
             color = NA,
             alpha = input$mfa_ellipse_alpha,
             inherit.aes = FALSE, show.legend = FALSE
-          ) + get_fill_scale_otu(plot_palette())
+          )
         }
       }
       
@@ -896,6 +896,11 @@ mod_visual_server_combined <- function(id, dataset_r,
       }
       
       # FINAL LABELS + THEME + GUIDES
+      # ADD SCALES ONLY ONCE AT THE END
+      p <- p + get_fill_scale_otu(plot_palette()) + 
+        get_color_scale_otu(plot_palette())
+      
+      # FINAL LABELS + THEME + GUIDES (rest stays the same)
       p <- p +
         get_custom_theme() +
         labs(
@@ -905,7 +910,7 @@ mod_visual_server_combined <- function(id, dataset_r,
           color = str_to_title(group_col_name)
         )
       
-      # Guides — conditionally toggle which legend is used
+      # Guides (rest stays the same)
       if (isTRUE(input$mfa_outline_points)) {
         p <- p + guides(
           fill = guide_legend(override.aes = list(
