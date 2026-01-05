@@ -46,6 +46,9 @@ mod_visual_ui_combined <- function(id) {
                                   numericInput(ns("plot_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
                                   numericInput(ns("plot_box_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
                                   hr(),
+                                  sliderInput(ns("box_outline_stroke"), "Boxplot Outline Width",
+                                              min = 0, max = 2, value = 0.5, step = 0.1, width = '150px'),
+                                  hr(),
                                   uiOutput(ns("box_variable_selector")),
                                   uiOutput(ns("box_group_selector")),
                                   hr(),
@@ -505,7 +508,10 @@ mod_visual_server_combined <- function(id, dataset_r,
         pivot_longer(-all_of(group_var_name), names_to = "Trait", values_to = "Value")
       
       ggplot(df_long, aes(x = .data[[group_var_name]], y = .data[["Value"]], fill = .data[[group_var_name]])) +
-        geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+        geom_boxplot(outlier.shape = NA, 
+                     alpha = 0.7,
+                     color = "black",
+                     linewidth = input$box_outline_stroke) +
         facet_wrap(~Trait, scales = "free_y") +
         get_fill_scale_otu(plot_palette()) + # Use OTU-specific fill scale
         get_custom_theme() +

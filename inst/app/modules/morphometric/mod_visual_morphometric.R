@@ -46,6 +46,9 @@ mod_visual_ui_morphometric <- function(id) {
                                   numericInput(ns("plot_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
                                   numericInput(ns("plot_box_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
                                   hr(),
+                                  sliderInput(ns("box_outline_stroke"), "Boxplot Outline Width",
+                                              min = 0, max = 2, value = 0.5, step = 0.1, width = '150px'),
+                                  hr(),
                                   uiOutput(ns("box_variable_selector")),
                                   uiOutput(ns("box_group_selector")),
                                   hr(),
@@ -522,18 +525,23 @@ mod_visual_server_morphometric <- function(id, dataset,
       if (!is.null(input$selected_box_groups)) {
         df <- df[df[[1]] %in% input$selected_box_groups, ]
       }
-      df[[names(df)[1]]] <- as.factor(df[[names(df)[1]]])
       traits_to_plot <- input$selected_box_traits
       req(length(traits_to_plot) > 0)
+      
       df_long <- tidyr::pivot_longer(df, cols = all_of(traits_to_plot), names_to = "Trait", values_to = "Value")
       
-      ggplot2::ggplot(df_long, ggplot2::aes(x = .data[[names(df)[1]]], y = .data[["Value"]], fill = .data[[names(df)[1]]])) +
-        ggplot2::geom_boxplot(outlier.shape = NA, alpha = 0.7) +
+      ggplot2::ggplot(df_long, ggplot2::aes(x = .data[[names(df)[1]]], 
+                                            y = .data[["Value"]], 
+                                            fill = .data[[names(df)[1]]])) +
+        ggplot2::geom_boxplot(outlier.shape = NA, 
+                              alpha = 0.7,
+                              color = "black",
+                              linewidth = input$box_outline_stroke) +
         ggplot2::facet_wrap(~Trait, scales = "free_y") +
         get_fill_scale(plot_palette()) +
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(),
                          plot_x_angle(), plot_facet_size(),
-                         legend_text_size(), legend_title_size(), theme_choice = input$plot_theme)
+                         legend_text_size(), legend_title_size(), input$plot_theme)
     })
     
     plot_violin_obj <- reactive({
