@@ -28,6 +28,7 @@ mod_inferential_ui_morphometric <- function(id) {
                          h5("Significant Traits by Pairwise Comparison:"),
                          uiOutput(ns("alpha_selector_ui")), 
                          uiOutput(ns("significant_traits_ui")), 
+                         downloadButton(ns("download_significant_traits"), "Download Significant Traits"),
                          hr(),
                 ),
                 
@@ -626,6 +627,72 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           }
         })
         
+        significant_trait_summary_df <- reactive({
+          pairwise_list <- all_pairwise_results()
+          req(pairwise_list)
+          
+          alpha <- as.numeric(input$alpha_level)
+          if (is.null(alpha)) alpha <- 0.05
+          
+          # Combine the list of data frames into one wide data frame
+          all_comparisons <- unique(unlist(lapply(pairwise_list, function(df) df$Comparison)))
+          combined_df <- data.frame(Comparison = all_comparisons, stringsAsFactors = FALSE)
+          
+          for (trait in names(pairwise_list)) {
+            df <- pairwise_list[[trait]]
+            df <- df %>% 
+              dplyr::select(Comparison, p_value, Method) %>% 
+              dplyr::rename(!!paste0(trait, "_p_value") := p_value,
+                            !!paste0(trait, "_method") := Method)
+            combined_df <- merge(combined_df, df, by = "Comparison", all.x = TRUE)
+          }
+          
+          pval_cols <- grep("_p_value$", names(combined_df), value = TRUE)
+          if (length(pval_cols) == 0) {
+            return(data.frame(
+              Comparison = "No p-value columns found",
+              Significant_Traits = "",
+              stringsAsFactors = FALSE
+            ))
+          }
+          
+          # Normalize comparison strings for grouping
+          combined_df$NormComparison <- sapply(strsplit(as.character(combined_df$Comparison), "[-]|[ ]vs[ ]", perl = TRUE),
+                                               function(x) paste(sort(trimws(x)), collapse = " vs "))
+          
+          sig_list <- lapply(unique(combined_df$NormComparison), function(norm_comp) {
+            rows <- combined_df[combined_df$NormComparison == norm_comp, ]
+            sig_traits <- c()
+            for (col in pval_cols) {
+              pvals <- as.numeric(rows[[col]])
+              if (any(!is.na(pvals) & pvals < alpha)) {
+                trait <- sub("_p_value$", "", col)
+                sig_traits <- c(sig_traits, trait)
+              }
+            }
+            if (length(sig_traits) > 0) {
+              return(data.frame(
+                Comparison = norm_comp,
+                Significant_Traits = paste(sig_traits, collapse = ", "),
+                stringsAsFactors = FALSE
+              ))
+            }
+            return(NULL)
+          })
+          
+          sig_list <- sig_list[!sapply(sig_list, is.null)]
+          
+          if (length(sig_list) == 0) {
+            return(data.frame(
+              Comparison = "No significant traits",
+              Significant_Traits = "",
+              stringsAsFactors = FALSE
+            ))
+          } else {
+            return(do.call(rbind, sig_list))
+          }
+        })
+        
         
         output$download_all_summary <- downloadHandler(
           filename = function() {
@@ -739,6 +806,19 @@ mod_inferential_server_morphometric <- function(id, data_r) {
         output$significant_traits_ui <- renderUI({
           verbatimTextOutput(ns("significant_traits"))
         })
+        
+        output$download_significant_traits <- downloadHandler(
+          filename = function() {
+            alpha <- as.numeric(input$alpha_level)
+            if (is.null(alpha)) alpha <- 0.05
+            paste0("significant_traits_alpha_", alpha, "_", Sys.Date(), ".csv")
+          },
+          content = function(file) {
+            df <- significant_trait_summary_df()
+            req(df)
+            write.csv(df, file, row.names = FALSE)
+          }
+        )
         
         output$significant_traits <- renderText({
           significant_trait_summary()

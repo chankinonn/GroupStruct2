@@ -28,6 +28,7 @@ mod_inferential_ui_meristic <- function(id) {
                          h5("Significant Traits by Pairwise Comparison:"),
                          uiOutput(ns("alpha_selector_ui")), 
                          uiOutput(ns("significant_traits_ui")), 
+                         downloadButton(ns("download_significant_traits"), "Download Significant Traits"),
                          hr(),
                 ),
                 
@@ -535,6 +536,54 @@ mod_inferential_server_meristic <- function(id, data_r) {
           }
         })
         
+        significant_trait_summary_df <- reactive({
+          df <- all_pairwise_results()
+          req(df)
+          
+          alpha <- as.numeric(input$alpha_level)
+          if (is.null(alpha)) alpha <- 0.05
+          
+          pval_cols <- grep("_p-value$", names(df), value = TRUE)
+          req(length(pval_cols) > 0)
+          
+          # Normalize all comparisons first: split, sort, join back
+          df$NormComparison <- sapply(strsplit(as.character(df$Comparison), "[-]|[ ]vs[ ]", perl = TRUE),
+                                      function(x) paste(sort(trimws(x)), collapse = " vs "))
+          
+          # Group rows by normalized comparison, aggregate significant traits for each pair
+          sig_list <- lapply(unique(df$NormComparison), function(norm_comp) {
+            rows <- df[df$NormComparison == norm_comp, ]
+            sig_traits <- c()
+            for (col in pval_cols) {
+              pvals <- as.numeric(rows[[col]])
+              if (any(!is.na(pvals) & pvals < alpha)) {
+                trait <- sub("_p-value$", "", col)
+                sig_traits <- c(sig_traits, trait)
+              }
+            }
+            if (length(sig_traits) > 0) {
+              return(data.frame(
+                Comparison = norm_comp,
+                Significant_Traits = paste(sig_traits, collapse = ", "),
+                stringsAsFactors = FALSE
+              ))
+            }
+            return(NULL)
+          })
+          
+          sig_list <- sig_list[!sapply(sig_list, is.null)]
+          
+          if (length(sig_list) == 0) {
+            return(data.frame(
+              Comparison = "No significant traits",
+              Significant_Traits = "",
+              stringsAsFactors = FALSE
+            ))
+          } else {
+            return(do.call(rbind, sig_list))
+          }
+        })
+        
         output$download_all_trait_summary <- downloadHandler(
           filename = function() {
             paste0("summary_all_traits_", Sys.Date(), ".csv")
@@ -715,6 +764,19 @@ mod_inferential_server_meristic <- function(id, data_r) {
         output$significant_traits_ui <- renderUI({
           verbatimTextOutput(ns("significant_traits"))
         })
+        
+        output$download_significant_traits <- downloadHandler(
+          filename = function() {
+            alpha <- as.numeric(input$alpha_level)
+            if (is.null(alpha)) alpha <- 0.05
+            paste0("significant_traits_alpha_", alpha, "_", Sys.Date(), ".csv")
+          },
+          content = function(file) {
+            df <- significant_trait_summary_df()
+            req(df)
+            write.csv(df, file, row.names = FALSE)
+          }
+        )
         
         output$significant_traits <- renderText({
           significant_trait_summary()
