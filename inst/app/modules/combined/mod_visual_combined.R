@@ -94,8 +94,8 @@ mod_visual_ui_combined <- function(id) {
                            ),
                            column(3,
                                   br(),
-                                  numericInput(ns("mfa_eigen_plot_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '100%'), # Added width = '100%'
-                                  numericInput(ns("mfa_eigen_plot_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '100%'), # ADDED PLOT WIDTH
+                                  numericInput(ns("mfa_eigen_plot_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '100%'),
+                                  numericInput(ns("mfa_eigen_plot_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '100%'),
                                   hr(),
                                   downloadButton(ns("download_mfa_eigen_pdf"), "Download PDF"),
                                   br(),
@@ -115,6 +115,30 @@ mod_visual_ui_combined <- function(id) {
                                   numericInput(ns("mfa_individuals_plot_height"), "Plot Height (px)", value = 500, min = 300, step = 50, width = '150px'), 
                                   numericInput(ns("mfa_individuals_plot_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'), 
                                   hr(),
+                                  h5("MFA Dimension Selection"),
+                                  uiOutput(ns("mfa_x_axis_selector")),
+                                  uiOutput(ns("mfa_y_axis_selector")),
+                                  hr(),
+                                  h5("Biplot Options"),
+                                  checkboxInput(ns("mfa_biplot_quanti"), "Show Quantitative Variables (Arrows)", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_biplot_quanti")),
+                                    checkboxInput(ns("mfa_quanti_labels"), "Show Quantitative Labels", value = TRUE),
+                                    colourInput(ns("mfa_arrow_color"), "Arrow Color:", value = "#8B0000", showColour = "background"),
+                                    sliderInput(ns("mfa_arrow_size"), "Arrow Width:", min = 0.5, max = 3, value = 1, step = 0.1, width = '150px'),
+                                    sliderInput(ns("mfa_arrow_alpha"), "Arrow Transparency:", min = 0.1, max = 1, value = 0.7, step = 0.1, width = '150px'),
+                                    numericInput(ns("mfa_arrow_label_size"), "Arrow Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                  ),
+                                  checkboxInput(ns("mfa_biplot_quali"), "Show Qualitative Categories (Points)", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_biplot_quali")),
+                                    checkboxInput(ns("mfa_quali_labels"), "Show Category Labels", value = TRUE),
+                                    colourInput(ns("mfa_quali_color"), "Category Color:", value = "#0066CC", showColour = "background"),
+                                    numericInput(ns("mfa_quali_size"), "Category Point Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
+                                    numericInput(ns("mfa_quali_label_size"), "Category Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                  ),
+                                  hr(),
+                                  h5("Points & Groups"),
                                   numericInput(ns("mfa_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
                                   checkboxInput(ns("mfa_outline_points"), "Outline Points", value = FALSE),
                                   conditionalPanel(
@@ -136,6 +160,7 @@ mod_visual_ui_combined <- function(id) {
                                     condition = sprintf("input['%s'] || input['%s']", ns("mfa_ellipse"), ns("mfa_convex_hull")),
                                     sliderInput(ns("mfa_ellipse_alpha"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.4, step = 0.05, width = '150px')
                                   ),
+                                  hr(),
                                   downloadButton(ns("download_mfa_individuals_pdf"), "Download PDF"),
                                   br(),
                                   downloadButton(ns("download_mfa_individuals_jpeg"), "Download JPEG"),
@@ -205,13 +230,13 @@ mod_visual_server_combined <- function(id, dataset_r,
     
     # Get manual colors from the passed reactive (for OTUs)
     get_manual_colors <- reactive({
-      req(manual_colors_r()) # Require the manual_colors_r to be ready
+      req(manual_colors_r())
       manual_colors_r()
     })
     
     # Separate color control for Variable Contributions plot
     get_mfa_var_type_colors <- reactive({
-      req(mfa_type_colors_r())  # Temporarily still using same source
+      req(mfa_type_colors_r())
       mfa_type_colors_r()
     })
     
@@ -231,13 +256,8 @@ mod_visual_server_combined <- function(id, dataset_r,
       x_choices <- setdiff(numeric_vars, group_col)
       
       tagList(
-        # X Variable Dropdown 
         selectInput(ns("scatter_xvar"), "X Variable", choices = x_choices, selected = x_choices[1]),
-        
-        # Y Variable Dropdown 
         selectInput(ns("scatter_yvar"), "Y Variable", choices = x_choices, selected = x_choices[2]),
-        
-        # Groups to Plot Checkboxes
         checkboxGroupInput(ns("scatter_group_filter"), "Select Groups to Plot:",
                            choices = unique(df[[group_col]]), selected = unique(df[[group_col]]))
       )
@@ -246,7 +266,6 @@ mod_visual_server_combined <- function(id, dataset_r,
     # Add variable selection for box and violin plots
     output$box_variable_selector <- renderUI({
       req(dataset_r())
-      # Get only numeric columns from the dataset, excluding the group column
       numeric_cols <- names(dataset_r())[sapply(dataset_r(), is.numeric)]
       group_var <- group_col_name_r()
       traits_to_offer <- setdiff(numeric_cols, group_var)
@@ -265,7 +284,6 @@ mod_visual_server_combined <- function(id, dataset_r,
     
     output$violin_variable_selector <- renderUI({
       req(dataset_r())
-      # Get only numeric columns from the dataset, excluding the group column
       numeric_cols <- names(dataset_r())[sapply(dataset_r(), is.numeric)]
       group_var <- group_col_name_r()
       traits_to_offer <- setdiff(numeric_cols, group_var)
@@ -282,6 +300,42 @@ mod_visual_server_combined <- function(id, dataset_r,
                          choices = groups, selected = groups)
     })
     
+    # MFA axis selectors
+    output$mfa_x_axis_selector <- renderUI({
+      req(mfa_results_r())
+      mfa_res <- mfa_results_r()
+      
+      validate(
+        need(!is.null(mfa_res$ind$coord), "MFA coordinates not available")
+      )
+      
+      # Get number of dimensions
+      n_dims <- ncol(mfa_res$ind$coord)
+      dim_choices <- paste0("Dim.", 1:n_dims)
+      
+      selectInput(ns("mfa_x_axis"), "X-axis:", 
+                  choices = dim_choices, 
+                  selected = "Dim.1",
+                  width = '150px')
+    })
+    
+    output$mfa_y_axis_selector <- renderUI({
+      req(mfa_results_r())
+      mfa_res <- mfa_results_r()
+      
+      validate(
+        need(!is.null(mfa_res$ind$coord), "MFA coordinates not available")
+      )
+      
+      # Get number of dimensions
+      n_dims <- ncol(mfa_res$ind$coord)
+      dim_choices <- paste0("Dim.", 1:n_dims)
+      
+      selectInput(ns("mfa_y_axis"), "Y-axis:", 
+                  choices = dim_choices, 
+                  selected = "Dim.2",
+                  width = '150px')
+    })
     
     ## ggplot themes
     get_ggplot_theme <- function(theme_name) {
@@ -326,12 +380,10 @@ mod_visual_server_combined <- function(id, dataset_r,
         }
       }
       
-      # fallback
       return(ggplot2::scale_fill_discrete())
     }
     
-    
-    # Choose color scale for OTU-based plots (for PCA, etc.)
+    # Choose color scale for OTU-based plots
     get_color_scale_otu <- function(palette_name) {
       if (palette_name == "manual") {
         req(get_manual_colors())
@@ -360,11 +412,10 @@ mod_visual_server_combined <- function(id, dataset_r,
         }
       }
       
-      # fallback
       return(ggplot2::scale_color_discrete())
     }
-  
-    # Theme generator (always classic, adjusted for x-axis label angle)
+    
+    # Theme generator
     get_custom_theme <- reactive({
       axis_text_size_val <- plot_axis_text_size()
       axis_label_size_val <- plot_axis_label_size()
@@ -375,7 +426,6 @@ mod_visual_server_combined <- function(id, dataset_r,
       
       theme_choice <- input$plot_theme
       
-      # Adjust vjust and hjust for x-axis text based on angle
       x_vjust <- 0.5
       x_hjust <- 0.5
       if (x_angle_val == 45) {
@@ -391,10 +441,9 @@ mod_visual_server_combined <- function(id, dataset_r,
       theme_elements <- list(
         axis.text.x = ggplot2::element_text(size = axis_text_size_val, angle = as.numeric(x_angle_val),
                                             vjust = x_vjust, hjust = x_hjust),
-        axis.text.y = ggplot2::element_text(size = axis_text_size_val), # Y-axis text not angled
+        axis.text.y = ggplot2::element_text(size = axis_text_size_val),
         axis.title = ggplot2::element_text(size = axis_label_size_val),
         strip.text = ggplot2::element_text(size = facet_size_val),
-        
         legend.position = "right",
         legend.text = ggplot2::element_text(size = legend_text_size_val),
         legend.title = ggplot2::element_text(size = legend_title_size_val, face = "bold")
@@ -403,14 +452,13 @@ mod_visual_server_combined <- function(id, dataset_r,
       theme_base + do.call(ggplot2::theme, theme_elements)
     })
     
-    # Reactive to check if common plot inputs (excluding palette if specific to MFA types) are ready
+    # Reactive to check if common plot inputs are ready
     common_plot_inputs_ready <- reactive({
       req(plot_axis_text_size(), plot_axis_label_size(),
           plot_x_angle(), plot_facet_size(),
           legend_text_size(), legend_title_size(),input$plot_theme)
       TRUE
     })
-    
     
     # Scatterplot
     plot_scatter_obj <- reactive({
@@ -422,15 +470,12 @@ mod_visual_server_combined <- function(id, dataset_r,
       
       df <- df[df[[group_col]] %in% input$scatter_group_filter, ]
       
-      # Convert string inputs to symbols using rlang::sym()
       x_var_sym <- rlang::sym(input$scatter_xvar)
       y_var_sym <- rlang::sym(input$scatter_yvar)
       group_col_sym <- rlang::sym(group_col)
       
-      # Use the symbols with the '!!' operator inside aes()
       p <- ggplot(df, aes(x = !!x_var_sym, y = !!y_var_sym, color = !!group_col_sym))
       
-      # Add points with outline option
       if (isTRUE(input$scatter_outline_points)) {
         p <- p + geom_point(
           aes(fill = !!group_col_sym),
@@ -455,7 +500,6 @@ mod_visual_server_combined <- function(id, dataset_r,
         p <- p + geom_text(aes(label = rownames(df)), hjust = 1.1, vjust = 1.1, size = 3, check_overlap = TRUE)
       }
       
-      # Update color/fill scales based on outline option
       if (isTRUE(input$scatter_outline_points)) {
         p <- p + get_fill_scale_otu(plot_palette())
         p <- p + get_color_scale_otu(plot_palette()) + guides(color = "none")
@@ -468,12 +512,11 @@ mod_visual_server_combined <- function(id, dataset_r,
         labs(color = str_to_title(group_col), fill = str_to_title(group_col))
     })
     
-    # Reactive plot objects (Boxplot, Violin)
+    # Boxplot
     plot_box_obj <- reactive({
       req(dataset_r(), common_plot_inputs_ready(), group_col_name_r())
-      req(input$selected_box_traits) # Ensure traits are selected
+      req(input$selected_box_traits)
       
-      # If plot_palette is 'manual', ensure get_manual_colors() is ready
       if (plot_palette() == "manual") {
         req(get_manual_colors())
       }
@@ -491,7 +534,6 @@ mod_visual_server_combined <- function(id, dataset_r,
              paste("Group column", group_var_name, "not found in data."))
       )
       
-      # Filter to only selected numeric columns (excluding the group column)
       selected_traits <- input$selected_box_traits
       numeric_cols_in_data <- names(df)[sapply(df, is.numeric)]
       traits_to_plot <- intersect(selected_traits, numeric_cols_in_data)
@@ -513,16 +555,16 @@ mod_visual_server_combined <- function(id, dataset_r,
                      color = "black",
                      linewidth = input$box_outline_stroke) +
         facet_wrap(~Trait, scales = "free_y") +
-        get_fill_scale_otu(plot_palette()) + # Use OTU-specific fill scale
+        get_fill_scale_otu(plot_palette()) +
         get_custom_theme() +
-        labs(fill = str_to_title(group_var_name)) # Dynamic legend title
+        labs(fill = str_to_title(group_var_name))
     })
     
+    # Violin plot
     plot_violin_obj <- reactive({
       req(dataset_r(), common_plot_inputs_ready(), group_col_name_r())
-      req(input$selected_violin_traits) # Ensure traits are selected
+      req(input$selected_violin_traits)
       
-      # If plot_palette is 'manual', ensure get_manual_colors() is ready
       if (plot_palette() == "manual") {
         req(get_manual_colors())
       }
@@ -540,7 +582,6 @@ mod_visual_server_combined <- function(id, dataset_r,
              paste("Group column", group_var_name, "not found in data."))
       )
       
-      # Filter to only selected numeric columns (excluding the group column)
       selected_traits <- input$selected_violin_traits
       numeric_cols_in_data <- names(df)[sapply(df, is.numeric)]
       traits_to_plot <- intersect(selected_traits, numeric_cols_in_data)
@@ -556,22 +597,21 @@ mod_visual_server_combined <- function(id, dataset_r,
         dplyr::select(all_of(c(group_var_name, traits_to_plot))) %>%
         pivot_longer(-all_of(group_var_name), names_to = "Trait", values_to = "Value")
       
-      # Outline color and linewidth depend on input$violin_outline and input$violin_point_stroke
       violin_outline_color <- if (isTRUE(input$violin_outline)) "black" else NA
       violin_outline_width  <- if (isTRUE(input$violin_outline)) input$violin_point_stroke else 0
       
       ggplot(df_long, aes(x = .data[[group_var_name]], y = .data[["Value"]], fill = .data[[group_var_name]])) +
         geom_violin(width = 0.9, alpha = 0.6, color = violin_outline_color, linewidth = violin_outline_width) +
         facet_wrap(~Trait, scales = "free_y") +
-        get_fill_scale_otu(plot_palette()) + # Use OTU-specific fill scale
+        get_fill_scale_otu(plot_palette()) +
         get_custom_theme() +
-        labs(fill = str_to_title(group_var_name)) # Dynamic legend title
+        labs(fill = str_to_title(group_var_name))
     })
     
     # MFA Plot Objects
     mfa_eigen_plot_obj <- reactive({
       req(mfa_results_r())
-      mfa_res <- mfa_results_r() # Extract the value from the reactive
+      mfa_res <- mfa_results_r()
       
       validate(
         need(!is.null(mfa_res), "MFA results are not available."),
@@ -580,7 +620,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       
       fviz_eig(mfa_res) +
         get_custom_theme() +
-        labs(title = "Eigenvalue Scree Plot") # Add a title
+        labs(title = "Eigenvalue Scree Plot")
     })
     
     mfa_group_contrib_hist_obj <- reactive({
@@ -620,7 +660,7 @@ mod_visual_server_combined <- function(id, dataset_r,
     })
     
     mfa_var_contrib_hist_obj <- reactive({
-
+      
       req(mfa_results_r())
       req(trait_group_df_r())
       req(common_plot_inputs_ready())
@@ -768,62 +808,157 @@ mod_visual_server_combined <- function(id, dataset_r,
       return(final_plot)
     })
     
-    
-    # MFA Individuals plot object
+    # MFA Individuals plot object with biplot functionality
     mfa_individuals_plot_obj <- reactive({
-      req(mfa_results_r(), dataset_r(), group_col_name_r()) # Ensure dataset_r is also required
+      req(mfa_results_r(), dataset_r(), group_col_name_r())
+      req(input$mfa_x_axis, input$mfa_y_axis)
       
       mfa_res <- mfa_results_r()
       
       validate(
-        need(!is.null(mfa_res), "MFA results are not available. Please ensure MFA is run successfully."),
+        need(!is.null(mfa_res), "MFA results are not available."),
         need("ind" %in% names(mfa_res), "MFA results object missing 'ind' component."),
         need("coord" %in% names(mfa_res$ind), "MFA results 'ind' component missing 'coord'."),
-        need(nrow(mfa_res$ind$coord) > 0, "MFA individuals coordinates are empty. No individuals to plot."),
-        need(ncol(mfa_res$ind$coord) >= 2, "MFA individuals coordinates have less than 2 dimensions (Dim.1, Dim.2).")
+        need(nrow(mfa_res$ind$coord) > 0, "MFA individuals coordinates are empty."),
+        need(ncol(mfa_res$ind$coord) >= 2, "MFA has less than 2 dimensions.")
       )
       
       req(common_plot_inputs_ready())
-      req(input$mfa_point_size) # Use input$mfa_point_size directly
-      # mfa_point_shape() is not used directly for the default point, as it's either 21 or 19.
+      req(input$mfa_point_size)
       
-      if (isTRUE(input$mfa_ellipse)) { # Use input$mfa_ellipse
-        req(input$mfa_ellipse_alpha) # Use input$mfa_ellipse_alpha
+      if (isTRUE(input$mfa_ellipse)) {
+        req(input$mfa_ellipse_alpha)
       }
       
-      # Get the original data to extract the group column
-      df_original <- dataset_r() # This is the dataset (raw or adjusted) that was passed to visual module
-      group_col_name <- group_col_name_r() # USE THE PASSED GROUP NAME
+      # Get the original data
+      df_original <- dataset_r()
+      group_col_name <- group_col_name_r()
       
       validate(
-        need(group_col_name %in% names(df_original), paste0("Group column '", group_col_name, "' not found in the dataset for MFA individuals plot."))
+        need(group_col_name %in% names(df_original), 
+             paste0("Group column '", group_col_name, "' not found in dataset."))
       )
       
-      # Extract individual coordinates and merge with original group labels
-      mfa_ind_coord <- as.data.frame(mfa_res$ind$coord)
+      # Get selected dimensions
+      dim_x <- input$mfa_x_axis
+      dim_y <- input$mfa_y_axis
       
-      # Ensure row names are preserved for joining
+      # Extract dimension numbers
+      dim_x_num <- as.numeric(gsub("Dim\\.", "", dim_x))
+      dim_y_num <- as.numeric(gsub("Dim\\.", "", dim_y))
+      
+      # Extract individual coordinates
+      mfa_ind_coord <- as.data.frame(mfa_res$ind$coord)
       mfa_ind_coord <- mfa_ind_coord %>%
         tibble::rownames_to_column(var = "Individual_ID")
       
-      # Prepare original data for joining, ensuring group column is a factor
+      # Prepare original data for joining
       original_data_for_join <- df_original %>%
         tibble::rownames_to_column(var = "Individual_ID") %>%
         dplyr::select(Individual_ID, Group = !!sym(group_col_name)) %>%
         dplyr::mutate(Group = as.factor(Group))
       
       mfa_ind_coord <- dplyr::left_join(mfa_ind_coord, original_data_for_join, by = "Individual_ID") %>%
-        tibble::column_to_rownames(var = "Individual_ID") # Convert back if desired
+        tibble::column_to_rownames(var = "Individual_ID")
       
-      
-      # Validate join result
       validate(
-        need(!any(is.na(mfa_ind_coord$Group)), "Group information missing after joining MFA coordinates with original data. Check row names/IDs or the group column name."),
-        need(nlevels(mfa_ind_coord$Group) >= 1, "No valid groups found for individuals plot.")
+        need(!any(is.na(mfa_ind_coord$Group)), "Group information missing after joining."),
+        need(nlevels(mfa_ind_coord$Group) >= 1, "No valid groups found.")
       )
       
-      p <- ggplot(mfa_ind_coord, aes(x = Dim.1, y = Dim.2))
+      # Base plot with selected dimensions
+      p <- ggplot(mfa_ind_coord, aes(x = .data[[dim_x]], y = .data[[dim_y]]))
       
+      # Add biplot for QUANTITATIVE variables (arrows) if enabled
+      if (isTRUE(input$mfa_biplot_quanti)) {
+        if (!is.null(mfa_res$quanti.var$coord)) {
+          loadings <- as.data.frame(mfa_res$quanti.var$coord[, c(dim_x_num, dim_y_num)])
+          colnames(loadings) <- c("Dim_x", "Dim_y")
+          loadings$variable <- rownames(loadings)
+          
+          # Scale arrows to fit nicely
+          data_range_x <- max(abs(range(mfa_ind_coord[[dim_x]])))
+          data_range_y <- max(abs(range(mfa_ind_coord[[dim_y]])))
+          
+          scale_factor <- min(data_range_x / max(abs(loadings$Dim_x)), 
+                              data_range_y / max(abs(loadings$Dim_y))) * 0.7
+          
+          loadings$Dim_x_scaled <- loadings$Dim_x * scale_factor
+          loadings$Dim_y_scaled <- loadings$Dim_y * scale_factor
+          
+          # Add arrows
+          p <- p + ggplot2::geom_segment(
+            data = loadings,
+            aes(x = 0, y = 0, xend = Dim_x_scaled, yend = Dim_y_scaled),
+            arrow = ggplot2::arrow(length = ggplot2::unit(0.2, "cm"), type = "closed"),
+            color = input$mfa_arrow_color,
+            linewidth = input$mfa_arrow_size * 0.5,
+            alpha = input$mfa_arrow_alpha,
+            inherit.aes = FALSE
+          )
+          
+          # Add variable labels if enabled
+          if (isTRUE(input$mfa_quanti_labels)) {
+            p <- p + ggplot2::geom_text(
+              data = loadings,
+              aes(x = Dim_x_scaled * 1.1, y = Dim_y_scaled * 1.1, label = variable),
+              color = input$mfa_arrow_color,
+              size = input$mfa_arrow_label_size,
+              hjust = ifelse(loadings$Dim_x_scaled > 0, 0, 1),
+              vjust = ifelse(loadings$Dim_y_scaled > 0, 0, 1),
+              inherit.aes = FALSE
+            )
+          }
+        }
+      }
+      
+      # Add biplot for QUALITATIVE variables (category points) if enabled
+      if (isTRUE(input$mfa_biplot_quali)) {
+        if (!is.null(mfa_res$quali.var$coord)) {
+          quali_coords <- as.data.frame(mfa_res$quali.var$coord[, c(dim_x_num, dim_y_num)])
+          colnames(quali_coords) <- c("Dim_x", "Dim_y")
+          quali_coords$category <- rownames(quali_coords)
+          
+          # Scale qualitative category coordinates similarly to quantitative
+          data_range_x <- max(abs(range(mfa_ind_coord[[dim_x]])))
+          data_range_y <- max(abs(range(mfa_ind_coord[[dim_y]])))
+          
+          # Qualitative coordinates are often on a different scale, adjust accordingly
+          quali_range_x <- max(abs(range(quali_coords$Dim_x)))
+          quali_range_y <- max(abs(range(quali_coords$Dim_y)))
+          
+          scale_factor_quali <- min(data_range_x / quali_range_x, 
+                                    data_range_y / quali_range_y) * 0.6
+          
+          quali_coords$Dim_x_scaled <- quali_coords$Dim_x * scale_factor_quali
+          quali_coords$Dim_y_scaled <- quali_coords$Dim_y * scale_factor_quali
+          
+          # Add category points
+          p <- p + ggplot2::geom_point(
+            data = quali_coords,
+            aes(x = Dim_x_scaled, y = Dim_y_scaled),
+            color = input$mfa_quali_color,
+            size = input$mfa_quali_size,
+            shape = 17,  # Triangle for qualitative categories
+            inherit.aes = FALSE
+          )
+          
+          # Add category labels if enabled
+          if (isTRUE(input$mfa_quali_labels)) {
+            p <- p + ggplot2::geom_text(
+              data = quali_coords,
+              aes(x = Dim_x_scaled, y = Dim_y_scaled, label = category),
+              color = input$mfa_quali_color,
+              size = input$mfa_quali_label_size,
+              hjust = -0.2,
+              vjust = -0.5,
+              inherit.aes = FALSE
+            )
+          }
+        }
+      }
+      
+      # Add points
       if (isTRUE(input$mfa_outline_points)) {
         p <- p + geom_point(
           aes(fill = Group),
@@ -840,7 +975,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         )
       }
       
-      # ELLIPSE 
+      # Add ellipses
       if (isTRUE(input$mfa_ellipse)) {
         if (isTRUE(input$mfa_outline_shapes)) {
           p <- p + stat_ellipse(
@@ -860,18 +995,18 @@ mod_visual_server_combined <- function(id, dataset_r,
         }
       }
       
-      # HULL 
+      # Add convex hulls
       if (isTRUE(input$mfa_convex_hull)) {
         hull_df <- mfa_ind_coord %>%
           dplyr::group_by(Group) %>%
           dplyr::filter(n() >= 3) %>%
-          dplyr::slice(chull(Dim.1, Dim.2)) %>%
+          dplyr::slice(chull(.data[[dim_x]], .data[[dim_y]])) %>%
           dplyr::ungroup()
         
         if (isTRUE(input$mfa_outline_shapes)) {
           p <- p + geom_polygon(
             data = hull_df,
-            aes(x = Dim.1, y = Dim.2, group = Group, fill = Group, color = Group),
+            aes(x = .data[[dim_x]], y = .data[[dim_y]], group = Group, fill = Group, color = Group),
             alpha = input$mfa_ellipse_alpha,
             linewidth = input$mfa_outline_stroke,
             inherit.aes = FALSE, show.legend = FALSE
@@ -879,7 +1014,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         } else {
           p <- p + geom_polygon(
             data = hull_df,
-            aes(x = Dim.1, y = Dim.2, group = Group, fill = Group),
+            aes(x = .data[[dim_x]], y = .data[[dim_y]], group = Group, fill = Group),
             color = NA,
             alpha = input$mfa_ellipse_alpha,
             inherit.aes = FALSE, show.legend = FALSE
@@ -887,36 +1022,39 @@ mod_visual_server_combined <- function(id, dataset_r,
         }
       }
       
-      # CENTROIDS
+      # Add centroids
       if (isTRUE(input$mfa_centroids)) {
         centroids <- mfa_ind_coord %>%
           group_by(Group) %>%
-          summarize(Dim.1 = mean(Dim.1), Dim.2 = mean(Dim.2), .groups = "drop")
+          summarize(
+            x_cent = mean(.data[[dim_x]]), 
+            y_cent = mean(.data[[dim_y]]), 
+            .groups = "drop"
+          )
         
         p <- p + geom_point(
           data = centroids,
-          aes(x = Dim.1, y = Dim.2),
+          aes(x = x_cent, y = y_cent),
           shape = 8, size = 3, color = "black", fill = "white", stroke = 1,
           inherit.aes = FALSE, show.legend = FALSE
         )
       }
       
-      # FINAL LABELS + THEME + GUIDES
-      # ADD SCALES ONLY ONCE AT THE END
+      # Apply color scales
       p <- p + get_fill_scale_otu(plot_palette()) + 
         get_color_scale_otu(plot_palette())
       
-      # FINAL LABELS + THEME + GUIDES (rest stays the same)
+      # Labels and theme
       p <- p +
         get_custom_theme() +
         labs(
-          x = paste0("Dim 1 (", round(mfa_res$eig[1, 2], 2), "%)"),
-          y = paste0("Dim 2 (", round(mfa_res$eig[2, 2], 2), "%)"),
+          x = paste0(dim_x, " (", round(mfa_res$eig[dim_x_num, 2], 2), "%)"),
+          y = paste0(dim_y, " (", round(mfa_res$eig[dim_y_num, 2], 2), "%)"),
           fill = str_to_title(group_col_name),
           color = str_to_title(group_col_name)
         )
       
-      # Guides (rest stays the same)
+      # Guides
       if (isTRUE(input$mfa_outline_points)) {
         p <- p + guides(
           fill = guide_legend(override.aes = list(
@@ -982,30 +1120,27 @@ mod_visual_server_combined <- function(id, dataset_r,
       )()
     })
     
-    
     output$mfa_var_contrib_hist <- renderPlot({
       mfa_var_contrib_hist_obj()
     }, 
     height = function() input$mfa_var_contrib_hist_height,
     width = function() input$mfa_var_contrib_hist_width)
-
+    
     DEFAULT_DOWNLOAD_WIDTH <- 10
-    DEFAULT_DOWNLOAD_HEIGHT <- 8 # This will mostly be overridden by user input
+    DEFAULT_DOWNLOAD_HEIGHT <- 8
     
     # The download function for all plots
-    create_download_handler <- function(plot_obj_reactive, filename_prefix, type = "pdf", height_input_id, width_input_id) { # Added width_input_id
+    create_download_handler <- function(plot_obj_reactive, filename_prefix, type = "pdf", height_input_id, width_input_id) {
       downloadHandler(
         filename = function() { paste0(filename_prefix, "_", Sys.Date(), ".", type) },
         content = function(file) {
-          # Get user-specified height and width from the numericInputs
-          # Use ns() because the input ID is namespaced within the module
           plot_height_val_px <- input[[height_input_id]]
           plot_width_val_px <- input[[width_input_id]] 
           
           plot_height_val_in <- if (!is.null(plot_height_val_px) && plot_height_val_px > 0) {
             plot_height_val_px / 96
           } else {
-            DEFAULT_DOWNLOAD_HEIGHT # Fallback if input is null or zero
+            DEFAULT_DOWNLOAD_HEIGHT
           }
           
           plot_width_val_in <- if (!is.null(plot_width_val_px) && plot_width_val_px > 0) {
@@ -1030,7 +1165,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       )
     }
     
-    # Assign download handlers, passing the corresponding height AND width input IDs
+    # Assign download handlers
     output$download_scatter_pdf <- create_download_handler(plot_scatter_obj, "scatterplot_combined", "pdf", "plot_scatter_height", "plot_scatter_width")
     output$download_scatter_jpeg <- create_download_handler(plot_scatter_obj, "scatterplot_combined", "jpeg", "plot_scatter_height", "plot_scatter_width")
     
@@ -1048,6 +1183,6 @@ mod_visual_server_combined <- function(id, dataset_r,
     
     output$download_mfa_group_contrib_pdf <- create_download_handler(mfa_group_contrib_hist_obj, "mfa_group_contributions", "pdf", "mfa_group_contrib_hist_height", "mfa_group_contrib_hist_width")
     output$download_mfa_group_contrib_jpeg <- create_download_handler(mfa_group_contrib_hist_obj, "mfa_group_contributions", "jpeg", "mfa_group_contrib_hist_height", "mfa_group_contrib_hist_width")
-
+    
   }) 
 } 

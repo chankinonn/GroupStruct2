@@ -96,6 +96,22 @@ mod_visual_ui_meristic <- function(id) {
                                   numericInput(ns("plot_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
                                   numericInput(ns("plot_pca_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
                                   hr(),
+                                  h5("PC Axis Selection"),
+                                  uiOutput(ns("pca_x_axis_selector")),
+                                  uiOutput(ns("pca_y_axis_selector")),
+                                  hr(),
+                                  h5("Biplot Options"),
+                                  checkboxInput(ns("pca_biplot"), "Show Variable Loadings (Biplot)", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("pca_biplot")),
+                                    checkboxInput(ns("pca_biplot_labels"), "Show Variable Labels", value = TRUE),
+                                    colourInput(ns("pca_arrow_color"), "Arrow Color:", value = "#8B0000", showColour = "background"),
+                                    sliderInput(ns("pca_arrow_size"), "Arrow Width:", min = 0.5, max = 3, value = 1, step = 0.1, width = '150px'),
+                                    sliderInput(ns("pca_arrow_alpha"), "Arrow Transparency:", min = 0.1, max = 1, value = 0.7, step = 0.1, width = '150px'),
+                                    numericInput(ns("pca_label_size"), "Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                  ),
+                                  hr(),
+                                  h5("Points & Groups"),
                                   numericInput(ns("pca_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
                                   checkboxInput(ns("pca_outline_points"), "Outline Points", value = FALSE),
                                   conditionalPanel(
@@ -234,6 +250,47 @@ mod_visual_server_meristic <- function(id, dataset,
                          choices = groups, selected = groups)
     })
     
+    # PCA axis selectors
+    output$pca_x_axis_selector <- renderUI({
+      req(dataset())
+      df <- dataset()
+      data_mat <- df[, -1]
+      complete_rows <- complete.cases(data_mat)
+      
+      if (sum(complete_rows) < 2 || ncol(data_mat) < 2) {
+        return(NULL)
+      }
+      
+      # Calculate number of PCs available
+      n_pcs <- min(sum(complete_rows), ncol(data_mat))
+      pc_choices <- paste0("PC", 1:n_pcs)
+      
+      selectInput(ns("pca_x_axis"), "X-axis:", 
+                  choices = pc_choices, 
+                  selected = "PC1",
+                  width = '150px')
+    })
+    
+    output$pca_y_axis_selector <- renderUI({
+      req(dataset())
+      df <- dataset()
+      data_mat <- df[, -1]
+      complete_rows <- complete.cases(data_mat)
+      
+      if (sum(complete_rows) < 2 || ncol(data_mat) < 2) {
+        return(NULL)
+      }
+      
+      # Calculate number of PCs available
+      n_pcs <- min(sum(complete_rows), ncol(data_mat))
+      pc_choices <- paste0("PC", 1:n_pcs)
+      
+      selectInput(ns("pca_y_axis"), "Y-axis:", 
+                  choices = pc_choices, 
+                  selected = "PC2",
+                  width = '150px')
+    })
+    
     ## ggplot themes
     get_ggplot_theme <- function(theme_name) {
       switch(theme_name,
@@ -247,7 +304,7 @@ mod_visual_server_meristic <- function(id, dataset,
              ggplot2::theme_classic() # fallback
       )
     }
-
+    
     # Get manual colors from the passed reactive
     get_manual_colors <- function() {
       req(manual_colors_r())
@@ -319,9 +376,9 @@ mod_visual_server_meristic <- function(id, dataset,
       
       return(ggplot2::scale_color_viridis_d())  # fallback
     }
-
     
-    # Theme generator (always classic, adjusted for x-axis label angle)
+    
+    # Theme generator 
     get_custom_theme <- function(axis_text_size, axis_label_size, x_angle, facet_size,
                                  legend_text_size, legend_title_size, theme_choice = "theme_classic") {
       
@@ -368,7 +425,7 @@ mod_visual_server_meristic <- function(id, dataset,
     # Reactive plot objects
     plot_scatter_obj <- reactive({
       req(dataset(), input$scatter_xvar, input$scatter_yvar, input$scatter_group_filter)
-      req(input$scatter_point_size)  # Add this requirement
+      req(input$scatter_point_size)  
       
       df <- dataset()
       group_col <- names(df)[1]
@@ -494,6 +551,7 @@ mod_visual_server_meristic <- function(id, dataset,
     plot_pca_obj <- reactive({
       req(dataset(), common_plot_inputs_ready())
       req(input$pca_point_size)
+      req(input$pca_x_axis, input$pca_y_axis)
       
       df <- dataset()
       otu_col <- names(df)[1]
@@ -509,16 +567,69 @@ mod_visual_server_meristic <- function(id, dataset,
       pca_df <- as.data.frame(pca$x)
       pca_df$Group <- df[[otu_col]][complete_rows]
       
+      # Get selected PC axes
+      pc_x <- input$pca_x_axis
+      pc_y <- input$pca_y_axis
+      
+      # Extract PC numbers
+      pc_x_num <- as.numeric(gsub("PC", "", pc_x))
+      pc_y_num <- as.numeric(gsub("PC", "", pc_y))
+      
       # Calculate % variance explained
       var_explained <- round(100 * (pca$sdev^2 / sum(pca$sdev^2)), 1)
-      pc1_label <- paste0("PC1 (", var_explained[1], "%)")
-      pc2_label <- paste0("PC2 (", var_explained[2], "%)")
+      pc_x_label <- paste0(pc_x, " (", var_explained[pc_x_num], "%)")
+      pc_y_label <- paste0(pc_y, " (", var_explained[pc_y_num], "%)")
       
-      # Base plot
-      p <- ggplot2::ggplot(pca_df, ggplot2::aes(x = PC1, y = PC2)) +
-        ggplot2::xlab(pc1_label) +
-        ggplot2::ylab(pc2_label)
+      # Base plot with selected axes
+      p <- ggplot2::ggplot(pca_df, ggplot2::aes(x = .data[[pc_x]], y = .data[[pc_y]])) +
+        ggplot2::xlab(pc_x_label) +
+        ggplot2::ylab(pc_y_label)
       
+      # Add biplot arrows if enabled
+      if (isTRUE(input$pca_biplot)) {
+        # Get loadings (rotation matrix)
+        loadings <- as.data.frame(pca$rotation[, c(pc_x_num, pc_y_num)])
+        colnames(loadings) <- c("PC_x", "PC_y")
+        loadings$variable <- rownames(loadings)
+        
+        # Scale arrows to fit nicely on the plot
+        # Calculate the range of the data
+        data_range_x <- max(abs(range(pca_df[[pc_x]])))
+        data_range_y <- max(abs(range(pca_df[[pc_y]])))
+        
+        # Scale factor - adjust arrows to be ~70% of the plot range
+        scale_factor <- min(data_range_x / max(abs(loadings$PC_x)), 
+                            data_range_y / max(abs(loadings$PC_y))) * 0.7
+        
+        loadings$PC_x_scaled <- loadings$PC_x * scale_factor
+        loadings$PC_y_scaled <- loadings$PC_y * scale_factor
+        
+        # Add arrows
+        p <- p + ggplot2::geom_segment(
+          data = loadings,
+          aes(x = 0, y = 0, xend = PC_x_scaled, yend = PC_y_scaled),
+          arrow = ggplot2::arrow(length = ggplot2::unit(0.2, "cm"), type = "closed"),
+          color = input$pca_arrow_color,
+          linewidth = input$pca_arrow_size * 0.5,
+          alpha = input$pca_arrow_alpha,
+          inherit.aes = FALSE
+        )
+        
+        # Add variable labels if enabled
+        if (isTRUE(input$pca_biplot_labels)) {
+          p <- p + ggplot2::geom_text(
+            data = loadings,
+            aes(x = PC_x_scaled * 1.1, y = PC_y_scaled * 1.1, label = variable),
+            color = input$pca_arrow_color,
+            size = input$pca_label_size,
+            hjust = ifelse(loadings$PC_x_scaled > 0, 0, 1),
+            vjust = ifelse(loadings$PC_y_scaled > 0, 0, 1),
+            inherit.aes = FALSE
+          )
+        }
+      }
+      
+      # Add points
       if (isTRUE(input$pca_outline_points)) {
         p <- p + ggplot2::geom_point(
           aes(fill = Group),
@@ -559,13 +670,13 @@ mod_visual_server_meristic <- function(id, dataset,
       
       if (isTRUE(input$pca_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Group), function(df) {
-          df[chull(df$PC1, df$PC2), ]
+          df[chull(df[[pc_x]], df[[pc_y]]), ]
         }), .id = "Group")
         
         if (isTRUE(input$pca_outline)) {
           p <- p + ggplot2::geom_polygon(
             data = hull_df,
-            aes(x = PC1, y = PC2, group = Group, fill = Group, color = Group),
+            aes(x = .data[[pc_x]], y = .data[[pc_y]], group = Group, fill = Group, color = Group),
             alpha = input$pca_alpha_ellipse,
             linewidth = input$pca_outline_stroke,
             inherit.aes = FALSE,
@@ -574,7 +685,7 @@ mod_visual_server_meristic <- function(id, dataset,
         } else {
           p <- p + ggplot2::geom_polygon(
             data = hull_df,
-            aes(x = PC1, y = PC2, group = Group, fill = Group),
+            aes(x = .data[[pc_x]], y = .data[[pc_y]], group = Group, fill = Group),
             color = NA,
             alpha = input$pca_alpha_ellipse,
             inherit.aes = FALSE,
@@ -586,10 +697,14 @@ mod_visual_server_meristic <- function(id, dataset,
       if (isTRUE(input$pca_centroids)) {
         centroids <- pca_df %>%
           dplyr::group_by(Group) %>%
-          dplyr::summarize(PC1 = mean(PC1), PC2 = mean(PC2), .groups = "drop")
+          dplyr::summarize(
+            x_cent = mean(.data[[pc_x]]), 
+            y_cent = mean(.data[[pc_y]]), 
+            .groups = "drop"
+          )
         
         p <- p + ggplot2::geom_point(data = centroids,
-                                     aes(x = PC1, y = PC2),
+                                     aes(x = x_cent, y = y_cent),
                                      shape = 8, size = 3, color = "black", fill = "white", stroke = 1,
                                      inherit.aes = FALSE)
       }
@@ -787,7 +902,7 @@ mod_visual_server_meristic <- function(id, dataset,
     
     # Default download dimensions (in inches)
     DEFAULT_DOWNLOAD_WIDTH <- 10
-    DEFAULT_DOWNLOAD_HEIGHT <- 8 # This will mostly be overridden by user input now
+    DEFAULT_DOWNLOAD_HEIGHT <- 8 
     
     # The download function for all plots
     create_download_handler <- function(plot_obj_reactive, filename_prefix, type = "pdf", height_input_id, width_input_id) { # Added width_input_id
@@ -795,9 +910,9 @@ mod_visual_server_meristic <- function(id, dataset,
         filename = function() { paste0(filename_prefix, "_", Sys.Date(), ".", type) },
         content = function(file) {
           # Get user-specified height and width from the numericInputs
-          # Use ns() because the input ID is namespaced within the module
+          
           plot_height_val_px <- input[[height_input_id]]
-          plot_width_val_px <- input[[width_input_id]] # GET WIDTH INPUT
+          plot_width_val_px <- input[[width_input_id]] 
           
           # Convert pixels to inches for ggsave (assuming 96 dpi for web display)
           plot_height_val_in <- if (!is.null(plot_height_val_px) && plot_height_val_px > 0) {
@@ -830,7 +945,7 @@ mod_visual_server_meristic <- function(id, dataset,
       )
     }
     
-    # Assign download handlers, passing the corresponding height AND width input IDs
+    # Assign download handlers
     output$download_scatter_pdf <- create_download_handler(plot_scatter_obj, "scatterplot_meristic", "pdf", "plot_scatter_height", "plot_scatter_width")
     output$download_scatter_jpeg <- create_download_handler(plot_scatter_obj, "scatterplot_meristic", "jpeg", "plot_scatter_height", "plot_scatter_width")
     

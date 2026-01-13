@@ -26,7 +26,8 @@ required_packages <- c("shiny", "DT", "dplyr", "ggplot2", "tidyr", "vegan", "vir
   "RColorBrewer", "rstatix", "car", "readr", "adegenet", "FactoMineR", "factoextra",
   "shinyjs", "colourpicker", "forcats", "purrr", "scales", "PCAtest",
   "openxlsx", "shinyWidgets", "ggthemes", "broom", "tibble",
-  "htmltools", "stringr", "ggpubr", "ggrepel")
+  "htmltools", "stringr", "ggpubr", "ggrepel", "patchwork", "mclust", "conflicted", 
+  "Boruta", "ggridges")
 
 # The PCAtest package needs to be installed via github
 devtools::install_github("arleyc/PCAtest")
