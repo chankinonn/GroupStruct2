@@ -1169,6 +1169,11 @@ mod_visual_server_morphometric <- function(id, dataset,
         p <- p + get_fill_scale(plot_palette()) + guides(fill = "none")
       }
       
+      # Add shape scale that supports >6 groups
+      n_species <- length(unique(pca_df$Species))
+      all_shapes <- c(16, 17, 15, 18, 8, 7, 1, 2, 0, 5, 4, 3, 6, 9, 10, 11, 12, 13, 14, 19, 20)
+      p <- p + scale_shape_manual(values = all_shapes[1:n_species])
+      
       
       p <- p + 
         get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
