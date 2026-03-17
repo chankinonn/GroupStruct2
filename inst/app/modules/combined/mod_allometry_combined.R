@@ -1,16 +1,3 @@
-
-get_color_scale <- function(palette_choices) {
-  if (is.null(palette_choices)) {
-    return(scales::hue_pal())
-  } else if (is.function(palette_choices)) {
-    return(palette_choices)
-  } else if (is.character(palette_choices) && length(palette_choices) > 1) {
-    return(ggplot2::scale_color_manual(values = palette_choices))
-  } else {
-    return(scales::hue_pal())
-  }
-}
-
 mod_allometry_ui_combined <- function(id) {
   ns <- NS(id)
   
@@ -159,6 +146,15 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       
       if (nrow(df_log_internal) == 0) stop("No complete cases available after log transform.")
       
+      # Singleton check (only relevant for correction types requiring regression)
+      if (type %in% c("species", "population1")) {
+        for (otu in unique(df_log_internal[[group_col_name]])) {
+          if (sum(df_log_internal[[group_col_name]] == otu) < 2) {
+            stop(paste0("Error: OTU '", otu, "' has less than 2 individuals. Each OTU must have more than one individual for allometric adjustment."))
+          }
+        }
+      }
+      
       if (type == "species") {
         for (otu in unique(df_log_internal[[group_col_name]])) {
           sub_log <- df_log_internal %>% filter(!!sym(group_col_name) == otu)
@@ -166,11 +162,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
           log_z_mean <- log10(z_mean)
           
           for (trait in trait_col_names) {
-            beta <- if (nrow(sub_log) > 1) {
-              coef(lm(as.formula(paste0("`", trait, "` ~ `", body_size_col_name, "`")), data = sub_log))[2]
-            } else {
-              0
-            }
+            beta <- coef(lm(as.formula(paste0("`", trait, "` ~ `", body_size_col_name, "`")), data = sub_log))[2]
             
             idx <- which(data_subset[[group_col_name]] == otu)
             adjusted_vals <- log10(data_subset[[trait]][idx]) - beta * (log10(data_subset[[body_size_col_name]][idx]) - log_z_mean)
