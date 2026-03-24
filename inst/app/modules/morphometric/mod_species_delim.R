@@ -463,6 +463,12 @@ mod_species_delim_ui <- function(id) {
                         
                         br(),
                         
+                        downloadButton(ns("download_boruta_importance_csv"), "Download Importance Table (CSV)"),
+                        downloadButton(ns("download_boruta_importance_xlsx"), "Download Importance Table (Excel)"),
+                        
+                        br(), br(),
+                        
+                        
                         h5("Descriptive Statistics (Confirmed Variables Only):"),
                         p("Mean ± SD [min-max] for each confirmed diagnostic variable by group"),
                         DT::dataTableOutput(ns("boruta_descriptive_table")),
@@ -740,6 +746,37 @@ mod_species_delim_server <- function(id, dataset_r) {
       }
     )
     
+    # Download importance table CSV (all variables)
+    output$download_boruta_importance_csv <- downloadHandler(
+      filename = function() {
+        paste0("boruta_importance_", Sys.Date(), ".csv")
+      },
+      content = function(file) {
+        req(boruta_results())
+        req(boruta_results()$all_decisions)
+        tbl <- boruta_results()$all_decisions
+        tbl$Mean_Importance <- round(tbl$Mean_Importance, 3)
+        write.csv(tbl, file, row.names = FALSE)
+      }
+    )
+    
+    # Download importance table Excel (all variables)
+    output$download_boruta_importance_xlsx <- downloadHandler(
+      filename = function() {
+        paste0("boruta_importance_", Sys.Date(), ".xlsx")
+      },
+      content = function(file) {
+        req(boruta_results())
+        req(boruta_results()$all_decisions)
+        tbl <- boruta_results()$all_decisions
+        tbl$Mean_Importance <- round(tbl$Mean_Importance, 3)
+        
+        wb <- openxlsx::createWorkbook()
+        openxlsx::addWorksheet(wb, "Variable Importance")
+        openxlsx::writeData(wb, "Variable Importance", tbl)
+        openxlsx::saveWorkbook(wb, file, overwrite = TRUE)
+      }
+    )
     
     ## Bayesian species delimitation
     # Flag for conditional panel
