@@ -82,16 +82,15 @@ mod_inferential_ui_morphometric <- function(id) {
                            "recommended when accompanying a PCA."),
                          
                          fluidRow(
-                           column(6, numericInput(ns("permanova_permutations"), "Number of Permutations:", value = 50000, min = 100, step = 100)),
-                           column(6, selectInput(ns("permanova_distance_method"), "Distance Method:",
-                                                 choices = c("euclidean", "manhattan", "bray", "jaccard", "altGower"),
-                                                 selected = "euclidean"))
+                           column(6, numericInput(ns("permanova_permutations"), "Number of Permutations:", value = 50000, min = 100, step = 100))
+                           # column(6, selectInput(ns("permanova_distance_method"), "Distance Method:",
+                           #                       choices = c("euclidean", "manhattan", "bray", "jaccard", "altGower"),
+                           #                       selected = "euclidean"))
                          ),
                          tags$div(
                            style = "font-size: 1.1em; color: red; font-weight: bold; margin-top: 10px;",
                            checkboxInput(ns("use_pca"), HTML("Use PCA Scores for PERMANOVA"), value = FALSE)
                          ),
-                         p(em("Note: Euclidean distance is generally the most appropriate method when using PCA scores for PERMANOVA.")),
                          
                          actionButton(ns("run_permanova"), "Run PERMANOVA"),
                          br(), br(),
@@ -1068,7 +1067,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             main_result <- tryCatch({
               vegan::adonis2(formula = permanova_data_input ~ species_data_clean,
                              permutations = input$permanova_permutations,
-                             method = input$permanova_distance_method)
+                             method = "euclidean")
             }, error = function(e) {
               showNotification(paste("Error running main PERMANOVA:", e$message), type = "error")
               permanova_main_results_r(NULL)
@@ -1086,7 +1085,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
               pairwise_result <- tryCatch({
                 pairwise.adonis(x = permanova_data_input,
                                 factors = species_data_clean,
-                                sim.method = input$permanova_distance_method,
+                                sim.method = "euclidean",
                                 permutations = input$permanova_permutations)
               }, error = function(e) {
                 showNotification(paste("Error running pairwise PERMANOVA:", e$message), type = "error")
@@ -1104,7 +1103,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             # Betadisper — runs unconditionally as an assumption check for PERMANOVA
             incProgress(0.85, detail = "Running dispersion analysis (betadisper)...")
             betadisper_capture <- tryCatch({
-              dist_mat <- vegan::vegdist(permanova_data_input, method = input$permanova_distance_method)
+              dist_mat <- vegan::vegdist(permanova_data_input, method = "euclidean")
               bd <- vegan::betadisper(dist_mat, species_data_clean)
               bd_permutest <- vegan::permutest(bd, permutations = input$permanova_permutations, pairwise = TRUE)
               bd_tukey <- if (nlevels(species_data_clean) > 2) TukeyHSD(bd) else NULL

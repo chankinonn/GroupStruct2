@@ -63,10 +63,10 @@ mod_mfa_ui <- function(id) {
                            "All analyses operate on the MFA individual coordinates (scores)."),
                          
                          fluidRow(
-                           column(6, numericInput(ns("permanova_permutations_mfa"), "Number of Permutations:", value = 50000, min = 100, step = 100)),
-                           column(6, selectInput(ns("permanova_distance_method_mfa"), "Distance Method:",
-                                                 choices = c("euclidean", "manhattan", "bray", "jaccard", "altGower"),
-                                                 selected = "euclidean"))
+                           column(6, numericInput(ns("permanova_permutations_mfa"), "Number of Permutations:", value = 50000, min = 100, step = 100))
+                           # column(6, selectInput(ns("permanova_distance_method_mfa"), "Distance Method:",
+                           #                       choices = c("euclidean", "manhattan", "bray", "jaccard", "altGower"),
+                           #                       selected = "euclidean"))
                          ),
                          actionButton(ns("run_permanova_mfa"), "Run PERMANOVA on MFA Scores"),
                          br(), br(),
@@ -682,7 +682,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       }
       
       permutations <- input$permanova_permutations_mfa
-      distance_method <- input$permanova_distance_method_mfa
+      distance_method <- "euclidean"
       
       # Main PERMANOVA (adonis2)
       main_permanova_res <- tryCatch({
