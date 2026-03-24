@@ -33,7 +33,7 @@ mod_mfa_ui <- function(id) {
                            tabPanel("Quantitative Variable Contributions",
                                     DTOutput(ns("mfa_quanti_contrib_table"))
                            ),
-                        
+                           
                            tabPanel("Individuals Coordinates",
                                     DTOutput(ns("mfa_ind_coord_table"))
                            )
@@ -46,8 +46,21 @@ mod_mfa_ui <- function(id) {
                 tabPanel("PERMANOVA on MFA Scores", 
                          br(),
                          h4("PERMANOVA Analysis on MFA Scores"),
-                         p("This analysis tests for significant differences among group centroids in the ",
-                           strong("MFA multivariate space"), " (defined by your calculated MFA dimensions)."),
+                         p("PERMANOVA (Permutational Multivariate Analysis of Variance) tests whether groups differ",
+                           "significantly in", strong("centroid position"), "in multivariate trait space — i.e. whether groups",
+                           "occupy different regions on average. A significant result (p < 0.05) indicates that at least one",
+                           "pair of groups differs, and the R² value quantifies the proportion of total multivariate variance",
+                           "explained by group membership (effect size)."),
+                         p("However, PERMANOVA is sensitive to heterogeneity in", strong("dispersion"),
+                           "(within-group spread). If groups differ in how variable they are — rather than in where their",
+                           "centroids lie — PERMANOVA may still return a significant result, making interpretation ambiguous.",
+                           "For this reason, a", strong("dispersion analysis (betadisper)"), "is run alongside PERMANOVA as an",
+                           "assumption check. Homogeneous dispersion (betadisper p > 0.05) supports a clean centroid-based",
+                           "interpretation of a significant PERMANOVA; heterogeneous dispersion (p < 0.05) warrants caution."),
+                         p("The sections below present: (1) the overall PERMANOVA result, (2) pairwise centroid comparisons",
+                           "between groups, (3) dispersion analysis and pairwise dispersion comparisons, (4) pairwise centroid",
+                           "distances as a magnitude measure, and (5) a joint interpretation guide.",
+                           "All analyses operate on the MFA individual coordinates (scores)."),
                          
                          fluidRow(
                            column(6, numericInput(ns("permanova_permutations_mfa"), "Number of Permutations:", value = 50000, min = 100, step = 100)),
@@ -62,8 +75,86 @@ mod_mfa_ui <- function(id) {
                          downloadButton(ns("download_permanova_main_mfa"), "Download Main Results"),
                          br(),
                          h5("Pairwise PERMANOVA Results on MFA Scores:"),
+                         p(em("Tests whether group ", strong("centroids"), " differ significantly in MFA space,",
+                              " i.e. whether groups occupy different locations. This is distinct from the pairwise dispersion",
+                              " comparisons below, which test whether groups differ in their", strong("spread"),
+                              " around those centroids.")),
                          DTOutput(ns("permanova_pairwise_results_mfa")),
-                         downloadButton(ns("download_permanova_pairwise_mfa"), "Download Pairwise Results")
+                         downloadButton(ns("download_permanova_pairwise_mfa"), "Download Pairwise Results"),
+                         hr(),
+                         
+                         h5("Dispersion Analysis (betadisper):"),
+                         p("Tests the homogeneity of multivariate dispersions (spread around group centroids) among groups using ",
+                           code("vegan::betadisper()"), ". A significant result indicates that groups differ in their within-group spread,",
+                           " which is an important assumption of PERMANOVA. If dispersion is heterogeneous (p < 0.05), a significant PERMANOVA",
+                           " may reflect differences in spread rather than (or in addition to) differences in group centroids."),
+                         verbatimTextOutput(ns("betadisper_results_mfa")),
+                         downloadButton(ns("download_betadisper_mfa"), "Download Dispersion Results"),
+                         br(), br(),
+                         h5("Pairwise Dispersion Comparisons (Tukey HSD on distances-to-centroid):"),
+                         p(em(strong("Note:"), "This Tukey HSD tests for significant differences in within-group",
+                              strong("dispersion"), "(spread around each group's centroid) between pairs of groups.",
+                              "It is", strong("not"), "a post-hoc test for differences in group means — that is the role of the",
+                              "Tukey HSD in the Univariate ANOVA section.",
+                              "Here, the input to the Tukey is a single scalar per specimen: its distance to its own group centroid in PCoA space.",
+                              "Only shown when more than 2 groups are present.")),
+                         DTOutput(ns("betadisper_tukey_results_mfa")),
+                         downloadButton(ns("download_betadisper_tukey_mfa"), "Download Pairwise Dispersion"),
+                         hr(),
+                         
+                         h5("Pairwise Centroid Distances:"),
+                         p("Euclidean distances between group centroids in PCoA space (computed from the ",
+                           code("betadisper"), " centroids). Larger values indicate greater separation between group centroids,",
+                           " complementing the PERMANOVA significance test with a magnitude measure."),
+                         DTOutput(ns("centroid_dist_results_mfa")),
+                         downloadButton(ns("download_centroid_dist_mfa"), "Download Centroid Distances"),
+                         hr(),
+                         
+                         h5("Interpreting Results Together:"),
+                         p("PERMANOVA significance alone is not sufficient to conclude divergence. The three analyses above",
+                           "should be interpreted jointly. The table below summarises how combinations of results bear on",
+                           "evidence for morphological divergence between groups."),
+                         tags$p(
+                           style = "font-size: 0.9em;",
+                           strong("Betadisper convention (note the counterintuitive direction):"), br(),
+                           "— ", strong("Homogeneous"), "(p > 0.05): groups have similar within-group spread — assumption of PERMANOVA met.", br(),
+                           "— ", strong("Heterogeneous"), "(p < 0.05): groups differ significantly in within-group spread — assumption violated.", br(),
+                           "Unlike most tests in this module where significance is the target, a ", em("non-significant"),
+                           " betadisper result is the desirable outcome for clean PERMANOVA interpretation."
+                         ),
+                         tags$table(
+                           class = "table table-bordered table-condensed",
+                           style = "font-size: 0.9em; margin-top: 10px;",
+                           tags$thead(
+                             tags$tr(
+                               tags$th("PERMANOVA"), tags$th("Betadisper"), tags$th("Centroid distance"), tags$th("Interpretation")
+                             )
+                           ),
+                           tags$tbody(
+                             tags$tr(
+                               tags$td("Significant"), tags$td("Homogeneous"), tags$td("Large"),
+                               tags$td("Clean divergence — groups differ in location, not spread. Strongest evidence for divergence.")
+                             ),
+                             tags$tr(
+                               tags$td("Significant"), tags$td("Heterogeneous"), tags$td("Large"),
+                               tags$td("Divergence likely real but complicated by unequal spread — interpret with caution.")
+                             ),
+                             tags$tr(
+                               tags$td("Significant"), tags$td("Heterogeneous"), tags$td("Small"),
+                               tags$td("Significance may be driven by dispersion differences, not centroid displacement — weak evidence for divergence.")
+                             ),
+                             tags$tr(
+                               tags$td("Non-significant"), tags$td("Homogeneous"), tags$td("Small"),
+                               tags$td("Groups are not distinguishable in multivariate trait space — no support for divergence.")
+                             ),
+                             tags$tr(
+                               tags$td("Non-significant"), tags$td("Heterogeneous"), tags$td("Small"),
+                               tags$td("Groups overlap in centroid space but differ in variability — possibly one group is more morphologically variable than the other.")
+                             )
+                           )
+                         ),
+                         br(),
+                         hr()
                 ) 
     ) 
   )
@@ -83,6 +174,8 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
     # Reactive values for PERMANOVA results
     permanova_main_mfa_results_r <- reactiveVal(NULL)
     permanova_pairwise_mfa_results_r <- reactiveVal(NULL)
+    betadisper_mfa_results_r <- reactiveVal(NULL)
+    centroid_dist_mfa_r <- reactiveVal(NULL)
     
     # UI to display the MFA status message
     output$mfa_status_message <- renderText({
@@ -235,7 +328,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       all_active_traits <- unlist(group_map)
       
       print(custom_trait_groups$groups)
-
+      
       
       missing_traits <- setdiff(all_active_traits, names(df))
       if (length(missing_traits) > 0) {
@@ -317,7 +410,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           }
         }
       }
-
+      
       # Check for missing values AFTER all type conversions
       if (any(is.na(data_for_mfa))) {
         mfa_status_message_r("Error: Missing values detected in selected traits after type conversion. MFA requires complete cases. Please clean your data first (e.g., using 'Impute Missing Data' module).")
@@ -416,7 +509,7 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
           tabPanel("Quantitative Variable Contributions",
                    DTOutput(ns("mfa_quanti_contrib_table"))
           ),
-         
+          
           tabPanel("Individuals Coordinates",
                    DTOutput(ns("mfa_ind_coord_table"))
           )
@@ -557,6 +650,8 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       
       if (is.null(mfa_res$ind$coord)) {
         showNotification("MFA individuals coordinates not available. Please run MFA first.", type = "error")
+        betadisper_mfa_results_r(NULL)
+        centroid_dist_mfa_r(NULL)
         return()
       }
       
@@ -567,6 +662,8 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       # The rows of mfa_scores correspond to the rows of data_for_mfa
       if (is.null(data_for_mfa) || !(group_col %in% names(data_for_mfa))) {
         showNotification("Original data or group column not found for PERMANOVA. This is an internal error.", type = "error")
+        betadisper_mfa_results_r(NULL)
+        centroid_dist_mfa_r(NULL)
         return()
       }
       
@@ -579,6 +676,8 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       
       if (nlevels(group_factor) < 2) {
         showNotification("PERMANOVA requires at least two groups in the species/group column.", type = "error")
+        betadisper_mfa_results_r(NULL)
+        centroid_dist_mfa_r(NULL)
         return()
       }
       
@@ -645,6 +744,37 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
         showNotification("Main PERMANOVA not significant or failed, skipping pairwise tests.", type = "info")
       }
       permanova_pairwise_mfa_results_r(pairwise_permanova_res)
+      
+      # Betadisper — runs unconditionally as an assumption check for PERMANOVA
+      betadisper_capture <- tryCatch({
+        dist_mat <- vegan::vegdist(mfa_scores, method = distance_method)
+        bd <- vegan::betadisper(dist_mat, group_factor)
+        bd_permutest <- vegan::permutest(bd, permutations = permutations, pairwise = TRUE)
+        bd_tukey <- if (nlevels(group_factor) > 2) TukeyHSD(bd) else NULL
+        list(betadisper = bd, permutest = bd_permutest, tukey = bd_tukey)
+      }, error = function(e) {
+        showNotification(paste("Warning: betadisper could not be computed:", e$message), type = "warning")
+        NULL
+      })
+      betadisper_mfa_results_r(betadisper_capture)
+      
+      # Centroid distances — pairwise Euclidean distances between group centroids in PCoA space
+      if (!is.null(betadisper_capture)) {
+        tryCatch({
+          centroids <- betadisper_capture$betadisper$centroids
+          centroid_dist_mat <- as.matrix(dist(centroids))
+          centroid_dist_mat <- round(centroid_dist_mat, 4)
+          centroid_dist_df <- as.data.frame(centroid_dist_mat)
+          centroid_dist_df <- cbind(Group = rownames(centroid_dist_df), centroid_dist_df)
+          rownames(centroid_dist_df) <- NULL
+          centroid_dist_mfa_r(centroid_dist_df)
+        }, error = function(e) {
+          showNotification(paste("Warning: could not compute centroid distances:", e$message), type = "warning")
+          centroid_dist_mfa_r(NULL)
+        })
+      } else {
+        centroid_dist_mfa_r(NULL)
+      }
     })
     
     output$permanova_main_results_mfa <- renderPrint({
@@ -674,6 +804,94 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       content = function(file) {
         req(permanova_pairwise_mfa_results_r())
         write.csv(permanova_pairwise_mfa_results_r(), file, row.names = FALSE)
+      }
+    )
+    
+    # Betadisper results
+    output$betadisper_results_mfa <- renderPrint({
+      res <- betadisper_mfa_results_r()
+      if (is.null(res)) {
+        cat("Dispersion analysis not yet run or could not be computed.\n")
+        return()
+      }
+      bd <- res$betadisper
+      pt <- res$permutest
+      
+      cat("=== Multivariate Homogeneity of Group Dispersions (betadisper) ===\n\n")
+      cat("Average distance to group centroid (within-group spread):\n")
+      print(round(bd$group.distances, 4))
+      cat("\n--- Permutation test (permutest) ---\n")
+      cat("(Pairwise comparisons are shown in the table below)\n\n")
+      print(pt$tab)
+    })
+    
+    output$betadisper_tukey_results_mfa <- renderDT({
+      res <- betadisper_mfa_results_r()
+      if (is.null(res) || is.null(res$tukey)) {
+        return(datatable(
+          data.frame(Message = "Pairwise dispersion comparisons are only shown for more than 2 groups."),
+          options = list(dom = 't', paging = FALSE, searching = FALSE)
+        ))
+      }
+      tukey_df <- as.data.frame(res$tukey$group) %>%
+        tibble::rownames_to_column("Comparison") %>%
+        dplyr::rename(diff = diff, lower = lwr, upper = upr, p_adj = `p adj`) %>%
+        dplyr::mutate(dplyr::across(where(is.numeric), ~ round(.x, 4)))
+      datatable(tukey_df, options = list(dom = 't', paging = FALSE, searching = FALSE))
+    })
+    
+    output$centroid_dist_results_mfa <- renderDT({
+      df <- centroid_dist_mfa_r()
+      if (is.null(df)) {
+        return(datatable(
+          data.frame(Message = "Centroid distances not available."),
+          options = list(dom = 't', paging = FALSE, searching = FALSE)
+        ))
+      }
+      datatable(df, options = list(dom = 't', paging = FALSE, searching = FALSE), rownames = FALSE)
+    })
+    
+    output$download_betadisper_mfa <- downloadHandler(
+      filename = function() { paste0("betadisper_mfa_results_", Sys.Date(), ".txt") },
+      content = function(file) {
+        res <- betadisper_mfa_results_r()
+        req(res)
+        sink(file)
+        cat("=== Multivariate Homogeneity of Group Dispersions (betadisper) ===\n\n")
+        cat("Average distance to group centroid:\n")
+        print(round(res$betadisper$group.distances, 4))
+        cat("\n--- Permutation test ---\n")
+        print(res$permutest$tab)
+        if (!is.null(res$tukey)) {
+          cat("\n--- Pairwise Tukey HSD on dispersions ---\n")
+          print(res$tukey)
+        }
+        sink()
+      }
+    )
+    
+    output$download_betadisper_tukey_mfa <- downloadHandler(
+      filename = function() { paste0("betadisper_pairwise_mfa_", Sys.Date(), ".csv") },
+      content = function(file) {
+        res <- betadisper_mfa_results_r()
+        req(res)
+        if (is.null(res$tukey)) {
+          writeLines("Pairwise dispersion comparisons only available for more than 2 groups.", file)
+          return()
+        }
+        tukey_df <- as.data.frame(res$tukey$group) %>%
+          tibble::rownames_to_column("Comparison") %>%
+          dplyr::rename(diff = diff, lower = lwr, upper = upr, p_adj = `p adj`)
+        write.csv(tukey_df, file, row.names = FALSE)
+      }
+    )
+    
+    output$download_centroid_dist_mfa <- downloadHandler(
+      filename = function() { paste0("centroid_distances_mfa_", Sys.Date(), ".csv") },
+      content = function(file) {
+        df <- centroid_dist_mfa_r()
+        req(df)
+        write.csv(df, file, row.names = FALSE)
       }
     )
     
