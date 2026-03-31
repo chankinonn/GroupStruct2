@@ -22,7 +22,7 @@ landing_page_ui <- function() {
                tags$ul(
                  tags$li(strong("Summary Statistics:"), "Descriptive statistics and data exploration"),
                  tags$li(strong("Allometric Correction (Morphometric data only):"), "Body-size correction for morphometric data using the Thorpe method"),
-                 tags$li(strong("Inferential Statistics:"), "Univariate/multivariate tests (e.g., t-test, ANOVA, PERMANOVA) and PCA/DAPC"),
+                 tags$li(strong("Inferential Statistics:"), "Univariate/multivariate tests (e.g., t-test, ANOVA, PERMANOVA with dispersion analysis) and PCA/DAPC"),
                  tags$li(strong("Morphometric Delimitation (Morphometric data only):"), 
                          "A Bayesian framework for delimitating morphometric clusters using Gaussian Mixture Models and diagnostic character identification using machine learning"),
                  tags$li(strong("Multiple Factor Analysis (Mixed data only):"), 
@@ -97,7 +97,10 @@ landing_page_ui <- function() {
                                  tags$ul(
                                    tags$li("Run univariate tests (e.g., t-test, ANOVA) for individual traits"),
                                    tags$li("Run PCA to visualize morphological variation"),
-                                   tags$li("Run PERMANOVA to test overall group differences")
+                                   tags$li("Run PERMANOVA to test overall group differences between OTUs"),
+                                   tags$li("Run dispersion analysis (betadisper) to test homogeneity of within-group variance"),
+                                   tags$li("Interpret PERMANOVA and dispersion results jointly: significant PERMANOVA may reflect centroid differences, dispersion differences, or both"),
+                                   tags$li("Use pairwise centroid distances to quantify the magnitude of separation between group pairs")
                                   )),
                          tags$li(strong("Visualization"), "-> Create publication-ready plots")
                  )
@@ -120,7 +123,10 @@ landing_page_ui <- function() {
                                  tags$ul(
                                    tags$li("Run univariate tests (e.g., t-test, ANOVA) for individual traits"),
                                    tags$li("Run PCA to visualize morphological variation"),
-                                   tags$li("Run PERMANOVA to test overall group differences")
+                                   tags$li("Run PERMANOVA to test overall group differences between OTUs"),
+                                   tags$li("Run dispersion analysis (betadisper) to test homogeneity of within-group variance"),
+                                   tags$li("Interpret PERMANOVA and dispersion results jointly: significant PERMANOVA may reflect centroid differences, dispersion differences, or both"),
+                                   tags$li("Use pairwise centroid distances to quantify the magnitude of separation between group pairs")
                                  )),
                          tags$li(strong("Morphometric Delimitation"),
                                  tags$ul(
@@ -193,6 +199,10 @@ landing_page_ui <- function() {
                                  tags$ul(
                                    tags$li("Define variable groups (e.g., 'Meristic', 'Morphometric', 'Color')"),
                                    tags$li("MFA balances the contribution of each variable type"),
+                                   tags$li("Run PERMANOVA to test overall group differences across all variable types simultaneously"),
+                                   tags$li("Run dispersion analysis (betadisper) to test homogeneity of within-group variance"),
+                                   tags$li("Interpret PERMANOVA and dispersion results jointly: significant PERMANOVA may reflect centroid differences, dispersion differences, or both"),
+                                   tags$li("Use pairwise centroid distances to quantify the magnitude of separation between group pairs"),
                                    tags$li("Visualize group separation in factor space"),
                                    tags$li("Identify which variable types contribute most to differentiation")
                                  )),
@@ -220,7 +230,9 @@ landing_page_ui <- function() {
                  tags$li("For morphometric data,", strong("allometric correction"), "should be performed before downstream analyses. Select 'No Correction' if your organism does not exhibit allometric growth"),
                  tags$li("Use", strong("Visualization"), "at every step to understand your data and results"),
                  tags$li("Statistical significance != taxonomic validity. Always integrate multiple lines of evidence from other sources of data. Morphology is only a single line of evidence"),
-                 ),
+                 tags$li("When interpreting PERMANOVA results, always check the dispersion analysis.",
+                         "A significant PERMANOVA can reflect differences in group centroids, differences in within-group spread, or both.",
+                         "Centroid distances help quantify the magnitude of separation between specific group pairs"),                 ),
                hr(),
       ),
       
