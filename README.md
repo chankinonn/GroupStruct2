@@ -1,5 +1,17 @@
 # GroupStruct2
 
+## Latest Release
+
+**v1.1.0** (March 2026) — Visualization enhancements and PERMANOVA updates.
+See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag/v1.1.0) for details.
+
+To update:
+```r
+devtools::install_github("chankinonn/GroupStruct2")
+```
+
+---
+
 **GroupStruct2** is a user-friendly Shiny application that provides statistical and visual support for species diagnosis. Although GroupStruct2 is optimized for species diagnosis, its analytical framework can be co-opted to infer group structure for any numeric or numeric + categorical dataset (biological or non-biological). GroupStruct2 combines robust statistical workflows with highly customizable, publication-ready visualizations based on the ggplot architecture, all within an intuitive graphical user interface that requires no coding experience beyond installing and launching the application.
 
 ---
