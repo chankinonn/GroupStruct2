@@ -11,6 +11,7 @@ mod_visual_ui_combined <- function(id) {
                                   plotOutput(ns("plot_scatter"))
                            ),
                            column(3,
+                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
                                   br(),
                                   numericInput(ns("plot_scatter_height"), "Plot Height (px)", value = 500, min = 200, step = 50),
                                   numericInput(ns("plot_scatter_width"), "Plot Width (px)", value = 700, min = 200, step = 50),
@@ -41,7 +42,8 @@ mod_visual_ui_combined <- function(id) {
                            column(9, 
                                   plotOutput(ns("plot_box"))
                            ),
-                           column(3, 
+                           column(3,
+                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
                                   br(),
                                   numericInput(ns("plot_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
                                   numericInput(ns("plot_box_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
@@ -66,6 +68,7 @@ mod_visual_ui_combined <- function(id) {
                                   plotOutput(ns("plot_violin"))
                            ),
                            column(3,
+                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
                                   br(),
                                   numericInput(ns("plot_violin_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
                                   numericInput(ns("plot_violin_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
@@ -111,6 +114,7 @@ mod_visual_ui_combined <- function(id) {
                                   plotOutput(ns("mfa_individuals_plot"))
                            ),
                            column(3,
+                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
                                   br(),
                                   numericInput(ns("mfa_individuals_plot_height"), "Plot Height (px)", value = 500, min = 300, step = 50, width = '150px'), 
                                   numericInput(ns("mfa_individuals_plot_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'), 
@@ -146,6 +150,41 @@ mod_visual_ui_combined <- function(id) {
                                     sliderInput(ns("mfa_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
                                   ),
                                   checkboxInput(ns("mfa_centroids"), "Group Centroids", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_centroids")),
+                                    numericInput(ns("mfa_centroid_size"), "Centroid Size:", value = 4, min = 1, max = 15, width = '150px'),
+                                    colourInput(ns("mfa_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background"),
+                                    
+                                    checkboxInput(ns("mfa_spider"), "Show Spider Plot", value = FALSE),
+                                    conditionalPanel(
+                                      condition = sprintf("input['%s']", ns("mfa_spider")),
+                                      sliderInput(ns("mfa_spider_alpha"), "Spider Line Transparency:", min = 0.1, max = 1, value = 0.4, step = 0.1, width = '150px'),
+                                      sliderInput(ns("mfa_spider_width"), "Spider Line Width:", min = 0.1, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                    ),
+                                    
+                                    checkboxInput(ns("mfa_centroid_distances"), "Show Centroid Distances", value = FALSE),
+                                    conditionalPanel(
+                                      condition = sprintf("input['%s']", ns("mfa_centroid_distances")),
+                                      colourInput(ns("mfa_centroid_dist_color"), "Distance Line Color:", value = "#444444", showColour = "background"),
+                                      sliderInput(ns("mfa_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
+                                      sliderInput(ns("mfa_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
+                                      numericInput(ns("mfa_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
+                                      helpText("Distances shown are Euclidean distances between group centroids in the 2D MFA space of the currently selected dimensions. These are not equivalent to PERMANOVA distances, which are computed from the full multivariate dataset across all variables. Use these values for visual interpretation only.")
+                                    ),
+                                    
+                                    checkboxInput(ns("mfa_mst"), "Show Minimum Spanning Tree", value = FALSE),
+                                    conditionalPanel(
+                                      condition = sprintf("input['%s']", ns("mfa_mst")),
+                                      colourInput(ns("mfa_mst_color"), "MST Line Color:", value = "#222222", showColour = "background"),
+                                      sliderInput(ns("mfa_mst_alpha"), "MST Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
+                                      sliderInput(ns("mfa_mst_width"), "MST Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
+                                      checkboxInput(ns("mfa_mst_labels"), "Show MST Edge Distances", value = FALSE),
+                                      conditionalPanel(
+                                        condition = sprintf("input['%s']", ns("mfa_mst_labels")),
+                                        numericInput(ns("mfa_mst_label_size"), "MST Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                      )
+                                    )
+                                  ),
                                   checkboxInput(ns("mfa_ellipse"), "95% Confidence Ellipses", value = FALSE),
                                   checkboxInput(ns("mfa_convex_hull"), "Convex Hulls", value = FALSE),
                                   conditionalPanel(
@@ -1025,19 +1064,128 @@ mod_visual_server_combined <- function(id, dataset_r,
       # Add centroids
       if (isTRUE(input$mfa_centroids)) {
         centroids <- mfa_ind_coord %>%
-          group_by(Group) %>%
-          summarize(
-            x_cent = mean(.data[[dim_x]]), 
-            y_cent = mean(.data[[dim_y]]), 
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(
+            x_cent = mean(.data[[dim_x]]),
+            y_cent = mean(.data[[dim_y]]),
             .groups = "drop"
           )
         
-        p <- p + geom_point(
+        centroid_size <- if (!is.null(input$mfa_centroid_size)) input$mfa_centroid_size else 4
+        
+        # Spider plot
+        if (isTRUE(input$mfa_spider)) {
+          spider_df <- mfa_ind_coord %>%
+            dplyr::left_join(centroids, by = "Group")
+          
+          p <- p + ggplot2::geom_segment(
+            data = spider_df,
+            aes(
+              x     = .data[[dim_x]],
+              y     = .data[[dim_y]],
+              xend  = x_cent,
+              yend  = y_cent,
+              color = Group
+            ),
+            alpha       = input$mfa_spider_alpha,
+            linewidth   = input$mfa_spider_width,
+            inherit.aes = FALSE,
+            show.legend = FALSE
+          ) +
+            get_color_scale_otu(plot_palette())
+        }
+        
+        # MST
+        if (isTRUE(input$mfa_mst) && nrow(centroids) >= 2) {
+          cent_mat <- as.matrix(dist(centroids[, c("x_cent", "y_cent")]))
+          rownames(cent_mat) <- centroids$Group
+          colnames(cent_mat) <- centroids$Group
+          
+          mst_obj <- ape::mst(cent_mat)
+          mst_idx <- which(mst_obj == 1, arr.ind = TRUE)
+          mst_idx <- mst_idx[mst_idx[, 1] < mst_idx[, 2], , drop = FALSE]
+          
+          mst_df <- data.frame(
+            x_start  = centroids$x_cent[mst_idx[, 1]],
+            y_start  = centroids$y_cent[mst_idx[, 1]],
+            x_end    = centroids$x_cent[mst_idx[, 2]],
+            y_end    = centroids$y_cent[mst_idx[, 2]],
+            x_mid    = (centroids$x_cent[mst_idx[, 1]] + centroids$x_cent[mst_idx[, 2]]) / 2,
+            y_mid    = (centroids$y_cent[mst_idx[, 1]] + centroids$y_cent[mst_idx[, 2]]) / 2,
+            distance = round(sqrt(
+              (centroids$x_cent[mst_idx[, 2]] - centroids$x_cent[mst_idx[, 1]])^2 +
+                (centroids$y_cent[mst_idx[, 2]] - centroids$y_cent[mst_idx[, 1]])^2
+            ), 3)
+          )
+          
+          p <- p + ggplot2::geom_segment(
+            data = mst_df,
+            aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
+            color       = input$mfa_mst_color,
+            alpha       = input$mfa_mst_alpha,
+            linewidth   = input$mfa_mst_width,
+            inherit.aes = FALSE
+          )
+          
+          if (isTRUE(input$mfa_mst_labels)) {
+            p <- p + ggplot2::geom_label(
+              data = mst_df,
+              aes(x = x_mid, y = y_mid, label = distance),
+              size          = input$mfa_mst_label_size,
+              color         = "black",
+              fill          = "white",
+              label.padding = ggplot2::unit(0.15, "lines"),
+              inherit.aes   = FALSE
+            )
+          }
+        }
+        
+        # Centroid points — on top of all lines
+        p <- p + ggplot2::geom_point(
           data = centroids,
           aes(x = x_cent, y = y_cent),
-          shape = 8, size = 3, color = "black", fill = "white", stroke = 1,
-          inherit.aes = FALSE, show.legend = FALSE
+          shape = 8, size = centroid_size,
+          color = input$mfa_centroid_color,
+          fill = "white", stroke = 1,
+          inherit.aes = FALSE,
+          show.legend = FALSE
         )
+        
+        # Pairwise centroid distances
+        if (isTRUE(input$mfa_centroid_distances) && nrow(centroids) >= 2) {
+          pairs <- combn(nrow(centroids), 2)
+          dist_df <- data.frame(
+            x_start  = centroids$x_cent[pairs[1, ]],
+            y_start  = centroids$y_cent[pairs[1, ]],
+            x_end    = centroids$x_cent[pairs[2, ]],
+            y_end    = centroids$y_cent[pairs[2, ]],
+            x_mid    = (centroids$x_cent[pairs[1, ]] + centroids$x_cent[pairs[2, ]]) / 2,
+            y_mid    = (centroids$y_cent[pairs[1, ]] + centroids$y_cent[pairs[2, ]]) / 2,
+            distance = round(sqrt(
+              (centroids$x_cent[pairs[2, ]] - centroids$x_cent[pairs[1, ]])^2 +
+                (centroids$y_cent[pairs[2, ]] - centroids$y_cent[pairs[1, ]])^2
+            ), 3)
+          )
+          
+          p <- p +
+            ggplot2::geom_segment(
+              data = dist_df,
+              aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
+              color       = input$mfa_centroid_dist_color,
+              linewidth   = input$mfa_centroid_dist_width,
+              alpha       = input$mfa_centroid_dist_alpha,
+              inherit.aes = FALSE
+            ) +
+            ggplot2::geom_label(
+              data = dist_df,
+              aes(x = x_mid, y = y_mid, label = distance),
+              size          = input$mfa_centroid_dist_label_size,
+              color         = "black",
+              fill          = "white",
+              label.padding = ggplot2::unit(0.15, "lines"),
+              inherit.aes   = FALSE
+            )
+        }
       }
       
       # Apply color scales
