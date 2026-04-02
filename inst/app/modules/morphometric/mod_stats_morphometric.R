@@ -42,25 +42,6 @@ mod_inferential_ui_morphometric <- function(id) {
                          hr(),
                 ),
                 
-                tabPanel("PCAtest",
-                         br(), 
-                         h4("PCAtest Analysis sensu Camargo (2022)"),
-                         p("The PCAtest performs permutation-based statistical tests to evaluate the overall significance of a PCA, the significance of each PC axis, and the contributions of each trait to the significant axes. This analysis aids in the interpretation of the PCA results and determines which axes are informative for downstream analysis."),
-                         tags$p(
-                           style = "color: red; font-weight: bold;",
-                           "Caveat: The PCAtest can be overly conservative and misleading if a disproportionately large amount of variation is captured in the first few PCs, as is common in phenotypic data. For the DAPC plot, we recommend using the number of PCs that capture 80–90% of variation instead of the number of significant PCs inferred from the PCAtest. We encourage users to compare results using different methods and strategies."
-                         ),
-                         p("If you use PCAtest, please cite:"),
-                         p("Camargo, A. (2022). PCAtest: testing the statistical significance of Principal Component Analysis in R. PeerJ, 10:e12967. https://doi.org/10.7717/peerj.12967"),
-                         numericInput(ns("pcatest_permutations"), "Number of Permutations:", value = 1000, min = 100, step = 100),
-                         actionButton(ns("run_pcatest"), "Run PCAtest"),
-                         br(), br(),
-                         h5("Main PCAtest Results:"),
-                         verbatimTextOutput(ns("pcatest_main_results")),
-                         downloadButton(ns("download_pcatest_main"), "Download PCATest Results"),
-                         hr(),
-                ),
-                
                 tabPanel("Multivariate (PERMANOVA)",
                          br(), 
                          h4("PERMANOVA Analysis"),
@@ -82,7 +63,7 @@ mod_inferential_ui_morphometric <- function(id) {
                            "recommended when accompanying a PCA."),
                          
                          fluidRow(
-                           column(6, numericInput(ns("permanova_permutations"), "Number of Permutations:", value = 50000, min = 100, step = 100))
+                           column(6, numericInput(ns("permanova_permutations"), "Number of Permutations:", value = 10000, min = 100, step = 100))
                            # column(6, selectInput(ns("permanova_distance_method"), "Distance Method:",
                            #                       choices = c("euclidean", "manhattan", "bray", "jaccard", "altGower"),
                            #                       selected = "euclidean"))
@@ -92,7 +73,7 @@ mod_inferential_ui_morphometric <- function(id) {
                            checkboxInput(ns("use_pca"), HTML("Use PCA Scores for PERMANOVA"), value = FALSE)
                          ),
                          
-                         actionButton(ns("run_permanova"), "Run PERMANOVA"),
+                         actionButton(ns("run_permanova"), "Run PERMANOVA", icon = icon("play"), class = "btn-primary"),
                          br(), br(),
                          h5("Main PERMANOVA Results (adonis2):"),
                          verbatimTextOutput(ns("permanova_main_results")),
@@ -193,8 +174,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
     permanova_pairwise_results_r <- reactiveVal(NULL)
     betadisper_results_r <- reactiveVal(NULL)
     centroid_dist_r <- reactiveVal(NULL)
-    pcatest_results_r <- reactiveVal(NULL) 
-    
     # Reactive for PCA results
     # Reactive for PCA results based on allometric data
     pca_results_r <- reactive({
@@ -931,8 +910,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           p.value = c()
           
           total_pairs <- ncol(co)
-          progress_start_value <- 0.5
-          progress_step_size <- (1.0 - progress_start_value) / total_pairs
           
           for(elem in 1:total_pairs){
             grp1 = co[1,elem]
@@ -950,7 +927,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
               F.Model =c(F.Model, NA);
               R2 = c(R2, NA);
               p.value =c(p.value, NA);
-              incProgress(progress_step_size, detail = paste("Skipping (constant data):", grp1, "vs", grp2))
               next
             }
             
@@ -963,8 +939,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             F.Model =c(F.Model, ad$F[1]);
             R2 = c(R2, ad$R2[1]);
             p.value =c(p.value, ad$`Pr(>F)`[1]);
-            
-            incProgress(progress_step_size, detail = paste("Comparing", grp1, "vs", grp2))
           }
           p.adjusted = p.adjust(p.value,method=p.adjust.m)
           sig = c(rep('',length(p.adjusted)))
@@ -980,161 +954,146 @@ mod_inferential_server_morphometric <- function(id, data_r) {
         # Observe for PERMANOVA
         observeEvent(input$run_permanova, {
           shinyjs::addClass(id = "run_permanova", class = "module-active")
-          
-          withProgress(message = 'PERMANOVA Analysis in progress', value = 0, {
-            incProgress(0.1, detail = "Checking data and parameters...")
-            req(data_r())
-            
-            df_source <- data_r()
-            df_for_permanova <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
-            
-            group_col_name <- names(df_for_permanova)[1]
-            
-            # Get numeric traits data
-            traits_data_raw <- df_for_permanova %>% dplyr::select(where(is.numeric))
-            
-            if (group_col_name %in% names(traits_data_raw)) {
-              traits_data_raw <- traits_data_raw %>% dplyr::select(-!!sym(group_col_name))
-            }
-            
-            complete_cases_idx <- complete.cases(traits_data_raw, df_for_permanova[[group_col_name]])
-            if (!any(complete_cases_idx)) {
-              showNotification("No complete cases found for selected traits. PERMANOVA cannot be performed.", type = "error")
-              permanova_main_results_r(NULL)
-              permanova_pairwise_results_r(NULL)
-              betadisper_results_r(NULL)
-              centroid_dist_r(NULL)
-              shinyjs::removeClass(id = "run_permanova", class = "module-active")
-              return()
-            }
-            
-            traits_data_clean <- traits_data_raw[complete_cases_idx, , drop = FALSE]
-            species_data_clean <- df_for_permanova[[group_col_name]][complete_cases_idx]
-            species_data_clean <- droplevels(as.factor(species_data_clean)) # Ensure factor levels are correct
-            
-            # Check for sufficient data after cleaning
-            if (nrow(traits_data_clean) < 2 || ncol(traits_data_clean) < 1 || n_distinct(species_data_clean) < 2) {
-              showNotification("Not enough complete data (rows < 2), numeric traits (columns < 1), or distinct groups (groups < 2) to perform PERMANOVA. Please check your data.", type = "error")
-              permanova_main_results_r(NULL)
-              permanova_pairwise_results_r(NULL)
-              betadisper_results_r(NULL)
-              centroid_dist_r(NULL)
-              shinyjs::removeClass(id = "run_permanova", class = "module-active")
-              return()
-            }
-            
-            # Check for constant values in traits_data_clean
-            if (all(apply(traits_data_clean, 2, function(col) length(unique(col)) == 1))) {
-              showNotification("All selected numeric traits have constant values. PERMANOVA cannot be performed on constant data.", type = "error")
-              permanova_main_results_r(NULL)
-              permanova_pairwise_results_r(NULL)
-              betadisper_results_r(NULL)
-              centroid_dist_r(NULL)
-              shinyjs::removeClass(id = "run_permanova", class = "module-active")
-              return()
-            }
-            
-            # Data preparation based on PCA option 
-            permanova_data_input <- traits_data_clean
-            analysis_description <- "original trait space"
-            
-            if (input$use_pca) {
-              incProgress(0.2, detail = "Using PCA for PERMANOVA...")
-              
-              # Get PCA results from pca_results_r (already existing)
-              pca <- pca_results_r()
-              req(pca)
-              
-              # Use PCA scores for PERMANOVA
-              permanova_data_input <- pca$x[, apply(pca$x, 2, var) > 1e-9, drop = FALSE]  # Filter out PCs with effectively zero variance
-              analysis_description <- "PCA scores space"
-              
-              if (ncol(permanova_data_input) == 0) {
-                showNotification("PCA resulted in no components with variance. PERMANOVA cannot be performed on PCA scores.", type = "error")
-                permanova_main_results_r(NULL)
-                permanova_pairwise_results_r(NULL)
-                betadisper_results_r(NULL)
-                centroid_dist_r(NULL)
-                shinyjs::removeClass(id = "run_permanova", class = "module-active")
-                return()
-              }
-            }
-            
-            # Run main adonis2 (PERMANOVA)
-            incProgress(0.3, detail = paste("Calculating main PERMANOVA in", analysis_description, "..."))
-            main_result <- tryCatch({
-              vegan::adonis2(formula = permanova_data_input ~ species_data_clean,
-                             permutations = input$permanova_permutations,
-                             method = "euclidean")
-            }, error = function(e) {
-              showNotification(paste("Error running main PERMANOVA:", e$message), type = "error")
-              permanova_main_results_r(NULL)
-              permanova_pairwise_results_r(NULL)
-              shinyjs::removeClass(id = "run_permanova", class = "module-active")
-              return(NULL)
-            })
-            
-            permanova_main_results_r(main_result)
-            
-            # Check if significant and run pairwise comparisons if necessary
-            if (!is.null(main_result) && "Pr(>F)" %in% names(main_result) &&
-                main_result$`Pr(>F)`[1] < 0.05 && n_distinct(species_data_clean) > 2) {
-              incProgress(0.5, detail = "Main PERMANOVA significant. Running pairwise comparisons...")
-              pairwise_result <- tryCatch({
-                pairwise.adonis(x = permanova_data_input,
-                                factors = species_data_clean,
-                                sim.method = "euclidean",
-                                permutations = input$permanova_permutations)
-              }, error = function(e) {
-                showNotification(paste("Error running pairwise PERMANOVA:", e$message), type = "error")
-                return(NULL)
-              })
-              permanova_pairwise_results_r(pairwise_result)
-            } else {
-              reason <- if (is.null(main_result)) "Main PERMANOVA failed" else if (main_result$`Pr(>F)`[1] >= 0.05) "Main PERMANOVA not significant" else "Less than 3 groups"
-              permanova_pairwise_results_r(data.frame(Message = paste("Pairwise test not performed (", reason, ").")))
-              incProgress(0.9, detail = paste("Skipping pairwise test:", reason))
-            }
-            
-            Sys.sleep(0.5)
-            
-            # Betadisper — runs unconditionally as an assumption check for PERMANOVA
-            incProgress(0.85, detail = "Running dispersion analysis (betadisper)...")
-            betadisper_capture <- tryCatch({
-              dist_mat <- vegan::vegdist(permanova_data_input, method = "euclidean")
-              bd <- vegan::betadisper(dist_mat, species_data_clean)
-              bd_permutest <- vegan::permutest(bd, permutations = input$permanova_permutations, pairwise = TRUE)
-              bd_tukey <- if (nlevels(species_data_clean) > 2) TukeyHSD(bd) else NULL
-              list(betadisper = bd, permutest = bd_permutest, tukey = bd_tukey)
-            }, error = function(e) {
-              showNotification(paste("Warning: betadisper could not be computed:", e$message), type = "warning")
-              NULL
-            })
-            betadisper_results_r(betadisper_capture)
-            
-            # Centroid distances — pairwise Euclidean distances between group centroids in PCoA space
-            if (!is.null(betadisper_capture)) {
-              tryCatch({
-                centroids <- betadisper_capture$betadisper$centroids
-                centroid_dist_mat <- as.matrix(dist(centroids))
-                centroid_dist_mat <- round(centroid_dist_mat, 4)
-                centroid_dist_df <- as.data.frame(centroid_dist_mat)
-                centroid_dist_df <- cbind(Group = rownames(centroid_dist_df), centroid_dist_df)
-                rownames(centroid_dist_df) <- NULL
-                centroid_dist_r(centroid_dist_df)
-              }, error = function(e) {
-                showNotification(paste("Warning: could not compute centroid distances:", e$message), type = "warning")
-                centroid_dist_r(NULL)
-              })
-            } else {
-              centroid_dist_r(NULL)
-            }
-            
-            incProgress(1, detail = "Analysis complete.")
-            showNotification("PERMANOVA analysis completed. Results are displayed below.", type = "default")
+          shinybusy::show_modal_spinner(
+            spin = "fading-circle",
+            text = "PERMANOVA is running — this may take several minutes..."
+          )
+          on.exit({
+            shinybusy::remove_modal_spinner()
+            shinyjs::removeClass(id = "run_permanova", class = "module-active")
           })
           
-          shinyjs::removeClass(id = "run_permanova", class = "module-active")
+          req(data_r())
+          df_source <- data_r()
+          df_for_permanova <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+          
+          group_col_name <- names(df_for_permanova)[1]
+          
+          # Get numeric traits data
+          traits_data_raw <- df_for_permanova %>% dplyr::select(where(is.numeric))
+          if (group_col_name %in% names(traits_data_raw)) {
+            traits_data_raw <- traits_data_raw %>% dplyr::select(-!!sym(group_col_name))
+          }
+          
+          complete_cases_idx <- complete.cases(traits_data_raw, df_for_permanova[[group_col_name]])
+          if (!any(complete_cases_idx)) {
+            showNotification("No complete cases found for selected traits. PERMANOVA cannot be performed.", type = "error")
+            permanova_main_results_r(NULL)
+            permanova_pairwise_results_r(NULL)
+            betadisper_results_r(NULL)
+            centroid_dist_r(NULL)
+            return()
+          }
+          
+          traits_data_clean <- traits_data_raw[complete_cases_idx, , drop = FALSE]
+          species_data_clean <- df_for_permanova[[group_col_name]][complete_cases_idx]
+          species_data_clean <- droplevels(as.factor(species_data_clean))
+          
+          # Check for sufficient data after cleaning
+          if (nrow(traits_data_clean) < 2 || ncol(traits_data_clean) < 1 || n_distinct(species_data_clean) < 2) {
+            showNotification("Not enough complete data (rows < 2), numeric traits (columns < 1), or distinct groups (groups < 2) to perform PERMANOVA. Please check your data.", type = "error")
+            permanova_main_results_r(NULL)
+            permanova_pairwise_results_r(NULL)
+            betadisper_results_r(NULL)
+            centroid_dist_r(NULL)
+            return()
+          }
+          
+          # Check for constant values in traits_data_clean
+          if (all(apply(traits_data_clean, 2, function(col) length(unique(col)) == 1))) {
+            showNotification("All selected numeric traits have constant values. PERMANOVA cannot be performed on constant data.", type = "error")
+            permanova_main_results_r(NULL)
+            permanova_pairwise_results_r(NULL)
+            betadisper_results_r(NULL)
+            centroid_dist_r(NULL)
+            return()
+          }
+          
+          # Data preparation based on PCA option
+          permanova_data_input <- traits_data_clean
+          analysis_description <- "original trait space"
+          
+          if (input$use_pca) {
+            # Use PCA scores from the existing pca_results_r reactive
+            pca <- pca_results_r()
+            req(pca)
+            permanova_data_input <- pca$x[, apply(pca$x, 2, var) > 1e-9, drop = FALSE]
+            analysis_description <- "PCA scores space"
+            
+            if (ncol(permanova_data_input) == 0) {
+              showNotification("PCA resulted in no components with variance. PERMANOVA cannot be performed on PCA scores.", type = "error")
+              permanova_main_results_r(NULL)
+              permanova_pairwise_results_r(NULL)
+              betadisper_results_r(NULL)
+              centroid_dist_r(NULL)
+              return()
+            }
+          }
+          
+          # Run main adonis2 (PERMANOVA)
+          main_result <- tryCatch({
+            vegan::adonis2(formula = permanova_data_input ~ species_data_clean,
+                           permutations = input$permanova_permutations,
+                           method = "euclidean")
+          }, error = function(e) {
+            showNotification(paste("Error running main PERMANOVA:", e$message), type = "error")
+            permanova_main_results_r(NULL)
+            permanova_pairwise_results_r(NULL)
+            return(NULL)
+          })
+          
+          permanova_main_results_r(main_result)
+          
+          # Check if significant and run pairwise comparisons if necessary
+          if (!is.null(main_result) && "Pr(>F)" %in% names(main_result) &&
+              main_result$`Pr(>F)`[1] < 0.05 && n_distinct(species_data_clean) > 2) {
+            pairwise_result <- tryCatch({
+              pairwise.adonis(x = permanova_data_input,
+                              factors = species_data_clean,
+                              sim.method = "euclidean",
+                              permutations = input$permanova_permutations)
+            }, error = function(e) {
+              showNotification(paste("Error running pairwise PERMANOVA:", e$message), type = "error")
+              return(NULL)
+            })
+            permanova_pairwise_results_r(pairwise_result)
+          } else {
+            reason <- if (is.null(main_result)) "Main PERMANOVA failed" else if (main_result$`Pr(>F)`[1] >= 0.05) "Main PERMANOVA not significant" else "Less than 3 groups"
+            permanova_pairwise_results_r(data.frame(Message = paste("Pairwise test not performed (", reason, ").")))
+          }
+          
+          # Betadisper — runs unconditionally as an assumption check for PERMANOVA
+          betadisper_capture <- tryCatch({
+            dist_mat <- vegan::vegdist(permanova_data_input, method = "euclidean")
+            bd <- vegan::betadisper(dist_mat, species_data_clean)
+            bd_permutest <- vegan::permutest(bd, permutations = input$permanova_permutations, pairwise = TRUE)
+            bd_tukey <- if (nlevels(species_data_clean) > 2) TukeyHSD(bd) else NULL
+            list(betadisper = bd, permutest = bd_permutest, tukey = bd_tukey)
+          }, error = function(e) {
+            showNotification(paste("Warning: betadisper could not be computed:", e$message), type = "warning")
+            NULL
+          })
+          betadisper_results_r(betadisper_capture)
+          
+          # Centroid distances — pairwise Euclidean distances between group centroids in PCoA space
+          if (!is.null(betadisper_capture)) {
+            tryCatch({
+              centroids <- betadisper_capture$betadisper$centroids
+              centroid_dist_mat <- as.matrix(dist(centroids))
+              centroid_dist_mat <- round(centroid_dist_mat, 4)
+              centroid_dist_df <- as.data.frame(centroid_dist_mat)
+              centroid_dist_df <- cbind(Group = rownames(centroid_dist_df), centroid_dist_df)
+              rownames(centroid_dist_df) <- NULL
+              centroid_dist_r(centroid_dist_df)
+            }, error = function(e) {
+              showNotification(paste("Warning: could not compute centroid distances:", e$message), type = "warning")
+              centroid_dist_r(NULL)
+            })
+          } else {
+            centroid_dist_r(NULL)
+          }
+          
+          showNotification("PERMANOVA analysis complete. Results are displayed below.", type = "default", duration = 10)
         })
         
         output$permanova_main_results <- renderPrint({
@@ -1259,164 +1218,6 @@ mod_inferential_server_morphometric <- function(id, data_r) {
         )
       } 
     }) 
-    
-    # PCAtest 
-    pcatest_output_text_r <- reactiveVal(NULL)
-    
-    observeEvent(input$main_tabs, {
-      if (input$main_tabs == "PCAtest") {
-        
-        observeEvent(input$run_pcatest, {
-          shinyjs::addClass(id = "run_pcatest", class = "module-active")
-          
-          withProgress(message = 'PCAtest Analysis in progress', value = 0, {
-            incProgress(0.1, detail = "Preparing data for PCAtest...")
-            req(data_r())
-            
-            df_source <- data_r()
-            df_for_pcatest <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
-            
-            group_col_name <- names(df_for_pcatest)[1]
-            traits_data_raw <- df_for_pcatest %>% dplyr::select(where(is.numeric))
-            
-            if (group_col_name %in% names(traits_data_raw)) {
-              traits_data_raw <- traits_data_raw %>% dplyr::select(-!!sym(group_col_name))
-            }
-            
-            complete_cases_idx <- complete.cases(traits_data_raw)
-            if (!any(complete_cases_idx)) {
-              showNotification("No complete cases found for selected traits. PCAtest cannot be performed.", type = "error")
-              pcatest_results_r(NULL)
-              pcatest_output_text_r(NULL)
-              shinyjs::removeClass(id = "run_pcatest", class = "module-active")
-              return()
-            }
-            
-            traits_data_clean <- traits_data_raw[complete_cases_idx, , drop = FALSE]
-            
-            if (nrow(traits_data_clean) < 2 || ncol(traits_data_clean) < 2) {
-              showNotification("Not enough complete data (rows < 2) or numeric traits (columns < 2) to perform PCAtest. Please check your data.", type = "error")
-              pcatest_results_r(NULL)
-              pcatest_output_text_r(NULL)
-              shinyjs::removeClass(id = "run_pcatest", class = "module-active")
-              return()
-            }
-            
-            if (all(apply(traits_data_clean, 2, function(col) length(unique(col)) == 1))) {
-              showNotification("All selected numeric traits have constant values. PCAtest cannot be performed on constant data.", type = "error")
-              pcatest_results_r(NULL)
-              pcatest_output_text_r(NULL)
-              shinyjs::removeClass(id = "run_pcatest", class = "module-active")
-              return()
-            }
-            
-            incProgress(0.3, detail = "Running PCAtest (this may take a while)...")
-            
-            pcatest_capture <- tryCatch({
-              output_con <- textConnection("output_lines", "w", local = TRUE)
-              message_con <- textConnection("message_lines", "w", local = TRUE)
-              
-              sink(output_con, type = "output")
-              sink(message_con, type = "message")
-              
-              result <- PCAtest::PCAtest(
-                x = traits_data_clean,
-                nperm = input$pcatest_permutations,
-                indload = TRUE,
-                plot = FALSE,
-                counter = FALSE  
-              )
-              
-              # Restore output
-              sink(type = "message")
-              sink(type = "output")
-              
-              # Close connections
-              close(output_con)
-              close(message_con)
-              
-              # Combine and filter output
-              full_output <- c(output_lines, message_lines)
-              
-              # Find the starting point of the actual results
-              start_index <- grep("===.*Test of PCA significance", full_output)
-              
-              if (length(start_index) > 0) {
-                # Keep everything from the header to the end
-                filtered_output <- full_output[start_index[1]:length(full_output)]
-                filtered_output <- paste(filtered_output, collapse = "\n")
-              } else {
-                # Fallback to full output if pattern not found
-                filtered_output <- paste(full_output, collapse = "\n")
-              }
-              
-              list(result = result, output = filtered_output)
-            }, error = function(e) {
-              showNotification(paste("Error running PCAtest:", e$message), type = "error")
-              return(NULL)
-            }, finally = {
-              # Safely restore all sinks and connections
-              silent_sink_restore <- function() {
-                try(sink(type = "message"), silent = TRUE)
-                try(sink(type = "output"), silent = TRUE)
-                if (exists("output_con")) try(close(output_con), silent = TRUE)
-                if (exists("message_con")) try(close(message_con), silent = TRUE)
-              }
-              silent_sink_restore()
-            })
-            
-            if (!is.null(pcatest_capture)) {
-              pcatest_results_r(pcatest_capture$result)
-              pcatest_output_text_r(pcatest_capture$output)
-            }
-            
-            Sys.sleep(0.5)
-            incProgress(1, detail = "Analysis complete.")
-            showNotification("PCAtest analysis completed. Results are displayed below.", type = "default")
-          })
-          
-          shinyjs::removeClass(id = "run_pcatest", class = "module-active")
-        })
-        
-        # Render captured PCAtest output
-        output$pcatest_main_results <- renderPrint({
-          req(pcatest_output_text_r())
-          cat(pcatest_output_text_r())
-        })
-        
-        output$pcatest_trait_contributions <- renderDT({
-          req(pcatest_results_r())
-          pcatest_loadings <- pcatest_results_r()$indexloadobs
-          if (!is.null(pcatest_loadings) && nrow(pcatest_loadings) > 0) {
-            datatable(pcatest_loadings, options = list(dom = 't', paging = FALSE, searching = FALSE)) %>%
-              formatRound(columns = names(pcatest_loadings)[sapply(pcatest_loadings, is.numeric)], digits = 4)
-          } else {
-            data.frame(Message = "Trait contributions (index loadings) not available in PCAtest results. This may occur if no significant PCs were found or if there was an issue with the analysis.")
-          }
-        })
-        
-        output$download_pcatest_main <- downloadHandler(
-          filename = function() { paste0("pcatest_main_results_", Sys.Date(), ".txt") },
-          content = function(file) {
-            req(pcatest_output_text_r()) # Use the captured text for download
-            writeLines(pcatest_output_text_r(), file)
-          }
-        )
-        
-        output$download_pcatest_contributions <- downloadHandler(
-          filename = function() { paste0("pcatest_trait_contributions_", Sys.Date(), ".csv") },
-          content = function(file) {
-            req(pcatest_results_r())
-            pcatest_loadings <- pcatest_results_r()$indexloadobs
-            if (!is.null(pcatest_loadings) && nrow(pcatest_loadings) > 0) {
-              write.csv(pcatest_loadings, file, row.names = FALSE)
-            } else {
-              writeLines("No trait contributions data available.", file)
-            }
-          }
-        )
-      }
-    })
     
     return(data_r)
   })

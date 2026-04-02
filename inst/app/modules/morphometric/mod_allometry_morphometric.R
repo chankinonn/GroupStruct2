@@ -28,7 +28,7 @@ mod_allometry_ui_morphometric <- function(id) {
     uiOutput(ns("body_size_selector_ui")),
     p(strong("Important:"), "Make sure you select the variable that represents body size (e.g., snout-vent-length)"),
     hr(),
-    actionButton(ns("run_correction"), "Run Allometric Correction", icon = icon("play")),  
+    actionButton(ns("run_correction"), "Run Allometric Correction", icon = icon("play"), class = "btn-primary"),
     hr(),
     br(),
     h4("Size-Corrected Data Preview"),

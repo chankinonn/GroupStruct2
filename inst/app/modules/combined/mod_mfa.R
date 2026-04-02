@@ -17,7 +17,7 @@ mod_mfa_ui <- function(id) {
                          p(strong("Note 2:"), "At least 2 groups must be created."),
                          uiOutput(ns("variable_group_selection")),
                          br(),
-                         actionButton(ns("perform_mfa"), "Perform MFA"),
+                         actionButton(ns("perform_mfa"), "Perform MFA", icon = icon("play"), class = "btn-primary"),
                          br(),
                          textOutput(ns("mfa_status_message")), 
                          br(),
@@ -43,9 +43,9 @@ mod_mfa_ui <- function(id) {
                          hr()
                 ), 
                 
-                tabPanel("PERMANOVA on MFA Scores", 
+                tabPanel("PERMANOVA and Dispersion Analysis on MFA Scores", 
                          br(),
-                         h4("PERMANOVA Analysis on MFA Scores"),
+                         h4("PERMANOVA and Dispersion Analysis on MFA Scores"),
                          p("PERMANOVA (Permutational Multivariate Analysis of Variance) tests whether groups differ",
                            "significantly in", strong("centroid position"), "in multivariate trait space — i.e. whether groups",
                            "occupy different regions on average. A significant result (p < 0.05) indicates that at least one",
@@ -63,12 +63,12 @@ mod_mfa_ui <- function(id) {
                            "All analyses operate on the MFA individual coordinates (scores)."),
                          
                          fluidRow(
-                           column(6, numericInput(ns("permanova_permutations_mfa"), "Number of Permutations:", value = 50000, min = 100, step = 100))
+                           column(6, numericInput(ns("permanova_permutations_mfa"), "Number of Permutations:", value = 10000, min = 100, step = 100))
                            # column(6, selectInput(ns("permanova_distance_method_mfa"), "Distance Method:",
                            #                       choices = c("euclidean", "manhattan", "bray", "jaccard", "altGower"),
                            #                       selected = "euclidean"))
                          ),
-                         actionButton(ns("run_permanova_mfa"), "Run PERMANOVA on MFA Scores"),
+                         actionButton(ns("run_permanova_mfa"), "Run PERMANOVA and Dispersion Analysis on MFA Scores", icon = icon("play"), class = "btn-primary"),
                          br(), br(),
                          h5("Main PERMANOVA Results (adonis2) on MFA Scores:"),
                          verbatimTextOutput(ns("permanova_main_results_mfa")),
@@ -641,6 +641,12 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
     
     # PERMANOVA on MFA Scores Logic
     observeEvent(input$run_permanova_mfa, {
+      shinybusy::show_modal_spinner(
+        spin = "fading-circle",
+        text = "PERMANOVA is running — this may take several minutes..."
+      )
+      on.exit(shinybusy::remove_modal_spinner())
+      
       req(mfa_results_r())
       mfa_res <- mfa_results_r()
       group_col <- group_col_name_r()
@@ -773,6 +779,8 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       } else {
         centroid_dist_mfa_r(NULL)
       }
+      
+      showNotification("PERMANOVA analysis complete. Results are displayed below.", type = "default", duration = 10)
     })
     
     output$permanova_main_results_mfa <- renderPrint({

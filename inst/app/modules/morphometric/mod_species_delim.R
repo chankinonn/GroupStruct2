@@ -63,7 +63,8 @@ mod_species_delim_ui <- function(id) {
                         ),
                         actionButton(ns("run_unsupervised"), 
                                      "Run Unsupervised Analysis", 
-                                     icon = icon("play")),
+                                     icon = icon("play"),
+                                     class = "btn-primary"),
                         hr(),
                         h4("Results"),
                         
@@ -213,7 +214,8 @@ mod_species_delim_ui <- function(id) {
                         hr(),
                         actionButton(ns("run_supervised"), 
                                      "Run Supervised Analysis", 
-                                     icon = icon("play")),
+                                     icon = icon("play"),
+                                     class = "btn-primary"),
                         hr(),
                         h4("Bayes Factor Comparison"),
                         DT::dataTableOutput(ns("bayes_factor_table")),
@@ -334,7 +336,7 @@ mod_species_delim_ui <- function(id) {
                         actionButton(ns("run_bayesian"), 
                                      "Run Bayesian Delimitation", 
                                      icon = icon("play"),
-                                     style = "background-color: white; color: black;"),
+                                     class = "btn-primary"),
                         
                         hr(),
                         
@@ -451,7 +453,7 @@ mod_species_delim_ui <- function(id) {
                         actionButton(ns("run_boruta"),
                                      "Run Boruta Analysis",
                                      icon = icon("play"),
-                                     style = "background-color: white; color: black;"),
+                                     class = "btn-primary"),
                         
                         hr(),
                         
@@ -492,7 +494,7 @@ mod_species_delim_ui <- function(id) {
 
 mod_species_delim_server <- function(id, dataset_r) {
   moduleServer(id, function(input, output, session) {
-
+    
     
     # Reactive values to store results
     unsupervised_results <- reactiveVal(NULL)
@@ -1332,7 +1334,7 @@ mod_species_delim_server <- function(id, dataset_r) {
       }
     )
     
-     # Run supervised GMM
+    # Run supervised GMM
     observeEvent(input$run_supervised, {
       
       # Check if data is loaded
@@ -1415,7 +1417,7 @@ mod_species_delim_server <- function(id, dataset_r) {
       
       cat("Cluster Sizes:\n")
       print(table(model$classification))
-
+      
     })
     
     # Display cluster-species table
