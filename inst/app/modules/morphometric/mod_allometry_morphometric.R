@@ -43,11 +43,12 @@ mod_allometry_ui_morphometric <- function(id) {
   )
 }
 
-mod_allometry_server_morphometric <- function(id, raw_data_r) {
+mod_allometry_server_morphometric <- function(id, raw_data_r, specimen_ids_r = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
-    adjusted_data_r <- reactiveVal(NULL) # Reactive value to store the adjusted data
+    adjusted_data_r      <- reactiveVal(NULL)
+    specimen_ids_adjusted <- reactiveVal(NULL)
     
     # Updated allom_modified to accept dynamic body_size_col_name
     allom_modified <- function(data, type, body_size_col_name = colnames(data)[2]) {
@@ -218,6 +219,14 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
         
         incProgress(0.5, detail = "Applying correction...")
         
+        # Capture sort order before correction so IDs stay aligned with rows
+        sort_order <- order(df_raw[[names(df_raw)[1]]])
+        raw_ids <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
+          specimen_ids_r()
+        } else {
+          as.character(seq_len(nrow(df_raw)))
+        }
+        
         adjusted_df <- tryCatch({
           allom_modified(data = df_raw,
                          type = input$correction_type,
@@ -230,6 +239,7 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
         incProgress(0.5, detail = "Finalizing...")
         
         adjusted_data_r(adjusted_df)
+        specimen_ids_adjusted(if (!is.null(adjusted_df)) raw_ids[sort_order] else NULL)
         
         if (!is.null(adjusted_df)) {
           showNotification("Allometric correction completed successfully!", type = "message")
@@ -240,15 +250,14 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
     # Display adjusted data preview
     output$adjusted_data_preview <- renderDT({
       req(adjusted_data_r())
-      DT::datatable(
-        adjusted_data_r(),
-        options = list(
-          pageLength = 10,
-          lengthMenu = c(10, 25, 50, 100),
-          scrollX = TRUE,
-          dom = 'tip'
-        )
-      )
+      display_df <- if (!is.null(specimen_ids_adjusted()) && length(specimen_ids_adjusted()) == nrow(adjusted_data_r())) {
+        cbind(data.frame(SpecimenID = specimen_ids_adjusted(), stringsAsFactors = FALSE), adjusted_data_r())
+      } else {
+        adjusted_data_r()
+      }
+      DT::datatable(display_df,
+                    options = list(pageLength = 10, lengthMenu = c(10, 25, 50, 100),
+                                   scrollX = TRUE, dom = "tip"))
     })
     
     # Download adjusted data
@@ -258,10 +267,15 @@ mod_allometry_server_morphometric <- function(id, raw_data_r) {
       },
       content = function(file) {
         req(adjusted_data_r())
-        write.csv(adjusted_data_r(), file, row.names = FALSE)
+        download_df <- if (!is.null(specimen_ids_adjusted()) && length(specimen_ids_adjusted()) == nrow(adjusted_data_r())) {
+          cbind(data.frame(SpecimenID = specimen_ids_adjusted(), stringsAsFactors = FALSE), adjusted_data_r())
+        } else {
+          adjusted_data_r()
+        }
+        write.csv(download_df, file, row.names = FALSE)
       }
     )
     
-    return(adjusted_data_r)
+    return(list(data = adjusted_data_r, specimen_ids = specimen_ids_adjusted))
   })
 }

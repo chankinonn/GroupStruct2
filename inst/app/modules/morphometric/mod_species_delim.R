@@ -564,122 +564,116 @@ mod_species_delim_server <- function(id, dataset_r) {
         return()
       }
       
-      withProgress(message = 'Running Boruta analysis...', value = 0, {
+      shinybusy::show_modal_spinner(
+        spin = "fading-circle",
+        text = "Boruta analysis is running — this may take several minutes depending on dataset size and maxRuns..."
+      )
+      on.exit(shinybusy::remove_modal_spinner())
+      
+      data <- dataset_r()
+      
+      # Get morphometric data (exclude first column = species)
+      morpho_data <- data[, -1, drop = FALSE]
+      
+      # Ensure all columns are numeric
+      if (!all(sapply(morpho_data, is.numeric))) {
+        non_numeric <- names(morpho_data)[!sapply(morpho_data, is.numeric)]
+        showNotification(paste("Error: Non-numeric columns found:", paste(non_numeric, collapse = ", ")),
+                         type = "error")
+        return(NULL)
+      }
+      
+      # Determine grouping variable
+      if (!is.null(input$boruta_hypothesis) && input$boruta_hypothesis != "original" &&
+          !is.null(hypothesis_data())) {
+        group_labels <- hypothesis_data()[[input$boruta_hypothesis]]
+      } else {
+        group_labels <- data[[1]]
+      }
+      
+      # Filter to selected groups only
+      selected_indices <- group_labels %in% input$boruta_groups
+      morpho_data_filtered <- morpho_data[selected_indices, , drop = FALSE]
+      group_labels_filtered <- factor(group_labels[selected_indices])
+      
+      # Check if we have enough data
+      if (nrow(morpho_data_filtered) < 10) {
+        showNotification("Not enough specimens in selected groups (minimum 10 required)", type = "error")
+        return()
+      }
+      
+      # Combine into data frame for Boruta
+      boruta_data <- morpho_data_filtered
+      boruta_data$Group <- group_labels_filtered
+      
+      tryCatch({
+        # Set seed for reproducibility
+        set.seed(input$boruta_seed)
         
-        data <- dataset_r()
+        # Run Boruta
+        boruta_result <- Boruta::Boruta(
+          Group ~ .,
+          data = boruta_data,
+          doTrace = 0,
+          maxRuns = input$boruta_maxruns,
+          pValue = input$boruta_pvalue
+        )
         
-        # Get morphometric data (exclude first column = species)
-        morpho_data <- data[, -1, drop = FALSE]
+        # Extract final decisions
+        final_decision <- tibble::tibble(
+          Variable = names(boruta_result$finalDecision),
+          Decision = as.character(boruta_result$finalDecision),
+          Mean_Importance = apply(boruta_result$ImpHistory[, names(boruta_result$finalDecision)],
+                                  2, mean, na.rm = TRUE)
+        ) %>%
+          dplyr::arrange(desc(Mean_Importance))
         
-        # Ensure all columns are numeric
-        if (!all(sapply(morpho_data, is.numeric))) {
-          non_numeric <- names(morpho_data)[!sapply(morpho_data, is.numeric)]
-          showNotification(paste("Error: Non-numeric columns found:", paste(non_numeric, collapse = ", ")), 
-                           type = "error")
-          return(NULL)
-        }
+        # Get only confirmed variables for descriptive stats
+        confirmed_vars <- final_decision %>%
+          dplyr::filter(Decision == "Confirmed")
         
-        # Determine grouping variable
-        if (!is.null(input$boruta_hypothesis) && input$boruta_hypothesis != "original" && 
-            !is.null(hypothesis_data())) {
-          group_labels <- hypothesis_data()[[input$boruta_hypothesis]]
+        # Calculate descriptive statistics for confirmed variables only
+        if (nrow(confirmed_vars) > 0) {
+          confirmed_var_names <- confirmed_vars$Variable
+          
+          descriptive_stats <- boruta_data %>%
+            dplyr::select(Group, all_of(confirmed_var_names)) %>%
+            dplyr::group_by(Group) %>%
+            dplyr::summarise(
+              dplyr::across(
+                dplyr::where(is.numeric),
+                ~ paste0(sprintf("%.2f", mean(.x, na.rm = TRUE)),
+                         " ± ",
+                         sprintf("%.2f", sd(.x, na.rm = TRUE)),
+                         " [",
+                         sprintf("%.2f", min(.x, na.rm = TRUE)),
+                         "-",
+                         sprintf("%.2f", max(.x, na.rm = TRUE)),
+                         "]"),
+                .names = "{.col}"
+              )
+            ) %>%
+            dplyr::ungroup()
         } else {
-          group_labels <- data[[1]]
+          descriptive_stats <- NULL
+          showNotification("No confirmed variables found. Try increasing maxRuns or adjusting pValue.",
+                           type = "warning")
         }
         
-        # Filter to selected groups only
-        selected_indices <- group_labels %in% input$boruta_groups
-        morpho_data_filtered <- morpho_data[selected_indices, , drop = FALSE]
-        group_labels_filtered <- factor(group_labels[selected_indices])
+        # Store results
+        boruta_results(list(
+          boruta_object = boruta_result,
+          all_decisions = final_decision,
+          confirmed = confirmed_vars,
+          descriptive = descriptive_stats,
+          groups_used = input$boruta_groups,
+          hypothesis_used = input$boruta_hypothesis %||% "original"
+        ))
         
-        # Check if we have enough data
-        if (nrow(morpho_data_filtered) < 10) {
-          showNotification("Not enough specimens in selected groups (minimum 10 required)", type = "error")
-          return()
-        }
+        showNotification("Boruta analysis complete!", type = "message")
         
-        incProgress(0.2, detail = "Preparing data...")
-        
-        # Combine into data frame for Boruta
-        boruta_data <- morpho_data_filtered
-        boruta_data$Group <- group_labels_filtered
-        
-        incProgress(0.3, detail = "Running Boruta algorithm...")
-        
-        tryCatch({
-          # Set seed for reproducibility
-          set.seed(input$boruta_seed)
-          
-          # Run Boruta
-          boruta_result <- Boruta::Boruta(
-            Group ~ .,
-            data = boruta_data,
-            doTrace = 0,
-            maxRuns = input$boruta_maxruns,
-            pValue = input$boruta_pvalue
-          )
-          
-          incProgress(0.3, detail = "Processing results...")
-          
-          # Extract final decisions
-          final_decision <- tibble::tibble(
-            Variable = names(boruta_result$finalDecision),
-            Decision = as.character(boruta_result$finalDecision),
-            Mean_Importance = apply(boruta_result$ImpHistory[, names(boruta_result$finalDecision)], 
-                                    2, mean, na.rm = TRUE)
-          ) %>%
-            dplyr::arrange(desc(Mean_Importance))  # Sort all by importance
-          
-          # Get only confirmed variables for descriptive stats
-          confirmed_vars <- final_decision %>%
-            dplyr::filter(Decision == "Confirmed")
-          
-          # Calculate descriptive statistics for confirmed variables only
-          if (nrow(confirmed_vars) > 0) {
-            confirmed_var_names <- confirmed_vars$Variable
-            
-            # Create descriptive stats
-            descriptive_stats <- boruta_data %>%
-              dplyr::select(Group, all_of(confirmed_var_names)) %>%
-              dplyr::group_by(Group) %>%
-              dplyr::summarise(
-                dplyr::across(
-                  dplyr::where(is.numeric),
-                  ~ paste0(sprintf("%.2f", mean(.x, na.rm = TRUE)), 
-                           " ± ", 
-                           sprintf("%.2f", sd(.x, na.rm = TRUE)),
-                           " [",
-                           sprintf("%.2f", min(.x, na.rm = TRUE)),
-                           "-",
-                           sprintf("%.2f", max(.x, na.rm = TRUE)),
-                           "]"),
-                  .names = "{.col}"
-                )
-              ) %>%
-              dplyr::ungroup()
-          } else {
-            descriptive_stats <- NULL
-            showNotification("No confirmed variables found. Try increasing maxRuns or adjusting pValue.", 
-                             type = "warning")
-          }
-          
-          incProgress(0.2, detail = "Finalizing...")
-          
-          # Store results
-          boruta_results(list(
-            boruta_object = boruta_result,
-            all_decisions = final_decision,  # ALL variables with decisions
-            confirmed = confirmed_vars,       # Only confirmed
-            descriptive = descriptive_stats,  # Stats for confirmed only
-            groups_used = input$boruta_groups,
-            hypothesis_used = input$boruta_hypothesis %||% "original"
-          ))
-          
-          showNotification("Boruta analysis complete!", type = "message")
-          
-        }, error = function(e) {
-          showNotification(paste("Error:", e$message), type = "error")
-        })
+      }, error = function(e) {
+        showNotification(paste("Error:", e$message), type = "error")
       })
     })
     
@@ -976,74 +970,67 @@ mod_species_delim_server <- function(id, dataset_r) {
         return()
       }
       
-      withProgress(message = 'Running Bayesian delimitation...', value = 0, {
+      shinybusy::show_modal_spinner(
+        spin = "fading-circle",
+        text = "Fitting EDDA models for each hypothesis — this may take several minutes..."
+      )
+      on.exit(shinybusy::remove_modal_spinner())
+      
+      data    <- dataset_r()
+      hyp_df  <- hypothesis_data()
+      
+      # Get all hypothesis names (all columns are hypotheses)
+      hyp_names <- colnames(hyp_df)
+      
+      # Set flat priors (0.2 for all hypotheses)
+      priors <- rep(0.2, length(hyp_names))
+      names(priors) <- hyp_names
+      
+      # Extract morphometric data (exclude first column = species)
+      morpho_data <- data[, -1, drop = FALSE]
+      
+      # Ensure all columns are numeric
+      if (!all(sapply(morpho_data, is.numeric))) {
+        non_numeric <- names(morpho_data)[!sapply(morpho_data, is.numeric)]
+        showNotification(paste("Error: Non-numeric columns found:", paste(non_numeric, collapse = ", ")),
+                         type = "error")
+        return(NULL)
+      }
+      
+      if (ncol(morpho_data) == 0) {
+        showNotification("No morphometric columns found in data", type = "error")
+        return(NULL)
+      }
+      
+      # Fit EDDA models for each hypothesis
+      tryCatch({
+        models <- list()
         
-        data <- dataset_r()
-        hyp_df <- hypothesis_data()
-        
-        # Get all hypothesis names (all columns are hypotheses)
-        hyp_names <- colnames(hyp_df)
-        
-        # Set flat priors (0.2 for all hypotheses)
-        priors <- rep(0.2, length(hyp_names))
-        names(priors) <- hyp_names
-        
-        # Extract morphometric data (exclude first column = species)
-        morpho_data <- data[, -1, drop = FALSE]
-        
-        # Ensure all columns are numeric
-        if (!all(sapply(morpho_data, is.numeric))) {
-          non_numeric <- names(morpho_data)[!sapply(morpho_data, is.numeric)]
-          showNotification(paste("Error: Non-numeric columns found:", paste(non_numeric, collapse = ", ")), 
-                           type = "error")
-          return(NULL)
+        for (i in seq_along(hyp_names)) {
+          hyp_name     <- hyp_names[i]
+          class_labels <- hyp_df[[hyp_name]]
+          
+          models[[hyp_name]] <- mclust::MclustDA(
+            as.matrix(morpho_data),
+            factor(class_labels),
+            modelType = "EDDA",
+            verbose   = FALSE
+          )
         }
         
-        if (ncol(morpho_data) == 0) {
-          showNotification("No morphometric columns found in data", type = "error")
-          return(NULL)
-        }
+        # Compute Bayes Factors with flat priors
+        results_table <- do.call(GMMBayesFactorTable,
+                                 c(models, list(prior = priors)))
         
-        incProgress(0.2, detail = "Fitting EDDA models...")
+        # Sort by BIC (descending — best model first)
+        results_table <- results_table[order(-results_table$BIC), ]
         
-        # Fit EDDA models for each hypothesis
-        tryCatch({
-          models <- list()
-          
-          for (i in seq_along(hyp_names)) {
-            hyp_name <- hyp_names[i]
-            
-            # Get class labels for this hypothesis
-            class_labels <- hyp_df[[hyp_name]]
-            
-            incProgress(0.6 / length(hyp_names), 
-                        detail = paste("Fitting", hyp_name))
-            
-            # Fit EDDA model (G=1, different covariance per class)
-            models[[hyp_name]] <- mclust::MclustDA(
-              as.matrix(morpho_data),
-              factor(class_labels),
-              modelType = "EDDA",
-              verbose = FALSE
-            )
-          }
-          
-          incProgress(0.2, detail = "Computing Bayes Factors...")
-          
-          # Compute Bayes Factors with flat priors using custom function
-          results_table <- do.call(GMMBayesFactorTable, 
-                                   c(models, list(prior = priors)))
-          
-          # Sort by BIC (descending - best model first)
-          results_table <- results_table[order(-results_table$BIC), ]
-          
-          bayesian_results(results_table)
-          
-          showNotification("Bayesian delimitation complete!", type = "message")
-          
-        }, error = function(e) {
-          showNotification(paste("Error:", e$message), type = "error")
-        })
+        bayesian_results(results_table)
+        
+        showNotification("Bayesian delimitation complete!", type = "message")
+        
+      }, error = function(e) {
+        showNotification(paste("Error:", e$message), type = "error")
       })
     })
     
@@ -1141,119 +1128,94 @@ mod_species_delim_server <- function(id, dataset_r) {
         return(NULL)
       }
       
-      withProgress(message = 'Running unsupervised clustering...', value = 0, {
+      shinybusy::show_modal_spinner(
+        spin = "fading-circle",
+        text = "Fitting GMM models — this may take a moment depending on dataset size and number of clusters..."
+      )
+      on.exit(shinybusy::remove_modal_spinner())
+      
+      tryCatch({
+        data <- dataset_r()
         
-        tryCatch({
-          data <- dataset_r()
-          
-          # Identify morphometric columns (numeric, exclude first column which is grouping)
-          morpho_cols <- sapply(data[-1], is.numeric)
-          morpho_data <- data[, c(FALSE, morpho_cols), drop = FALSE]
-          
-          # Check if we have data
-          if (ncol(morpho_data) == 0) {
-            showNotification("No morphometric columns found in data", type = "error")
-            return(NULL)
-          }
-          
-          incProgress(0.2, detail = "Fitting GMM models...")
-          
-          # Fit Mclust
-          data_mod <- mclust::Mclust(morpho_data, G = 1:input$max_clusters)
-          
-          if (is.null(data_mod)) {
-            showNotification("Mclust failed to fit models. Check your data for issues.", type = "error")
-            return(NULL)
-          }
-          
-          incProgress(0.2, detail = "Computing model comparisons...")
-          
-          # Extract BIC for all models
-          if (is.null(data_mod$BIC)) {
-            showNotification("No BIC values available from Mclust. Check data quality.", type = "error")
-            return(NULL)
-          }
-          
-          # Convert BIC to long format manually (more robust)
-          bic_matrix <- data_mod$BIC
-          n_G <- nrow(bic_matrix)
-          model_names <- colnames(bic_matrix)
-          
-          # Create long format manually
-          bic_list <- list()
-          for (i in 1:n_G) {
-            for (j in 1:length(model_names)) {
-              bic_value <- bic_matrix[i, j]
-              if (!is.na(bic_value)) {
-                bic_list[[length(bic_list) + 1]] <- data.frame(
-                  G = as.numeric(rownames(bic_matrix)[i]),
-                  Model = model_names[j],
-                  BIC = bic_value
-                )
-              }
+        # Identify morphometric columns (numeric, exclude first column which is grouping)
+        morpho_cols <- sapply(data[-1], is.numeric)
+        morpho_data <- data[, c(FALSE, morpho_cols), drop = FALSE]
+        
+        if (ncol(morpho_data) == 0) {
+          showNotification("No morphometric columns found in data", type = "error")
+          return(NULL)
+        }
+        
+        # Fit Mclust
+        data_mod <- mclust::Mclust(morpho_data, G = 1:input$max_clusters)
+        
+        if (is.null(data_mod)) {
+          showNotification("Mclust failed to fit models. Check your data for issues.", type = "error")
+          return(NULL)
+        }
+        
+        if (is.null(data_mod$BIC)) {
+          showNotification("No BIC values available from Mclust. Check data quality.", type = "error")
+          return(NULL)
+        }
+        
+        # Convert BIC to long format
+        bic_matrix  <- data_mod$BIC
+        model_names <- colnames(bic_matrix)
+        bic_list    <- list()
+        for (i in seq_len(nrow(bic_matrix))) {
+          for (j in seq_along(model_names)) {
+            bic_value <- bic_matrix[i, j]
+            if (!is.na(bic_value)) {
+              bic_list[[length(bic_list) + 1]] <- data.frame(
+                G     = as.numeric(rownames(bic_matrix)[i]),
+                Model = model_names[j],
+                BIC   = bic_value
+              )
             }
           }
-          
-          # Combine all into one dataframe
-          bic_long <- dplyr::bind_rows(bic_list) %>%
-            dplyr::arrange(desc(BIC))
-          
-          if (nrow(bic_long) == 0) {
-            showNotification("No valid BIC values after filtering", type = "error")
-            return(NULL)
-          }
-          
-          # Calculate delta BIC from best model
-          best_bic <- max(bic_long$BIC, na.rm = TRUE)
-          bic_long <- bic_long %>%
-            dplyr::mutate(
-              Delta_BIC = best_bic - BIC,
-              Rank = row_number()
-            )
-          
-          # Get top models (top 20 or all within delta BIC < 10)
-          top_models <- bic_long %>%
-            dplyr::filter(Rank <= 20 | Delta_BIC < 10) %>%
-            dplyr::select(Rank, G, Model, BIC, Delta_BIC)
-          
-          incProgress(0.2, detail = "Creating cluster-species table...")
-          
-          # Create cluster-species correspondence table
-          species_col <- data[[1]]
-          
-          if (is.null(data_mod$classification)) {
-            showNotification("No classification available from Mclust", type = "error")
-            return(NULL)
-          }
-          
-          cluster_table <- table(Species = species_col, 
-                                 Cluster = data_mod$classification)
-          
-          incProgress(0.2, detail = "Finalizing results...")
-          
-          # Store results
-          results <- list(
-            model = data_mod,
-            cluster_table = cluster_table,
-            species_col = species_col,
-            morpho_data = morpho_data,
-            top_models = top_models,
-            all_bic = bic_long
-          )
-          
-          unsupervised_results(results)
-          
-          showNotification("Unsupervised clustering complete!", type = "message")
-          
-        }, error = function(e) {
-          # Show the actual error message
-          showNotification(paste("Error in unsupervised clustering:", e$message), 
-                           type = "error", 
-                           duration = 10)
-          # Also print to console for debugging
-          message("Full error in unsupervised clustering:")
-          print(e)
-        })
+        }
+        
+        bic_long <- dplyr::bind_rows(bic_list) %>% dplyr::arrange(desc(BIC))
+        
+        if (nrow(bic_long) == 0) {
+          showNotification("No valid BIC values after filtering", type = "error")
+          return(NULL)
+        }
+        
+        best_bic <- max(bic_long$BIC, na.rm = TRUE)
+        bic_long <- bic_long %>%
+          dplyr::mutate(Delta_BIC = best_bic - BIC, Rank = dplyr::row_number())
+        
+        top_models <- bic_long %>%
+          dplyr::filter(Rank <= 20 | Delta_BIC < 10) %>%
+          dplyr::select(Rank, G, Model, BIC, Delta_BIC)
+        
+        species_col <- data[[1]]
+        
+        if (is.null(data_mod$classification)) {
+          showNotification("No classification available from Mclust", type = "error")
+          return(NULL)
+        }
+        
+        cluster_table <- table(Species = species_col, Cluster = data_mod$classification)
+        
+        unsupervised_results(list(
+          model         = data_mod,
+          cluster_table = cluster_table,
+          species_col   = species_col,
+          morpho_data   = morpho_data,
+          top_models    = top_models,
+          all_bic       = bic_long
+        ))
+        
+        showNotification("Unsupervised clustering complete!", type = "message")
+        
+      }, error = function(e) {
+        showNotification(paste("Error in unsupervised clustering:", e$message),
+                         type = "error", duration = 10)
+        message("Full error in unsupervised clustering:")
+        print(e)
       })
     })
     
@@ -1348,54 +1310,45 @@ mod_species_delim_server <- function(id, dataset_r) {
         return(NULL)
       }
       
-      withProgress(message = 'Running supervised GMM analysis...', value = 0, {
+      shinybusy::show_modal_spinner(
+        spin = "fading-circle",
+        text = "Running supervised GMM analysis — this may take several minutes for datasets with many OTUs..."
+      )
+      on.exit(shinybusy::remove_modal_spinner())
+      
+      data <- dataset_r()
+      
+      # Identify morphometric columns (numeric, exclude first column which is grouping)
+      morpho_cols <- sapply(data[-1], is.numeric)
+      morpho_data <- data[, c(FALSE, morpho_cols), drop = FALSE]
+      
+      if (ncol(morpho_data) == 0) {
+        showNotification("No morphometric columns found in data", type = "error")
+        return(NULL)
+      }
+      
+      species_col <- data[[1]]
+      
+      if (length(unique(species_col)) < 2) {
+        showNotification("Error: Need at least 2 species/groups for supervised analysis", type = "error")
+        return(NULL)
+      }
+      
+      tryCatch({
+        cl_merge <- MclustBayesFactorClassMerge(
+          morpho_data,
+          class     = species_col,
+          modelType = "EDDA"
+        )
         
-        data <- dataset_r()
+        summary_table <- summarize_class_merge(cl_merge, digits = 3)
         
-        # Identify morphometric columns (numeric, exclude first column which is grouping)
-        morpho_cols <- sapply(data[-1], is.numeric)
-        morpho_data <- data[, c(FALSE, morpho_cols), drop = FALSE]
+        supervised_results(summary_table)
         
-        # Check if we have data
-        if (ncol(morpho_data) == 0) {
-          showNotification("No morphometric columns found in data", type = "error")
-          return(NULL)
-        }
+        showNotification("Supervised GMM analysis complete!", type = "message")
         
-        # Get species labels
-        species_col <- data[[1]]
-        
-        # Check minimum number of species
-        if (length(unique(species_col)) < 2) {
-          showNotification("Error: Need at least 2 species/groups for supervised analysis", type = "error")
-          return(NULL)
-        }
-        
-        incProgress(0.3, detail = "Running Bayes Factor analysis...")
-        
-        # Run MclustBayesFactorClassMerge
-        tryCatch({
-          cl_merge <- MclustBayesFactorClassMerge(
-            morpho_data,
-            class = species_col,
-            modelType = "EDDA"
-          )
-          
-          incProgress(0.4, detail = "Summarizing results...")
-          
-          # Create summary table
-          summary_table <- summarize_class_merge(cl_merge, digits = 3)
-          
-          incProgress(0.3, detail = "Finalizing...")
-          
-          # Store results
-          supervised_results(summary_table)
-          
-          showNotification("Supervised GMM analysis complete!", type = "message")
-          
-        }, error = function(e) {
-          showNotification(paste("Error:", e$message), type = "error")
-        })
+      }, error = function(e) {
+        showNotification(paste("Error:", e$message), type = "error")
       })
     })
     

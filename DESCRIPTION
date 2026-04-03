@@ -23,6 +23,8 @@ Encoding: UTF-8
 LazyData: true
 Imports:
     ape,
+    shinybusy,
+    plotly,
     shiny,
     DT,
     dplyr,

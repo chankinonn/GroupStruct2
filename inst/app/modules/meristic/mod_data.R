@@ -4,38 +4,122 @@ mod_data_ui_meristic <- function(id) {
   tagList(
     h3("Input Meristic Data"),
     hr(),
-    p("The first column should be Group/OTU names (e.g., species or population). Other traits should be in the 2nd column onwards"),
-    p(strong("Missing values and singletons are not allowed.")),
-    p("A preview of the data will be shown as soon as it is uploaded."),
-    fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
-    actionButton(ns("load_example"), "Load Example Meristic Dataset"),
-    uiOutput(ns("upload_status_message")),
+    
+    # Informational note about supported formats — no user action required
+    tags$div(
+      style = "background-color: #d1ecf1; border-left: 5px solid #17a2b8; padding: 15px; margin-bottom: 20px;",
+      h4(style = "margin-top: 0;", "Supported File Formats"),
+      p("Two column layouts are accepted. The application will detect the format automatically."),
+      tags$ul(
+        tags$li(strong("Without specimen IDs:"), "Column 1 = OTU/group name, Column 2 onward = traits.",
+                "Specimen IDs will be assigned automatically as sequential integers (1, 2, 3, ...)."),
+        tags$li(strong("With specimen IDs:"), "Column 1 = Specimen ID (must be unique per row), Column 2 = OTU/group name, Column 3 onward = traits.")
+      )
+    ),
+    
+    # Upload
+    tags$div(
+      style = "background-color: #e9ecef; border-left: 5px solid #6c757d; padding: 15px; margin-bottom: 20px;",
+      h4(style = "margin-top: 0;", "Upload Your Data"),
+      p("A preview of the data will be shown as soon as it is uploaded."),
+      p(strong("Missing values and singletons are not allowed.")),
+      fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
+      actionButton(ns("load_example"), "Load Example Meristic Dataset"),
+      uiOutput(ns("upload_status_message"))
+    ),
+    
     br(),
-    p(strong("The example datasets included in this package are for pratice purposes only and are not meant to inform taxonomic changes.")),
+    p(strong("The example datasets included in this package are for practice purposes only and are not meant to inform taxonomic changes.")),
     p("Note on the example dataset: This example dataset contains 11 meristic traits from four species of lizard."),
-    p("Additional details on this dataset can be found at: Grismer et al. (2022). Phylogenetic and multivariate analyses of Gekko smithii Gray, 1842 recover a new species from Peninsular Malaysia and support the resurrection of G. albomaculatus (Giebel, 1861) from Sumatra. Vertebrate Zoology, 72, 47–80. https://doi.org/10.3897/vz.72.e77702)"), 
+    p("Additional details on this dataset can be found at: Grismer et al. (2022). Phylogenetic and multivariate analyses of Gekko smithii Gray, 1842 recover a new species from Peninsular Malaysia and support the resurrection of G. albomaculatus (Giebel, 1861) from Sumatra. Vertebrate Zoology, 72, 47\u201380. https://doi.org/10.3897/vz.72.e77702)"),
     hr(),
     h4("Outlier Detection"),
-    p("The Boxplot Interquartile Range (IQR) method is used to detect values exceeding 1.5×IQR within each OTU. Useful when comparing across species/populations with heterogeneous distributions. Requires ≥4 samples per group to work well."),
+    p("The Boxplot Interquartile Range (IQR) method is used to detect values exceeding 1.5\u00d7IQR within each OTU. Useful when comparing across species/populations with heterogeneous distributions. Requires \u22654 samples per group to work well."),
     p(strong("Outliers will be flagged but NOT REMOVED. It is up to the user to determine what to do with them."), style = "color: red;"),
-    
     actionButton(ns("detect_outliers"), "Detect Outliers"),
     verbatimTextOutput(ns("outlier_report")),
     hr(),
     h4("Data Preview"),
     DTOutput(ns("preview")),
-    hr(),
+    hr()
   )
 }
 
 
 mod_data_server_meristic <- function(id) {
   moduleServer(id, function(input, output, session) {
-    data <- reactiveVal(NULL)
+    data         <- reactiveVal(NULL)  # OTU + traits only (analysis-ready)
+    specimen_ids <- reactiveVal(NULL)  # character vector or NULL
+    full_data    <- reactiveVal(NULL)  # full data including ID col, for display only
     
-    # Initialize upload status message as empty UI
     output$upload_status_message <- renderUI({ NULL })
     
+    # -------------------------------------------------------------------------
+    # Internal helper: validate and parse a raw data frame
+    # Returns a list: list(ok, data, specimen_ids, full_data, message)
+    # -------------------------------------------------------------------------
+    parse_meristic_df <- function(df) {
+      
+      # Auto-detect format: all-unique col 1 values mean specimen IDs are present.
+      # An OTU column with all unique values would imply all singletons, which is
+      # already disallowed, so this detection is unambiguous.
+      col1_vals <- trimws(as.character(df[[1]]))
+      has_id    <- !anyDuplicated(col1_vals)
+      
+      min_cols  <- if (has_id) 3L else 2L
+      id_label  <- if (has_id) " (specimen ID + OTU + at least one trait)" else " (OTU + at least one trait)"
+      
+      if (ncol(df) < min_cols) {
+        return(list(ok = FALSE,
+                    message = paste0("Error: Meristic data must have at least ", min_cols,
+                                     " columns", id_label, ".")))
+      }
+      
+      # Extract or auto-generate specimen IDs
+      # When present: use the values from col 1 (uniqueness already confirmed above)
+      # When absent:  assign sequential integers so IDs are always available downstream
+      if (has_id) {
+        ids_out <- col1_vals
+        df      <- df[, -1, drop = FALSE]  # drop ID col; OTU is now col 1
+      } else {
+        ids_out <- as.character(seq_len(nrow(df)))
+      }
+      
+      # Standardise OTU column (always col 1 after possible strip above)
+      df[[1]] <- factor(trimws(as.character(df[[1]])))
+      
+      # Validate trait columns (col 2 onward)
+      trait_cols <- df[, 2:ncol(df), drop = FALSE]
+      
+      for (i in seq_along(trait_cols)) {
+        col_name <- names(trait_cols)[i]
+        col_vals <- trait_cols[[i]]
+        
+        if (any(is.na(col_vals))) {
+          return(list(ok = FALSE,
+                      message = paste0("Error: Trait column '", col_name,
+                                       "' contains missing values (NA). Missing values are not allowed.")))
+        }
+        if (!is.numeric(col_vals)) {
+          return(list(ok = FALSE,
+                      message = paste0("Error: Trait column '", col_name,
+                                       "' is not numeric. All trait columns must be numeric for meristic data.")))
+        }
+      }
+      
+      # Reconstruct full display data — SpecimenID column always present
+      display_df <- cbind(data.frame(SpecimenID = ids_out, stringsAsFactors = FALSE), df)
+      
+      list(ok           = TRUE,
+           data         = df,
+           specimen_ids = ids_out,
+           full_data    = display_df,
+           message      = NULL)
+    }
+    
+    # -------------------------------------------------------------------------
+    # File upload
+    # -------------------------------------------------------------------------
     observeEvent(input$file, {
       req(input$file)
       
@@ -64,62 +148,32 @@ mod_data_server_meristic <- function(id) {
       
       req(df)
       
-      if (ncol(df) < 2) {
+      result <- parse_meristic_df(df)
+      
+      if (!result$ok) {
         output$upload_status_message <- renderUI({
-          tags$div(class = "alert alert-danger",
-                   "Error: Meristic data must have at least two columns (OTU names + at least one trait).")
+          tags$div(class = "alert alert-danger", result$message)
         })
         data(NULL)
+        specimen_ids(NULL)
+        full_data(NULL)
         return()
       }
       
-      df[[1]] <- trimws(as.character(df[[1]]))
-      df[[1]] <- factor(df[[1]])
-      
-      trait_cols_to_check <- df[, 2:ncol(df), drop = FALSE]
-      all_valid <- TRUE
-      
-      for (i in seq_along(trait_cols_to_check)) {
-        col_name <- names(trait_cols_to_check)[i]
-        col_values <- trait_cols_to_check[[i]]
-        
-        if (any(is.na(col_values))) {
-          output$upload_status_message <- renderUI({
-            tags$div(class = "alert alert-danger",
-                     paste0("Error: Trait column '", col_name,
-                            "' contains missing values (NA). Missing values are not allowed for meristic data."))
-          })
-          all_valid <- FALSE
-          break
-        }
-        
-        if (!is.numeric(col_values)) {
-          output$upload_status_message <- renderUI({
-            tags$div(class = "alert alert-danger",
-                     paste0("Error: Trait column '", col_name,
-                            "' is not numeric. All trait columns must be numeric for meristic data."))
-          })
-          all_valid <- FALSE
-          break
-        }
-      }
-      
-      if (!all_valid) {
-        data(NULL)
-        return()
-      }
-      
-      # Passed all checks
-      data(df)
+      data(result$data)
+      specimen_ids(result$specimen_ids)
+      full_data(result$full_data)
       output$upload_status_message <- renderUI({
         tags$div(class = "alert alert-success",
                  "File uploaded and validated successfully. Proceed to the next module.")
       })
     })
     
-    # Load Example Data 
+    # -------------------------------------------------------------------------
+    # Load example dataset (no specimen IDs; format selection is ignored)
+    # -------------------------------------------------------------------------
     observeEvent(input$load_example, {
-      example_path <- system.file("examples", "Meristic-only.csv", package = "GroupStruct2") 
+      example_path <- system.file("examples", "Meristic-only.csv", package = "GroupStruct2")
       req(file.exists(example_path))
       
       df <- tryCatch({
@@ -134,88 +188,57 @@ mod_data_server_meristic <- function(id) {
       
       req(df)
       
-      if (ncol(df) < 2) {
+      # Example files never carry specimen IDs
+      result <- parse_meristic_df(df)
+      
+      if (!result$ok) {
         output$upload_status_message <- renderUI({
-          tags$div(class = "alert alert-danger",
-                   "Error: Meristic data must have at least two columns (OTU names + at least one trait).")
+          tags$div(class = "alert alert-danger", result$message)
         })
         data(NULL)
+        specimen_ids(NULL)
+        full_data(NULL)
         return()
       }
       
-      df[[1]] <- trimws(as.character(df[[1]]))
-      df[[1]] <- factor(df[[1]])
-      
-      trait_cols_to_check <- df[, 2:ncol(df), drop = FALSE]
-      all_valid <- TRUE
-      
-      for (i in seq_along(trait_cols_to_check)) {
-        col_name <- names(trait_cols_to_check)[i]
-        col_values <- trait_cols_to_check[[i]]
-        
-        if (any(is.na(col_values))) {
-          output$upload_status_message <- renderUI({
-            tags$div(class = "alert alert-danger",
-                     paste0("Error: Trait column '", col_name,
-                            "' contains missing values (NA). Missing values are not allowed for meristic data."))
-          })
-          all_valid <- FALSE
-          break
-        }
-        
-        if (!is.numeric(col_values)) {
-          output$upload_status_message <- renderUI({
-            tags$div(class = "alert alert-danger",
-                     paste0("Error: Trait column '", col_name,
-                            "' is not numeric. All trait columns must be numeric for meristic data."))
-          })
-          all_valid <- FALSE
-          break
-        }
-      }
-      
-      if (!all_valid) {
-        data(NULL)
-        return()
-      }
-      
-      data(df)
+      data(result$data)
+      specimen_ids(result$specimen_ids)
+      full_data(result$full_data)
       output$upload_status_message <- renderUI({
         tags$div(class = "alert alert-success",
                  "Example dataset loaded successfully.")
       })
     })
     
+    # -------------------------------------------------------------------------
+    # Outlier detection
+    # -------------------------------------------------------------------------
     observeEvent(input$detect_outliers, {
       req(data())
-      df <- data()
-      otu_col <- df[[1]]
+      df       <- data()
+      otu_col  <- df[[1]]
       trait_data <- df[, 2:ncol(df), drop = FALSE]
-      method <- "iqr"
+      ids      <- specimen_ids()
       
-      flagged <- list()
+      flagged      <- list()
       skipped_otus <- c()
       
       for (trait in names(trait_data)) {
         vals <- trait_data[[trait]]
         
-        if (method == "iqr") {
-          flagged[[trait]] <- unlist(lapply(split(seq_len(nrow(df)), otu_col), function(rows) {
+        flagged[[trait]] <- unlist(lapply(
+          split(seq_len(nrow(df)), otu_col),
+          function(rows) {
             x <- vals[rows]
             if (length(x) < 4) {
               skipped_otus <<- unique(c(skipped_otus, as.character(otu_col[rows[1]])))
               return(integer(0))
             }
-            
-            q <- quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
+            q   <- quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
             iqr <- q[2] - q[1]
-            lower <- q[1] - 1.5 * iqr
-            upper <- q[2] + 1.5 * iqr
-            
-            is_outlier <- x < lower | x > upper
-            rows[is_outlier]
-          }))
-        }
+            rows[x < (q[1] - 1.5 * iqr) | x > (q[2] + 1.5 * iqr)]
+          }
+        ))
       }
       
       report <- ""
@@ -223,7 +246,7 @@ mod_data_server_meristic <- function(id) {
         inds <- flagged[[trait]]
         if (length(inds) > 0) {
           report <- paste0(report, "\nTrait: ", trait, "\n")
-          report <- paste0(report, "Row(s): ", paste(inds, collapse = ", "), "\n")
+          report <- paste0(report, "Specimen ID(s): ", paste(ids[inds], collapse = ", "), "\n")
         }
       }
       
@@ -232,7 +255,7 @@ mod_data_server_meristic <- function(id) {
       if (!any_flagged) {
         report <- "No outliers detected with selected method."
       } else {
-        report <- paste(report, "\n\nConsider re-inspecting your data.", sep = "")
+        report <- paste0(report, "\n\nConsider re-inspecting your data.")
       }
       
       if (length(skipped_otus) > 0) {
@@ -244,15 +267,18 @@ mod_data_server_meristic <- function(id) {
       output$outlier_report <- renderText({ report })
     })
     
+    # -------------------------------------------------------------------------
+    # Data preview (shows full data including specimen ID column if present)
+    # -------------------------------------------------------------------------
     output$preview <- renderDT({
-      req(data())
+      req(full_data())
       datatable(
-        data(),
+        full_data(),
         options = list(
-          pageLength = 10,
-          lengthMenu = c(10, 25, 50, 100),
-          scrollX = TRUE,
-          dom = 'tip'
+          pageLength  = 10,
+          lengthMenu  = c(10, 25, 50, 100),
+          scrollX     = TRUE,
+          dom         = "tip"
         )
       )
     })
@@ -260,9 +286,9 @@ mod_data_server_meristic <- function(id) {
     output$summary_text <- renderPrint({
       req(data())
       df <- data()
-      n_otus <- length(unique(df[[1]]))
+      n_otus              <- length(unique(df[[1]]))
       sample_size_per_otu <- table(df[[1]])
-      n_traits <- ncol(df) - 1
+      n_traits            <- ncol(df) - 1
       
       cat("Number of OTUs:", n_otus, "\n\n")
       cat("Sample size per OTU:\n")
@@ -270,6 +296,7 @@ mod_data_server_meristic <- function(id) {
       cat("\nNumber of Traits:", n_traits, "\n")
     })
     
-    return(data)
+    # Return both reactives so downstream modules can access specimen IDs
+    return(list(data = data, specimen_ids = specimen_ids))
   })
 }

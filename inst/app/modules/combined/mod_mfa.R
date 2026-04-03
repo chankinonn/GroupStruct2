@@ -641,13 +641,20 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
     
     # PERMANOVA on MFA Scores Logic
     observeEvent(input$run_permanova_mfa, {
+      if (is.null(mfa_results_r())) {
+        showNotification(
+          "Please run MFA first before performing PERMANOVA.",
+          type = "error", duration = 6
+        )
+        return()
+      }
+      
       shinybusy::show_modal_spinner(
         spin = "fading-circle",
         text = "PERMANOVA is running — this may take several minutes..."
       )
       on.exit(shinybusy::remove_modal_spinner())
       
-      req(mfa_results_r())
       mfa_res <- mfa_results_r()
       group_col <- group_col_name_r()
       data_for_mfa <- mfa_data_for_analysis_r() # Use the stored data that went into MFA

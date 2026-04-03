@@ -8,30 +8,58 @@ mod_visual_ui_combined <- function(id) {
                 tabPanel("Scatterplot",
                          fluidRow(
                            column(9,
-                                  plotOutput(ns("plot_scatter"))
+                                  uiOutput(ns("scatter_plot_ui"))
                            ),
                            column(3,
                                   style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
                                   br(),
+                                  tags$div(
+                                    style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+                                    checkboxInput(ns("scatter_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("scatter_interactive")),
+                                    tags$div(
+                                      style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
+                                      tags$p(style = "margin: 0;", "Hover over points to see specimen IDs. Outline points, individual labels, and theme selection are not available in interactive mode.")
+                                    )
+                                  ),
+                                  hr(),
                                   numericInput(ns("plot_scatter_height"), "Plot Height (px)", value = 500, min = 200, step = 50),
-                                  numericInput(ns("plot_scatter_width"), "Plot Width (px)", value = 700, min = 200, step = 50),
+                                  conditionalPanel(
+                                    condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                    numericInput(ns("plot_scatter_width"), "Plot Width (px)", value = 700, min = 200, step = 50)
+                                  ),
                                   hr(),
                                   uiOutput(ns("scatter_controls")),
                                   hr(),
                                   numericInput(ns("scatter_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
-                                  checkboxInput(ns("scatter_outline_points"), "Outline Points", value = FALSE),
                                   conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("scatter_outline_points")),
-                                    sliderInput(ns("scatter_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                    condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                    checkboxInput(ns("scatter_outline_points"), "Outline Points", value = FALSE),
+                                    conditionalPanel(
+                                      condition = sprintf("input['%s']", ns("scatter_outline_points")),
+                                      sliderInput(ns("scatter_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                    )
                                   ),
                                   hr(),
-                                  checkboxInput(ns("scatter_show_labels"), "Show Individual Labels", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                    checkboxInput(ns("scatter_show_labels"), "Show Individual Labels", value = FALSE)
+                                  ),
                                   checkboxInput(ns("scatter_show_lm"), "Show Regression Line", value = TRUE),
                                   checkboxInput(ns("scatter_show_lm_se"), "Show Confidence Interval", value = TRUE),
                                   hr(),
-                                  downloadButton(ns("download_scatter_pdf"), "Download PDF"),
-                                  br(),
-                                  downloadButton(ns("download_scatter_jpeg"), "Download JPEG"),
+                                  conditionalPanel(
+                                    condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                    downloadButton(ns("download_scatter_pdf"), "Download PDF"),
+                                    br(),
+                                    downloadButton(ns("download_scatter_jpeg"), "Download JPEG")
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("scatter_interactive")),
+                                    p(em("Use the camera icon in the plot toolbar to download."))
+                                  ),
                                   hr()
                            )
                          )
@@ -111,43 +139,64 @@ mod_visual_ui_combined <- function(id) {
                 tabPanel("MFA: Individuals",
                          fluidRow(
                            column(9,
-                                  plotOutput(ns("mfa_individuals_plot"))
+                                  uiOutput(ns("mfa_individuals_plot_ui"))
                            ),
                            column(3,
                                   style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
                                   br(),
-                                  numericInput(ns("mfa_individuals_plot_height"), "Plot Height (px)", value = 500, min = 300, step = 50, width = '150px'), 
-                                  numericInput(ns("mfa_individuals_plot_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'), 
+                                  tags$div(
+                                    style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+                                    checkboxInput(ns("mfa_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_interactive")),
+                                    tags$div(
+                                      style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
+                                      tags$p(style = "margin: 0;", "Hover over points to see specimen IDs. Biplot arrows, qualitative categories, outline points, spider plot, MST, centroid distances, and theme selection are not available in interactive mode.")
+                                    )
+                                  ),
+                                  hr(),
+                                  numericInput(ns("mfa_individuals_plot_height"), "Plot Height (px)", value = 500, min = 300, step = 50, width = '150px'),
+                                  conditionalPanel(
+                                    condition = sprintf("!input['%s']", ns("mfa_interactive")),
+                                    numericInput(ns("mfa_individuals_plot_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px')
+                                  ),
                                   hr(),
                                   h5("MFA Dimension Selection"),
                                   uiOutput(ns("mfa_x_axis_selector")),
                                   uiOutput(ns("mfa_y_axis_selector")),
                                   hr(),
-                                  h5("Biplot Options"),
-                                  checkboxInput(ns("mfa_biplot_quanti"), "Show Quantitative Variables (Arrows)", value = FALSE),
                                   conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("mfa_biplot_quanti")),
-                                    checkboxInput(ns("mfa_quanti_labels"), "Show Quantitative Labels", value = TRUE),
-                                    colourInput(ns("mfa_arrow_color"), "Arrow Color:", value = "#8B0000", showColour = "background"),
-                                    sliderInput(ns("mfa_arrow_size"), "Arrow Width:", min = 0.5, max = 3, value = 1, step = 0.1, width = '150px'),
-                                    sliderInput(ns("mfa_arrow_alpha"), "Arrow Transparency:", min = 0.1, max = 1, value = 0.7, step = 0.1, width = '150px'),
-                                    numericInput(ns("mfa_arrow_label_size"), "Arrow Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
-                                  ),
-                                  checkboxInput(ns("mfa_biplot_quali"), "Show Qualitative Categories (Points)", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("mfa_biplot_quali")),
-                                    checkboxInput(ns("mfa_quali_labels"), "Show Category Labels", value = TRUE),
-                                    colourInput(ns("mfa_quali_color"), "Category Color:", value = "#0066CC", showColour = "background"),
-                                    numericInput(ns("mfa_quali_size"), "Category Point Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
-                                    numericInput(ns("mfa_quali_label_size"), "Category Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
-                                  ),
+                                    condition = sprintf("!input['%s']", ns("mfa_interactive")),
+                                    h5("Biplot Options"),
+                                    checkboxInput(ns("mfa_biplot_quanti"), "Show Quantitative Variables (Arrows)", value = FALSE),
+                                    conditionalPanel(
+                                      condition = sprintf("input['%s']", ns("mfa_biplot_quanti")),
+                                      checkboxInput(ns("mfa_quanti_labels"), "Show Quantitative Labels", value = TRUE),
+                                      colourInput(ns("mfa_arrow_color"), "Arrow Color:", value = "#8B0000", showColour = "background"),
+                                      sliderInput(ns("mfa_arrow_size"), "Arrow Width:", min = 0.5, max = 3, value = 1, step = 0.1, width = '150px'),
+                                      sliderInput(ns("mfa_arrow_alpha"), "Arrow Transparency:", min = 0.1, max = 1, value = 0.7, step = 0.1, width = '150px'),
+                                      numericInput(ns("mfa_arrow_label_size"), "Arrow Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                    ),
+                                    checkboxInput(ns("mfa_biplot_quali"), "Show Qualitative Categories (Points)", value = FALSE),
+                                    conditionalPanel(
+                                      condition = sprintf("input['%s']", ns("mfa_biplot_quali")),
+                                      checkboxInput(ns("mfa_quali_labels"), "Show Category Labels", value = TRUE),
+                                      colourInput(ns("mfa_quali_color"), "Category Color:", value = "#0066CC", showColour = "background"),
+                                      numericInput(ns("mfa_quali_size"), "Category Point Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
+                                      numericInput(ns("mfa_quali_label_size"), "Category Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                    ),
+                                  ),  # end biplot conditionalPanel
                                   hr(),
                                   h5("Points & Groups"),
                                   numericInput(ns("mfa_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
-                                  checkboxInput(ns("mfa_outline_points"), "Outline Points", value = FALSE),
                                   conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("mfa_outline_points")),
-                                    sliderInput(ns("mfa_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                    condition = sprintf("!input['%s']", ns("mfa_interactive")),
+                                    checkboxInput(ns("mfa_outline_points"), "Outline Points", value = FALSE),
+                                    conditionalPanel(
+                                      condition = sprintf("input['%s']", ns("mfa_outline_points")),
+                                      sliderInput(ns("mfa_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                    )
                                   ),
                                   checkboxInput(ns("mfa_centroids"), "Group Centroids", value = FALSE),
                                   conditionalPanel(
@@ -155,33 +204,34 @@ mod_visual_ui_combined <- function(id) {
                                     numericInput(ns("mfa_centroid_size"), "Centroid Size:", value = 4, min = 1, max = 15, width = '150px'),
                                     colourInput(ns("mfa_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background"),
                                     
-                                    checkboxInput(ns("mfa_spider"), "Show Spider Plot", value = FALSE),
                                     conditionalPanel(
-                                      condition = sprintf("input['%s']", ns("mfa_spider")),
-                                      sliderInput(ns("mfa_spider_alpha"), "Spider Line Transparency:", min = 0.1, max = 1, value = 0.4, step = 0.1, width = '150px'),
-                                      sliderInput(ns("mfa_spider_width"), "Spider Line Width:", min = 0.1, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                    ),
-                                    
-                                    checkboxInput(ns("mfa_centroid_distances"), "Show Centroid Distances", value = FALSE),
-                                    conditionalPanel(
-                                      condition = sprintf("input['%s']", ns("mfa_centroid_distances")),
-                                      colourInput(ns("mfa_centroid_dist_color"), "Distance Line Color:", value = "#444444", showColour = "background"),
-                                      sliderInput(ns("mfa_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
-                                      sliderInput(ns("mfa_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
-                                      numericInput(ns("mfa_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
-                                      helpText("Distances shown are Euclidean distances between group centroids in the 2D MFA space of the currently selected dimensions. These are not equivalent to PERMANOVA distances, which are computed from the full multivariate dataset across all variables. Use these values for visual interpretation only.")
-                                    ),
-                                    
-                                    checkboxInput(ns("mfa_mst"), "Show Minimum Spanning Tree", value = FALSE),
-                                    conditionalPanel(
-                                      condition = sprintf("input['%s']", ns("mfa_mst")),
-                                      colourInput(ns("mfa_mst_color"), "MST Line Color:", value = "#222222", showColour = "background"),
-                                      sliderInput(ns("mfa_mst_alpha"), "MST Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
-                                      sliderInput(ns("mfa_mst_width"), "MST Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
-                                      checkboxInput(ns("mfa_mst_labels"), "Show MST Edge Distances", value = FALSE),
+                                      condition = sprintf("!input['%s']", ns("mfa_interactive")),
+                                      checkboxInput(ns("mfa_spider"), "Show Spider Plot", value = FALSE),
                                       conditionalPanel(
-                                        condition = sprintf("input['%s']", ns("mfa_mst_labels")),
-                                        numericInput(ns("mfa_mst_label_size"), "MST Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                        condition = sprintf("input['%s']", ns("mfa_spider")),
+                                        sliderInput(ns("mfa_spider_alpha"), "Spider Line Transparency:", min = 0.1, max = 1, value = 0.4, step = 0.1, width = '150px'),
+                                        sliderInput(ns("mfa_spider_width"), "Spider Line Width:", min = 0.1, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                      ),
+                                      checkboxInput(ns("mfa_centroid_distances"), "Show Centroid Distances", value = FALSE),
+                                      conditionalPanel(
+                                        condition = sprintf("input['%s']", ns("mfa_centroid_distances")),
+                                        colourInput(ns("mfa_centroid_dist_color"), "Distance Line Color:", value = "#444444", showColour = "background"),
+                                        sliderInput(ns("mfa_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
+                                        sliderInput(ns("mfa_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
+                                        numericInput(ns("mfa_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
+                                        helpText("Euclidean distances between centroids in 2D MFA space. Not equivalent to PERMANOVA distances.")
+                                      ),
+                                      checkboxInput(ns("mfa_mst"), "Show Minimum Spanning Tree", value = FALSE),
+                                      conditionalPanel(
+                                        condition = sprintf("input['%s']", ns("mfa_mst")),
+                                        colourInput(ns("mfa_mst_color"), "MST Line Color:", value = "#222222", showColour = "background"),
+                                        sliderInput(ns("mfa_mst_alpha"), "MST Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
+                                        sliderInput(ns("mfa_mst_width"), "MST Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
+                                        checkboxInput(ns("mfa_mst_labels"), "Show MST Edge Distances", value = FALSE),
+                                        conditionalPanel(
+                                          condition = sprintf("input['%s']", ns("mfa_mst_labels")),
+                                          numericInput(ns("mfa_mst_label_size"), "MST Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                        )
                                       )
                                     )
                                   ),
@@ -200,10 +250,38 @@ mod_visual_ui_combined <- function(id) {
                                     sliderInput(ns("mfa_ellipse_alpha"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.4, step = 0.05, width = '150px')
                                   ),
                                   hr(),
-                                  downloadButton(ns("download_mfa_individuals_pdf"), "Download PDF"),
-                                  br(),
-                                  downloadButton(ns("download_mfa_individuals_jpeg"), "Download JPEG"),
+                                  conditionalPanel(
+                                    condition = sprintf("!input['%s']", ns("mfa_interactive")),
+                                    downloadButton(ns("download_mfa_individuals_pdf"), "Download PDF"),
+                                    br(),
+                                    downloadButton(ns("download_mfa_individuals_jpeg"), "Download JPEG")
+                                  ),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_interactive")),
+                                    p(em("Use the camera icon in the plot toolbar to download."))
+                                  ),
                                   hr()
+                           )
+                         )
+                ),
+                
+                tabPanel("MFA: Individuals (3D)",
+                         fluidRow(
+                           column(9,
+                                  plotly::plotlyOutput(ns("mfa_individuals_3d_plot"), height = "580px")
+                           ),
+                           column(3,
+                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                  br(),
+                                  h5("Dimension Selection"),
+                                  uiOutput(ns("mfa_3d_x_selector")),
+                                  uiOutput(ns("mfa_3d_y_selector")),
+                                  uiOutput(ns("mfa_3d_z_selector")),
+                                  hr(),
+                                  numericInput(ns("mfa_3d_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                  sliderInput(ns("mfa_3d_point_alpha"), "Point Opacity:", min = 0.1, max = 1, value = 0.8, step = 0.05, width = '150px'),
+                                  hr(),
+                                  p(em("Use the camera icon in the plot toolbar to download."))
                            )
                          )
                 ),
@@ -255,13 +333,15 @@ mod_visual_server_combined <- function(id, dataset_r,
                                        mfa_results_r,
                                        trait_group_df_r,
                                        group_col_name_r,
-                                       plot_palette, plot_axis_text_size,
+                                       plot_palette, plot_theme,
+                                       plot_axis_text_size,
                                        plot_axis_label_size, plot_x_angle, plot_facet_size,
                                        legend_text_size, legend_title_size,
                                        mfa_point_size, mfa_point_shape, mfa_ellipse,
                                        mfa_ellipse_alpha,
-                                       manual_colors_r, 
-                                       mfa_type_colors_r 
+                                       manual_colors_r,
+                                       mfa_type_colors_r,
+                                       specimen_ids_r = NULL
 ) {
   
   moduleServer(id, function(input, output, session) {
@@ -390,6 +470,43 @@ mod_visual_server_combined <- function(id, dataset_r,
       )
     }
     
+    get_plotly_theme_layout <- function(theme_name) {
+      base <- list(
+        paper_bgcolor = "white", plot_bgcolor = "white",
+        font = list(color = "black"),
+        xaxis = list(showgrid = FALSE, showline = TRUE, zeroline = FALSE,
+                     linecolor = "black", gridcolor = "#e5e5e5"),
+        yaxis = list(showgrid = FALSE, showline = TRUE, zeroline = FALSE,
+                     linecolor = "black", gridcolor = "#e5e5e5")
+      )
+      switch(theme_name,
+             "theme_classic" = base,
+             "theme_minimal" = modifyList(base, list(
+               xaxis = list(showgrid = TRUE, showline = FALSE, zeroline = FALSE, gridcolor = "#e5e5e5"),
+               yaxis = list(showgrid = TRUE, showline = FALSE, zeroline = FALSE, gridcolor = "#e5e5e5"))),
+             "theme_light" = modifyList(base, list(
+               plot_bgcolor = "#f8f8f8",
+               xaxis = list(showgrid = TRUE, showline = TRUE, zeroline = FALSE, linecolor = "#cccccc", gridcolor = "white"),
+               yaxis = list(showgrid = TRUE, showline = TRUE, zeroline = FALSE, linecolor = "#cccccc", gridcolor = "white"))),
+             "theme_dark" = modifyList(base, list(
+               paper_bgcolor = "#2d2d2d", plot_bgcolor = "#2d2d2d",
+               font = list(color = "white"),
+               xaxis = list(showgrid = TRUE, showline = FALSE, zeroline = FALSE, gridcolor = "#555555", tickfont = list(color = "white")),
+               yaxis = list(showgrid = TRUE, showline = FALSE, zeroline = FALSE, gridcolor = "#555555", tickfont = list(color = "white")))),
+             "theme_void" = modifyList(base, list(
+               xaxis = list(showgrid = FALSE, showline = FALSE, zeroline = FALSE, showticklabels = FALSE, title = ""),
+               yaxis = list(showgrid = FALSE, showline = FALSE, zeroline = FALSE, showticklabels = FALSE, title = ""))),
+             "theme_grey" = modifyList(base, list(
+               plot_bgcolor = "#ebebeb",
+               xaxis = list(showgrid = TRUE, showline = FALSE, zeroline = FALSE, gridcolor = "white"),
+               yaxis = list(showgrid = TRUE, showline = FALSE, zeroline = FALSE, gridcolor = "white"))),
+             "theme_bw" = modifyList(base, list(
+               xaxis = list(showgrid = TRUE, showline = TRUE, zeroline = FALSE, linecolor = "black", gridcolor = "#cccccc"),
+               yaxis = list(showgrid = TRUE, showline = TRUE, zeroline = FALSE, linecolor = "black", gridcolor = "#cccccc"))),
+             base
+      )
+    }
+    
     # Choose fill scale for OTU-based plots
     get_fill_scale_otu <- function(palette_name) {
       if (palette_name == "manual") {
@@ -463,7 +580,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       legend_text_size_val <- legend_text_size()
       legend_title_size_val <- legend_title_size()
       
-      theme_choice <- input$plot_theme
+      theme_choice <- plot_theme() %||% "theme_classic"
       
       x_vjust <- 0.5
       x_hjust <- 0.5
@@ -495,7 +612,7 @@ mod_visual_server_combined <- function(id, dataset_r,
     common_plot_inputs_ready <- reactive({
       req(plot_axis_text_size(), plot_axis_label_size(),
           plot_x_angle(), plot_facet_size(),
-          legend_text_size(), legend_title_size(),input$plot_theme)
+          legend_text_size(), legend_title_size(), plot_theme())
       TRUE
     })
     
@@ -504,10 +621,16 @@ mod_visual_server_combined <- function(id, dataset_r,
       req(dataset_r(), input$scatter_xvar, input$scatter_yvar, input$scatter_group_filter, group_col_name_r())
       req(input$scatter_point_size)
       
-      df <- dataset_r()
+      df        <- dataset_r()
       group_col <- group_col_name_r()
-      
-      df <- df[df[[group_col]] %in% input$scatter_group_filter, ]
+      keep_rows <- df[[group_col]] %in% input$scatter_group_filter
+      df        <- df[keep_rows, ]
+      ids <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
+        specimen_ids_r()[keep_rows]
+      } else {
+        as.character(seq_len(nrow(df)))
+      }
+      df$.label <- ids
       
       x_var_sym <- rlang::sym(input$scatter_xvar)
       y_var_sym <- rlang::sym(input$scatter_yvar)
@@ -536,7 +659,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       }
       
       if (isTRUE(input$scatter_show_labels)) {
-        p <- p + geom_text(aes(label = rownames(df)), hjust = 1.1, vjust = 1.1, size = 3, check_overlap = TRUE)
+        p <- p + geom_text(aes(label = .data[[".label"]]), hjust = 1.1, vjust = 1.1, size = 3, check_overlap = TRUE)
       }
       
       if (isTRUE(input$scatter_outline_points)) {
@@ -1220,6 +1343,263 @@ mod_visual_server_combined <- function(id, dataset_r,
       }
       
       return(p)
+    })
+    
+    # ---- Scatter: switch between static and interactive ----
+    output$scatter_plot_ui <- renderUI({
+      if (isTRUE(input$scatter_interactive)) {
+        plotly::plotlyOutput(ns("plot_scatter_plotly"),
+                             height = paste0(input$plot_scatter_height %||% 500, "px"))
+      } else {
+        plotOutput(ns("plot_scatter"),
+                   height = paste0(input$plot_scatter_height %||% 500, "px"),
+                   width  = paste0(input$plot_scatter_width  %||% 700, "px"))
+      }
+    })
+    
+    plot_scatter_plotly <- reactive({
+      req(dataset_r(), input$scatter_xvar, input$scatter_yvar, input$scatter_group_filter, group_col_name_r())
+      df        <- dataset_r()
+      group_col <- group_col_name_r()
+      keep_rows <- df[[group_col]] %in% input$scatter_group_filter
+      df        <- df[keep_rows, ]
+      ids <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
+        specimen_ids_r()[keep_rows]
+      } else { as.character(seq_len(nrow(df))) }
+      hover_txt <- paste0("ID: ", ids, "<br>Group: ", df[[group_col]],
+                          "<br>", input$scatter_xvar, ": ", round(df[[input$scatter_xvar]], 3),
+                          "<br>", input$scatter_yvar, ": ", round(df[[input$scatter_yvar]], 3))
+      p <- ggplot2::ggplot(df, ggplot2::aes(
+        x = .data[[input$scatter_xvar]], y = .data[[input$scatter_yvar]],
+        color = .data[[group_col]], text = hover_txt)) +
+        ggplot2::geom_point(size = input$scatter_point_size %||% 3, alpha = 0.8) +
+        get_color_scale_otu(plot_palette()) +
+        ggplot2::labs(color = stringr::str_to_title(group_col))
+      if (isTRUE(input$scatter_show_lm))
+        p <- p + ggplot2::geom_smooth(ggplot2::aes(text = NULL),
+                                      method = "lm", se = isTRUE(input$scatter_show_lm_se), linetype = "solid")
+      tl <- get_plotly_theme_layout(plot_theme() %||% "theme_classic")
+      ax_tick <- plot_axis_text_size() %||% 10; ax_label <- plot_axis_label_size() %||% 12
+      leg_text <- legend_text_size() %||% 10;  leg_title <- legend_title_size() %||% 12
+      plotly::ggplotly(p, tooltip = "text") %>%
+        plotly::layout(hoverlabel = list(bgcolor = "white", font = list(size = 12)),
+                       paper_bgcolor = tl$paper_bgcolor, plot_bgcolor = tl$plot_bgcolor, font = tl$font,
+                       xaxis = modifyList(tl$xaxis, list(autorange = TRUE,
+                                                         title = list(text = input$scatter_xvar, font = list(size = ax_label)), tickfont = list(size = ax_tick))),
+                       yaxis = modifyList(tl$yaxis, list(autorange = TRUE,
+                                                         title = list(text = input$scatter_yvar, font = list(size = ax_label)), tickfont = list(size = ax_tick))),
+                       legend = list(font = list(size = leg_text), title = list(font = list(size = leg_title))))
+    })
+    output$plot_scatter_plotly <- plotly::renderPlotly({
+      tryCatch(plot_scatter_plotly(), error = function(e) plotly::plot_ly() %>%
+                 plotly::add_annotations(text = paste("Error:", e$message), showarrow = FALSE))
+    })
+    
+    # ---- MFA Individuals: switch between static and interactive ----
+    output$mfa_individuals_plot_ui <- renderUI({
+      if (isTRUE(input$mfa_interactive)) {
+        plotly::plotlyOutput(ns("mfa_individuals_plot_plotly"),
+                             height = paste0(input$mfa_individuals_plot_height %||% 500, "px"))
+      } else {
+        plotOutput(ns("mfa_individuals_plot"),
+                   height = paste0(input$mfa_individuals_plot_height %||% 500, "px"),
+                   width  = paste0(input$mfa_individuals_plot_width  %||% 600, "px"))
+      }
+    })
+    
+    mfa_individuals_plotly <- reactive({
+      req(mfa_results_r(), dataset_r(), group_col_name_r(), input$mfa_x_axis, input$mfa_y_axis)
+      mfa_res        <- mfa_results_r()
+      df_original    <- dataset_r()
+      group_col_name <- group_col_name_r()
+      dim_x          <- input$mfa_x_axis
+      dim_y          <- input$mfa_y_axis
+      dim_x_num      <- as.numeric(gsub("Dim\\.", "", dim_x))
+      dim_y_num      <- as.numeric(gsub("Dim\\.", "", dim_y))
+      
+      mfa_ind_coord <- as.data.frame(mfa_res$ind$coord) %>%
+        tibble::rownames_to_column(var = "Row_Index")
+      
+      original_data_for_join <- df_original %>%
+        tibble::rownames_to_column(var = "Row_Index") %>%
+        dplyr::select(Row_Index, Group = !!rlang::sym(group_col_name)) %>%
+        dplyr::mutate(Group = as.factor(Group))
+      
+      mfa_ind_coord <- dplyr::left_join(mfa_ind_coord, original_data_for_join, by = "Row_Index")
+      
+      # Inject specimen IDs positionally (MFA preserves row order)
+      mfa_ind_coord$SpecimenID <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
+        specimen_ids_r()
+      } else {
+        as.character(seq_len(nrow(mfa_ind_coord)))
+      }
+      
+      x_label <- paste0(dim_x, " (", round(mfa_res$eig[dim_x_num, 2], 2), "%)")
+      y_label <- paste0(dim_y, " (", round(mfa_res$eig[dim_y_num, 2], 2), "%)")
+      
+      hover_txt <- paste0(
+        "ID: ",     mfa_ind_coord$SpecimenID,
+        "<br>Group: ", mfa_ind_coord$Group,
+        "<br>",     dim_x, ": ", round(mfa_ind_coord[[dim_x]], 3),
+        "<br>",     dim_y, ": ", round(mfa_ind_coord[[dim_y]], 3)
+      )
+      
+      p <- ggplot2::ggplot(mfa_ind_coord, ggplot2::aes(
+        x = .data[[dim_x]], y = .data[[dim_y]],
+        color = Group, fill = Group, text = hover_txt)) +
+        ggplot2::geom_point(size = input$mfa_point_size %||% 3, alpha = 0.8) +
+        ggplot2::xlab(x_label) + ggplot2::ylab(y_label) +
+        get_color_scale_otu(plot_palette()) + get_fill_scale_otu(plot_palette()) +
+        ggplot2::guides(fill = "none") +
+        ggplot2::labs(color = stringr::str_to_title(group_col_name))
+      
+      if (isTRUE(input$mfa_ellipse))
+        p <- p + ggplot2::stat_ellipse(
+          ggplot2::aes(group = Group, fill = Group, text = NULL),
+          color = NA, type = "norm", level = 0.95, geom = "polygon",
+          alpha = input$mfa_ellipse_alpha %||% 0.4, show.legend = FALSE)
+      
+      if (isTRUE(input$mfa_convex_hull)) {
+        hull_df <- mfa_ind_coord %>%
+          dplyr::group_by(Group) %>% dplyr::filter(dplyr::n() >= 3) %>%
+          dplyr::slice(chull(.data[[dim_x]], .data[[dim_y]])) %>% dplyr::ungroup()
+        p <- p + ggplot2::geom_polygon(data = hull_df,
+                                       ggplot2::aes(x = .data[[dim_x]], y = .data[[dim_y]], group = Group, fill = Group),
+                                       color = NA, alpha = input$mfa_ellipse_alpha %||% 0.4, inherit.aes = FALSE, show.legend = FALSE)
+      }
+      
+      if (isTRUE(input$mfa_centroids)) {
+        centroids <- mfa_ind_coord %>% dplyr::group_by(Group) %>%
+          dplyr::summarize(x_cent = mean(.data[[dim_x]]), y_cent = mean(.data[[dim_y]]), .groups = "drop")
+        p <- p + ggplot2::geom_point(data = centroids, ggplot2::aes(x = x_cent, y = y_cent),
+                                     shape = 8, size = input$mfa_centroid_size %||% 4,
+                                     color = input$mfa_centroid_color %||% "#000000", inherit.aes = FALSE)
+      }
+      
+      tl <- get_plotly_theme_layout(plot_theme() %||% "theme_classic")
+      ax_tick <- plot_axis_text_size() %||% 10; ax_label_sz <- plot_axis_label_size() %||% 12
+      leg_text <- legend_text_size() %||% 10;  leg_title_sz <- legend_title_size() %||% 12
+      
+      plotly::ggplotly(p, tooltip = "text") %>%
+        plotly::layout(hoverlabel = list(bgcolor = "white", font = list(size = 12)),
+                       paper_bgcolor = tl$paper_bgcolor, plot_bgcolor = tl$plot_bgcolor, font = tl$font,
+                       xaxis = modifyList(tl$xaxis, list(autorange = TRUE,
+                                                         title = list(text = x_label, font = list(size = ax_label_sz)), tickfont = list(size = ax_tick))),
+                       yaxis = modifyList(tl$yaxis, list(autorange = TRUE,
+                                                         title = list(text = y_label, font = list(size = ax_label_sz)), tickfont = list(size = ax_tick))),
+                       legend = list(font = list(size = leg_text), title = list(font = list(size = leg_title_sz))))
+    })
+    output$mfa_individuals_plot_plotly <- plotly::renderPlotly({
+      tryCatch(mfa_individuals_plotly(), error = function(e) plotly::plot_ly() %>%
+                 plotly::add_annotations(text = paste("Error:", e$message), showarrow = FALSE))
+    })
+    
+    # ---- MFA Individuals 3D ----
+    make_mfa_3d_dim_selector <- function(input_id, label, default_dim) {
+      renderUI({
+        req(mfa_results_r())
+        n_dims     <- ncol(mfa_results_r()$ind$coord)
+        dim_choices <- paste0("Dim.", seq_len(n_dims))
+        selectInput(ns(input_id), label,
+                    choices  = dim_choices,
+                    selected = dim_choices[min(default_dim, n_dims)],
+                    width    = "150px")
+      })
+    }
+    output$mfa_3d_x_selector <- make_mfa_3d_dim_selector("mfa_3d_x", "X-axis:", 1)
+    output$mfa_3d_y_selector <- make_mfa_3d_dim_selector("mfa_3d_y", "Y-axis:", 2)
+    output$mfa_3d_z_selector <- make_mfa_3d_dim_selector("mfa_3d_z", "Z-axis:", 3)
+    
+    mfa_individuals_3d <- reactive({
+      req(mfa_results_r(), dataset_r(), group_col_name_r(),
+          input$mfa_3d_x, input$mfa_3d_y, input$mfa_3d_z)
+      
+      mfa_res        <- mfa_results_r()
+      df_original    <- dataset_r()
+      group_col_name <- group_col_name_r()
+      dim_x          <- input$mfa_3d_x
+      dim_y          <- input$mfa_3d_y
+      dim_z          <- input$mfa_3d_z
+      dim_x_num      <- as.numeric(gsub("Dim\\.", "", dim_x))
+      dim_y_num      <- as.numeric(gsub("Dim\\.", "", dim_y))
+      dim_z_num      <- as.numeric(gsub("Dim\\.", "", dim_z))
+      
+      req(ncol(mfa_res$ind$coord) >= 3)
+      
+      mfa_coords <- as.data.frame(mfa_res$ind$coord) %>%
+        tibble::rownames_to_column(var = "Row_Index")
+      
+      original_groups <- df_original %>%
+        tibble::rownames_to_column(var = "Row_Index") %>%
+        dplyr::select(Row_Index, Group = !!rlang::sym(group_col_name)) %>%
+        dplyr::mutate(Group = as.factor(Group))
+      
+      mfa_coords <- dplyr::left_join(mfa_coords, original_groups, by = "Row_Index")
+      
+      mfa_coords$SpecimenID <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
+        specimen_ids_r()
+      } else {
+        as.character(seq_len(nrow(mfa_coords)))
+      }
+      
+      pct <- round(mfa_res$eig[, 2], 2)
+      x_label <- paste0(dim_x, " (", pct[dim_x_num], "%)")
+      y_label <- paste0(dim_y, " (", pct[dim_y_num], "%)")
+      z_label <- paste0(dim_z, " (", pct[dim_z_num], "%)")
+      
+      groups   <- levels(factor(mfa_coords$Group))
+      n_groups <- length(groups)
+      color_map <- if (!is.null(plot_palette()) && plot_palette() == "manual" &&
+                       !is.null(manual_colors_r())) {
+        manual_colors_r()[as.character(groups)]
+      } else if (!is.null(plot_palette()) && startsWith(plot_palette(), "viridis:")) {
+        setNames(viridis::viridis(n_groups, option = sub("viridis:", "", plot_palette())), groups)
+      } else if (!is.null(plot_palette()) && startsWith(plot_palette(), "brewer:")) {
+        pal_name <- sub("brewer:", "", plot_palette())
+        max_n    <- RColorBrewer::brewer.pal.info[pal_name, "maxcolors"]
+        setNames(RColorBrewer::brewer.pal(max(3L, min(n_groups, max_n)), pal_name)[seq_len(n_groups)], groups)
+      } else {
+        setNames(scales::hue_pal()(n_groups), groups)
+      }
+      
+      hover_txt <- paste0(
+        "ID: ",     mfa_coords$SpecimenID,
+        "<br>Group: ", mfa_coords$Group,
+        "<br>",     dim_x, ": ", round(mfa_coords[[dim_x]], 3),
+        "<br>",     dim_y, ": ", round(mfa_coords[[dim_y]], 3),
+        "<br>",     dim_z, ": ", round(mfa_coords[[dim_z]], 3)
+      )
+      
+      plotly::plot_ly(
+        data      = mfa_coords,
+        x         = ~get(dim_x),
+        y         = ~get(dim_y),
+        z         = ~get(dim_z),
+        color     = ~Group,
+        colors    = color_map,
+        type      = "scatter3d",
+        mode      = "markers",
+        marker    = list(size    = (input$mfa_3d_point_size %||% 3) * 2,
+                         opacity = input$mfa_3d_point_alpha %||% 0.8),
+        text      = hover_txt,
+        hoverinfo = "text"
+      ) %>%
+        plotly::layout(
+          scene = list(
+            xaxis = list(title = x_label),
+            yaxis = list(title = y_label),
+            zaxis = list(title = z_label)
+          ),
+          legend = list(title = list(text = stringr::str_to_title(group_col_name)))
+        )
+    })
+    
+    output$mfa_individuals_3d_plot <- plotly::renderPlotly({
+      tryCatch(mfa_individuals_3d(),
+               error = function(e) plotly::plot_ly() %>%
+                 plotly::add_annotations(
+                   text      = paste("Need at least 3 MFA dimensions.", e$message),
+                   showarrow = FALSE))
     })
     
     # Render plots with dynamic height and width

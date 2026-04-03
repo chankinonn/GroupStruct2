@@ -7,7 +7,7 @@ required_packages <- c(
   "shinyjs", "colourpicker", "forcats", "purrr", "scales", "PCAtest",
   "openxlsx", "shinyWidgets", "ggthemes", "broom", "tibble",
   "htmltools", "stringr", "ggpubr", "ggrepel", "patchwork", "mclust", "conflicted", 
-  "Boruta", "shinybusy", "ggridges"
+  "Boruta", "shinybusy", "plotly", "ggridges"
 )
 
 # Source Meristic modules

@@ -50,7 +50,7 @@ mod_allometry_ui_combined <- function(id) {
   )
 }
 
-mod_allometry_server_combined <- function(id, raw_combined_data_r) {
+mod_allometry_server_combined <- function(id, raw_combined_data_r, specimen_ids_r = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     
@@ -61,7 +61,8 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       }
     })
     
-    adjusted_data_output_r <- reactiveVal(NULL)
+    adjusted_data_output_r   <- reactiveVal(NULL)
+    specimen_ids_adjusted_r  <- reactiveVal(NULL)
     
     # UI for body size column
     output$body_size_selector_ui <- renderUI({
@@ -206,6 +207,10 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
         
         if (input$correction_type == "none") {
           adjusted_data_output_r(df_raw_full)
+          specimen_ids_adjusted_r(
+            if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) specimen_ids_r() else
+              as.character(seq_len(nrow(df_raw_full)))
+          )
           showNotification("No correction applied. Raw data returned.", type = "message")
           return()
         }
@@ -255,6 +260,11 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
         }
         
         adjusted_data_output_r(df_raw_full)
+        # Row order is preserved (no sorting in combined allometry), so IDs align directly
+        specimen_ids_adjusted_r(
+          if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) specimen_ids_r() else
+            as.character(seq_len(nrow(df_raw_full)))
+        )
         
         if (!is.null(df_raw_full)) {
           showNotification("Allometric correction completed successfully!", type = "message")
@@ -266,12 +276,17 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
     output$adjusted_data_preview <- renderDT({
       data_to_display <- adjusted_data_output_r()
       if (is.null(data_to_display)) {
-        return(datatable(data.frame("Status" = "No data available. Click 'Run Allometric Correction' to process."), 
-                         options = list(dom = 't', paging = FALSE, searching = FALSE, info = FALSE)))
-      } else {
-        return(datatable(data_to_display, 
-                         options = list(pageLength = 10, scrollX = TRUE, lengthMenu = c(10, 25, 50, 100))))
+        return(datatable(
+          data.frame("Status" = "No data available. Click 'Run Allometric Correction' to process."),
+          options = list(dom = 't', paging = FALSE, searching = FALSE, info = FALSE)))
       }
+      ids <- specimen_ids_adjusted_r()
+      display_df <- if (!is.null(ids) && length(ids) == nrow(data_to_display)) {
+        cbind(data.frame(SpecimenID = ids, stringsAsFactors = FALSE), data_to_display)
+      } else {
+        data_to_display
+      }
+      return(datatable(display_df, options = list(pageLength = 10, scrollX = TRUE, lengthMenu = c(10, 25, 50, 100))))
     })
     
     # Download
@@ -281,10 +296,17 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r) {
       },
       content = function(file) {
         req(adjusted_data_output_r())
-        write.csv(adjusted_data_output_r(), file, row.names = FALSE)
+        df   <- adjusted_data_output_r()
+        ids  <- specimen_ids_adjusted_r()
+        download_df <- if (!is.null(ids) && length(ids) == nrow(df)) {
+          cbind(data.frame(SpecimenID = ids, stringsAsFactors = FALSE), df)
+        } else {
+          df
+        }
+        write.csv(download_df, file, row.names = FALSE)
       }
     )
     
-    return(adjusted_data_output_r)
+    return(list(data = adjusted_data_output_r, specimen_ids = specimen_ids_adjusted_r))
   })
 }

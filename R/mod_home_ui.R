@@ -23,9 +23,9 @@ landing_page_ui <- function() {
                  tags$li(strong("Summary Statistics:"), "Descriptive statistics and data exploration"),
                  tags$li(strong("Allometric Correction (Morphometric data only):"), "Body-size correction for morphometric data using the Thorpe method"),
                  tags$li(strong("Inferential Statistics:"), "Univariate/multivariate tests (e.g., t-test, ANOVA, PERMANOVA with dispersion analysis) and PCA/DAPC"),
-                 tags$li(strong("Morphometric Delimitation (Morphometric data only):"), 
+                 tags$li(strong("Morphometric Delimitation (Morphometric data only):"),
                          "A Bayesian framework for delimitating morphometric clusters using Gaussian Mixture Models and diagnostic character identification using machine learning"),
-                 tags$li(strong("Multiple Factor Analysis (Mixed data only):"), 
+                 tags$li(strong("Multiple Factor Analysis (Mixed data only):"),
                          "Simultaneous analysis of quantitative and qualitative variables"),
                  tags$li(strong("Visualization:"), "Customizable plots including scatterplots, boxplots, violin plots, PCA, DAPC, and more")
                ),
@@ -40,7 +40,7 @@ landing_page_ui <- function() {
                  p(style = "margin: 0; font-style: italic;",
                    "Chan & Grismer (2025). GroupStruct2: A User-Friendly Graphical User Interface for Statistical and Visual Support in Species Diagnosis. Systematic Biology, syaf090. https://doi.org/10.1093/sysbio/syaf090"),
                ),
-
+               
                hr(),
                
                h4("Getting Started"),
@@ -77,7 +77,7 @@ landing_page_ui <- function() {
                  tags$div(
                    style = "background-color: #d1ecf1; border: 1px solid #bee5eb; border-radius: 4px; padding: 10px; margin-top: 15px;",
                    p(style = "margin: 0;",
-                     strong("Pro Tip:"), 
+                     strong("Pro Tip:"),
                      "After performing the outlier test and checking summary statistics, examine scatter plots, box plots, and violin plots in the",
                      strong("Visualization"), "module to visually identify outliers and erroneous data.",
                      "Visual inspection often reveals data quality issues that numerical summaries might miss.")
@@ -101,7 +101,7 @@ landing_page_ui <- function() {
                                    tags$li("Run dispersion analysis (betadisper) to test homogeneity of within-group variance"),
                                    tags$li("Interpret PERMANOVA and dispersion results jointly: significant PERMANOVA may reflect centroid differences, dispersion differences, or both"),
                                    tags$li("Use pairwise centroid distances to quantify the magnitude of separation between group pairs")
-                                  )),
+                                 )),
                          tags$li(strong("Visualization"), "-> Create publication-ready plots")
                  )
                ),
@@ -142,7 +142,7 @@ landing_page_ui <- function() {
                tags$div(
                  style = "background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px; margin: 15px 0;",
                  tags$div(
-                   p(style = "margin: 0; margin-bottom: 10px;", 
+                   p(style = "margin: 0; margin-bottom: 10px;",
                      strong("Understanding Bayesian Model Testing vs. Inferential Statistics:")),
                    tags$ul(style = "margin: 0;",
                            tags$li(strong("Inferential Statistics"), "(PERMANOVA, univariate tests, PCA):",
@@ -176,7 +176,7 @@ landing_page_ui <- function() {
                
                tags$div(
                  style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
-                 p(style = "margin: 0;", 
+                 p(style = "margin: 0;",
                    strong("Key Point:"), "Bayesian analyses indicate", em("which"), "taxonomic hypothesis is best supported.",
                    "Inferential statistics tests", em("whether"), "groups differ significantly.",
                    "Both provide valuable but different types of evidence to aid species delimitation.")
@@ -206,10 +206,10 @@ landing_page_ui <- function() {
                                    tags$li("Visualize group separation in factor space"),
                                    tags$li("Identify which variable types contribute most to differentiation")
                                  )),
-                         tags$li(strong("Visualization"), 
+                         tags$li(strong("Visualization"),
                                  tags$ul(
                                    tags$li("Visualize OTU differentiation in morphospace"),
-                                   tags$li("Visualize which variable types contribute most fo differentiation"),
+                                   tags$li("Visualize which variable types contribute most to differentiation"),
                                    tags$li("Visualize which character contributes most to differentiation"),
                                  )),
                  )
@@ -217,7 +217,7 @@ landing_page_ui <- function() {
                
                tags$div(
                  style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
-                 p(style = "margin: 0;", 
+                 p(style = "margin: 0;",
                    strong("Tip:"), "MFA is essential when combining different data types (e.g., measurements + counts + colors).",
                    "It prevents any single data type from dominating the analysis due to scale differences.")
                ),
@@ -232,7 +232,8 @@ landing_page_ui <- function() {
                  tags$li("Statistical significance != taxonomic validity. Always integrate multiple lines of evidence from other sources of data. Morphology is only a single line of evidence"),
                  tags$li("When interpreting PERMANOVA results, always check the dispersion analysis.",
                          "A significant PERMANOVA can reflect differences in group centroids, differences in within-group spread, or both.",
-                         "Centroid distances help quantify the magnitude of separation between specific group pairs"),                 ),
+                         "Centroid distances help quantify the magnitude of separation between specific group pairs"),
+               ),
                hr(),
       ),
       
@@ -242,18 +243,25 @@ landing_page_ui <- function() {
                tags$style(HTML("
                  #example_meristic table, #example_meristic th, #example_meristic td,
                  #example_morphometric table, #example_morphometric th, #example_morphometric td,
-                 #example_mixed table, #example_mixed th, #example_mixed td {
+                 #example_mixed table, #example_mixed th, #example_mixed td,
+                 #example_meristic_with_ids table, #example_meristic_with_ids th, #example_meristic_with_ids td {
                    text-align: center !important;
                  }
                ")),
+               
                h4("Example Data Formats"),
                p("Below are examples of properly formatted datasets for each data type.",
                  "Use these as templates when preparing your own data."),
                p(strong("Important formatting rules:"),
                  tags$ul(
-                   tags$li("First column MUST be the grouping variable (e.g., species, population)"),
-                   tags$li("For morphometric data: second column MUST be body-size measurement"),
-                   tags$li("For mixed data with morphometric variables: second column MUST be body-size measurement"),
+                   tags$li(strong("Specimen ID column (optional):"),
+                           "If your file includes specimen identifiers (e.g., museum catalog numbers), place them in the",
+                           strong("first column."),
+                           "Specimen IDs must be unique across all rows.",
+                           "The application detects their presence automatically — no manual selection is required.",
+                           "If no specimen IDs are provided, sequential integers (1, 2, 3, ...) are assigned automatically."),
+                   tags$li(strong("Grouping column:"),
+                           "The OTU/group name column (e.g., species or population) must immediately follow the specimen ID column if present, or be the first column if no specimen IDs are included."),
                    tags$li("All trait values must be numeric (except categorical variables in mixed data)"),
                    tags$li("No missing values allowed"),
                    tags$li("Minimum 2 samples per group (no singletons)")
@@ -261,20 +269,34 @@ landing_page_ui <- function() {
                
                hr(),
                
+               h4("Specimen ID Format Example"),
+               p("When specimen IDs are present, the application detects them automatically.",
+                 "When absent, sequential integers are assigned.",
+                 "The table below shows the with-specimen-ID layout using a small meristic example."),
+               tableOutput("example_meristic_with_ids"),
+               
+               hr(),
+               
                h4("Meristic Data Example"),
-               p("Count-based characters only. First column = species, remaining columns = count traits."),
+               p("Count-based characters only.",
+                 "Column 1 = OTU/group, remaining columns = count traits.",
+                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = OTU/group, remaining columns = count traits."),
                tableOutput("example_meristic"),
                
                hr(),
                
                h4("Morphometric Data Example"),
-               p("Continuous measurements only. First column = species, second column = body size (SVL), remaining columns = morphometric traits."),
+               p("Continuous measurements only.",
+                 "Column 1 = OTU/group, remaining columns = morphometric traits (body-size column can be in any position).",
+                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = OTU/group, remaining columns = morphometric traits."),
                tableOutput("example_morphometric"),
                
                hr(),
                
                h4("Mixed Data Example"),
-               p("Combination of count and measurement data. First column = species, second column = body size (SVL), remaining columns = mixed traits."),
+               p("Combination of count and measurement data.",
+                 "Column 1 = OTU/group, remaining columns = mixed traits (body-size column can be in any position).",
+                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = OTU/group, remaining columns = mixed traits."),
                tableOutput("example_mixed"),
                
                hr(),
@@ -297,8 +319,13 @@ mod_home_ui_meristic <- function(id) {
     h3("Meristic Data (numeric data only)"),
     hr(),
     p("Meristic data are discrete, countable traits such as scale counts, fin rays, vertebrae number, etc."),
-    p("The first column must contain Group/OTU names (e.g., species or population)."),
-    p("All trait values must be numeric and missing values are NOT ALLOWED"),
+    p("Two column layouts are accepted and detected automatically on upload:"),
+    tags$ul(
+      tags$li(strong("Without specimen IDs:"), "Column 1 = OTU/group name, Column 2 onward = count traits.",
+              "Sequential integers will be assigned as specimen IDs automatically."),
+      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = OTU/group name, Column 3 onward = count traits.")
+    ),
+    p("All trait values must be numeric and missing values are NOT ALLOWED."),
     br(),
     h4("Proceed to Input Data")
   )
@@ -316,8 +343,14 @@ mod_home_ui_morphometric <- function(id) {
     hr(),
     p("Morphometric data are continuous measurements such as lengths and widths. Non-morphometric data that can contribute to group structure such as continuous physiological data can also be analyzed in this module."),
     p(strong("Allometric adjustments should be performed to correct for body-size variation in the Allometric Correction module.")),
-    p("The first column must contain Group/OTU names (e.g., species or population) and the second column must be the body-size measurement (e.g., snout-vent length)."),
-    p("Each Group/OTU must be represented by more than one individual and missing data are NOT ALLOWED for allometric correction."),
+    p("Two column layouts are accepted and detected automatically on upload:"),
+    tags$ul(
+      tags$li(strong("Without specimen IDs:"), "Column 1 = OTU/group name, remaining columns = morphometric traits.",
+              "Sequential integers will be assigned as specimen IDs automatically."),
+      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = OTU/group name, remaining columns = morphometric traits.")
+    ),
+    p("The body-size measurement can be in any trait column and is selected in the Allometric Correction module."),
+    p("Each OTU/group must be represented by more than one individual and missing data are NOT ALLOWED for allometric correction."),
     br(),
     h4("Proceed to Input Data")
   )
@@ -334,10 +367,15 @@ mod_home_ui_combined <- function(id) {
     h3("Mixed Data (numeric, categorical)"),
     hr(),
     p("This module handles mixed data in a single dataset. The data can be a mixture of numerical (e.g., meristic + morphometric), numerical + categorical, or any combination of the two."),
-    p("The first column must contain Group/OTU names (e.g., species or population). If morphometric data is included, the second column must be the body-size measurement (e.g., snout-vent length)."),
-    p("The Allometric Correction module allows body-size correction to be performed on morphometric data only"),
+    p("The Allometric Correction module allows body-size correction to be performed on morphometric data only."),
+    p("Two column layouts are accepted and detected automatically on upload:"),
+    tags$ul(
+      tags$li(strong("Without specimen IDs:"), "Column 1 = OTU/group name, remaining columns = trait data.",
+              "Sequential integers will be assigned as specimen IDs automatically."),
+      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = OTU/group name, remaining columns = trait data.")
+    ),
+    p("If morphometric data is included, the body-size measurement can be in any trait column and is selected in the Allometric Correction module."),
     br(),
     h4("Proceed to Input Data")
   )
 }
-
