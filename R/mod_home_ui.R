@@ -258,7 +258,7 @@ landing_page_ui <- function() {
                            "If your file includes specimen identifiers (e.g., museum catalog numbers), place them in the",
                            strong("first column."),
                            "Specimen IDs must be unique across all rows.",
-                           "The application detects their presence automatically — no manual selection is required.",
+                           "The application detects their presence automatically \u2014 no manual selection is required.",
                            "If no specimen IDs are provided, sequential integers (1, 2, 3, ...) are assigned automatically."),
                    tags$li(strong("Grouping column:"),
                            "The OTU/group name column (e.g., species or population) must immediately follow the specimen ID column if present, or be the first column if no specimen IDs are included."),
