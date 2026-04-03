@@ -255,6 +255,29 @@ mod_visual_ui_morphometric <- function(id) {
                                   numericInput(ns("pca_3d_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
                                   sliderInput(ns("pca_3d_point_alpha"), "Point Opacity:", min = 0.1, max = 1, value = 0.8, step = 0.05, width = '150px'),
                                   hr(),
+                                  h5("Centroids"),
+                                  checkboxInput(ns("pca_3d_centroids"), "Show Group Centroids", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("pca_3d_centroids")),
+                                    numericInput(ns("pca_3d_centroid_size"), "Centroid Size:", value = 4, min = 2, max = 20, width = '150px'),
+                                    colourInput(ns("pca_3d_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
+                                  ),
+                                  hr(),
+                                  h5("Convex Hulls"),
+                                  checkboxInput(ns("pca_3d_hull"), "Show Convex Hulls", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("pca_3d_hull")),
+                                    sliderInput(ns("pca_3d_hull_alpha"), "Hull Opacity:", min = 0.05, max = 0.5, value = 0.15, step = 0.05, width = '150px')
+                                  ),
+                                  hr(),
+                                  h5("Spider Plot"),
+                                  checkboxInput(ns("pca_3d_spider"), "Show Spider Lines", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("pca_3d_spider")),
+                                    sliderInput(ns("pca_3d_spider_alpha"), "Spider Line Opacity:", min = 0.1, max = 1, value = 0.4, step = 0.05, width = '150px'),
+                                    sliderInput(ns("pca_3d_spider_width"), "Spider Line Width:", min = 1, max = 6, value = 2, step = 1, width = '150px')
+                                  ),
+                                  hr(),
                                   p(em("Use the camera icon in the plot toolbar to download."))
                            )
                          )
@@ -1915,19 +1938,99 @@ mod_visual_server_morphometric <- function(id, dataset,
                           "<br>", pc_x, ": ", round(pca_df[[pc_x]], 3),
                           "<br>", pc_y, ": ", round(pca_df[[pc_y]], 3),
                           "<br>", pc_z, ": ", round(pca_df[[pc_z]], 3))
-      plotly::plot_ly(data = pca_df, x = ~get(pc_x), y = ~get(pc_y), z = ~get(pc_z),
-                      color = ~Group, colors = color_map, type = "scatter3d", mode = "markers",
-                      marker = list(size = (input$pca_3d_point_size %||% 3) * 2,
-                                    opacity = input$pca_3d_point_alpha %||% 0.8),
-                      text = hover_txt, hoverinfo = "text") %>%
+      plt <- plotly::plot_ly(data = pca_df, x = ~get(pc_x), y = ~get(pc_y), z = ~get(pc_z),
+                             color = ~Group, colors = color_map, type = "scatter3d", mode = "markers",
+                             marker = list(size = (input$pca_3d_point_size %||% 3) * 2,
+                                           opacity = input$pca_3d_point_alpha %||% 0.8),
+                             text = hover_txt, hoverinfo = "text")
+      
+      # Centroids
+      if (isTRUE(input$pca_3d_centroids)) {
+        centroids_3d <- pca_df %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(cx = mean(.data[[pc_x]]), cy = mean(.data[[pc_y]]), cz = mean(.data[[pc_z]]), .groups = "drop")
+        for (grp in centroids_3d$Group) {
+          row <- centroids_3d[centroids_3d$Group == grp, ]
+          col <- color_map[as.character(grp)]
+          plt <- plt %>% plotly::add_trace(
+            x = row$cx, y = row$cy, z = row$cz,
+            type = "scatter3d", mode = "markers",
+            marker = list(symbol = "diamond", size = (input$pca_3d_centroid_size %||% 8) * 2,
+                          color = input$pca_3d_centroid_color %||% "#000000",
+                          line  = list(color = col, width = 2)),
+            name = paste0(grp, " (centroid)"), hoverinfo = "text",
+            text = paste0("Centroid<br>Group: ", grp),
+            showlegend = FALSE, inherit = FALSE)
+        }
+      }
+      
+      # Convex hulls
+      if (isTRUE(input$pca_3d_hull)) {
+        for (grp in groups) {
+          sub <- pca_df[pca_df$Group == grp, c(pc_x, pc_y, pc_z)]
+          if (nrow(sub) >= 4) {
+            col <- color_map[as.character(grp)]
+            plt <- plt %>% plotly::add_mesh(
+              x = sub[[pc_x]], y = sub[[pc_y]], z = sub[[pc_z]],
+              alphahull  = 0,
+              opacity    = input$pca_3d_hull_alpha %||% 0.15,
+              colorscale = list(c(0, col), c(1, col)),
+              intensity  = rep(0, nrow(sub)),
+              showscale  = FALSE,
+              name       = paste0(grp, " (hull)"),
+              showlegend = FALSE, hoverinfo = "skip", inherit = FALSE)
+          }
+        }
+      }
+      
+      
+      # Spider lines
+      if (isTRUE(input$pca_3d_spider)) {
+        centroids_sp <- pca_df %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(cx = mean(.data[[pc_x]]), cy = mean(.data[[pc_y]]), cz = mean(.data[[pc_z]]), .groups = "drop")
+        for (grp in groups) {
+          pts <- pca_df[pca_df$Group == grp, ]
+          cen <- centroids_sp[centroids_sp$Group == grp, ]
+          col <- color_map[as.character(grp)]
+          for (i in seq_len(nrow(pts))) {
+            plt <- plt %>% plotly::add_trace(
+              x = c(pts[[pc_x]][i], cen$cx),
+              y = c(pts[[pc_y]][i], cen$cy),
+              z = c(pts[[pc_z]][i], cen$cz),
+              type = "scatter3d", mode = "lines",
+              line = list(color = col,
+                          width = input$pca_3d_spider_width %||% 2),
+              opacity    = input$pca_3d_spider_alpha %||% 0.4,
+              showlegend = FALSE, hoverinfo = "skip", inherit = FALSE
+            )
+          }
+        }
+      }
+      
+      plt %>%
         plotly::layout(scene = list(
-          xaxis = list(title = paste0(pc_x, " (", var_exp[pc_x_num], "%)")),
-          yaxis = list(title = paste0(pc_y, " (", var_exp[pc_y_num], "%)")),
-          zaxis = list(title = paste0(pc_z, " (", var_exp[pc_z_num], "%)"))
-        ), legend = list(title = list(text = "Group")))
+          xaxis = list(title = list(text = paste0(pc_x, " (", var_exp[pc_x_num], "%)"), font = list(size = plot_axis_label_size() %||% 12)),
+                       tickfont = list(size = plot_axis_text_size() %||% 10)),
+          yaxis = list(title = list(text = paste0(pc_y, " (", var_exp[pc_y_num], "%)"), font = list(size = plot_axis_label_size() %||% 12)),
+                       tickfont = list(size = plot_axis_text_size() %||% 10)),
+          zaxis = list(title = list(text = paste0(pc_z, " (", var_exp[pc_z_num], "%)"), font = list(size = plot_axis_label_size() %||% 12)),
+                       tickfont = list(size = plot_axis_text_size() %||% 10))
+        ), legend = list(title = list(text = "Group", font = list(size = legend_title_size() %||% 12)),
+                         font  = list(size = legend_text_size() %||% 10)))
     })
     output$plot_pca_3d <- plotly::renderPlotly({
-      tryCatch(plot_pca_3d(), error = function(e) plotly::plot_ly() %>%
+      tryCatch(plot_pca_3d() %>%
+                 plotly::config(
+                   toImageButtonOptions = list(
+                     format   = "png",
+                     filename = "pca_3d",
+                     width    = 1600,
+                     height   = 1200,
+                     scale    = 3
+                   )
+                 ),
+               error = function(e) plotly::plot_ly() %>%
                  plotly::add_annotations(text = paste("Need >= 3 PCs.", e$message), showarrow = FALSE))
     })
     
@@ -2002,33 +2105,36 @@ mod_visual_server_morphometric <- function(id, dataset,
     
     # Render plots with dynamic height and width
     output$plot_scatter <- renderPlot({
+      req(!isTRUE(input$scatter_interactive))
       plot_scatter_obj()
-    }, height = function() input$plot_scatter_height, width = function() input$plot_scatter_width)
+    }, height = function() input$plot_scatter_height %||% 500,
+    width = function() input$plot_scatter_width %||% 700)
     
     output$plot_box <- renderPlot(
       { plot_box_obj() },
-      height = function() input$plot_box_height,
-      width = function() input$plot_box_width
+      height = function() input$plot_box_height %||% 500,
+      width = function() input$plot_box_width %||% 700
     )
     output$plot_violin <- renderPlot(
       { plot_violin_obj() },
-      height = function() input$plot_violin_height,
-      width = function() input$plot_violin_width
+      height = function() input$plot_violin_height %||% 500,
+      width = function() input$plot_violin_width %||% 700
     )
-    output$plot_pca <- renderPlot(
-      { plot_pca_obj() },
-      height = function() input$plot_pca_height,
-      width = function() input$plot_pca_width
-    )
-    output$plot_dapc <- renderPlot(
-      { plot_dapc_obj() },
-      height = function() input$plot_dapc_height,
-      width = function() input$plot_dapc_width
-    )
+    output$plot_pca <- renderPlot({
+      req(!isTRUE(input$pca_interactive))
+      plot_pca_obj()
+    }, height = function() input$plot_pca_height %||% 500,
+    width = function() input$plot_pca_width %||% 700)
+    output$plot_dapc <- renderPlot({
+      req(!isTRUE(input$dapc_interactive))
+      plot_dapc_obj()
+    }, height = function() input$plot_dapc_height %||% 500,
+    width = function() input$plot_dapc_width %||% 700)
     
     output$plot_species_bic <- renderPlot({
       plot_species_bic_obj()
-    }, height = function() input$plot_species_bic_height, width = function() input$plot_species_bic_width)
+    }, height = function() input$plot_species_bic_height %||% 500,
+    width = function() input$plot_species_bic_width %||% 600)
     
     # ---- PCA Clusters: switch between static and interactive ----
     output$species_pca_plot_ui <- renderUI({
@@ -2143,16 +2249,20 @@ mod_visual_server_morphometric <- function(id, dataset,
     })
     
     output$plot_species_pca <- renderPlot({
+      req(!isTRUE(input$species_pca_interactive))
       plot_species_pca_obj()
-    }, height = function() input$plot_species_pca_height, width = function() input$plot_species_pca_width)
+    }, height = function() input$plot_species_pca_height %||% 500,
+    width = function() input$plot_species_pca_width %||% 600)
     
     output$plot_boruta_ridge <- renderPlot({
       plot_boruta_ridge_obj()
-    }, height = function() input$plot_boruta_ridge_height, width = function() input$plot_boruta_ridge_width)
+    }, height = function() input$plot_boruta_ridge_height %||% 500,
+    width = function() input$plot_boruta_ridge_width %||% 600)
     
     output$plot_boruta_box <- renderPlot({
       plot_boruta_box_obj()
-    }, height = function() input$plot_boruta_box_height, width = function() input$plot_boruta_box_width)
+    }, height = function() input$plot_boruta_box_height %||% 500,
+    width = function() input$plot_boruta_box_width %||% 600)
     
     # Default download dimensions (in inches)
     DEFAULT_DOWNLOAD_WIDTH <- 10

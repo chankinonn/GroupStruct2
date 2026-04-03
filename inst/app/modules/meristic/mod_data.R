@@ -5,16 +5,60 @@ mod_data_ui_meristic <- function(id) {
     h3("Input Meristic Data"),
     hr(),
     
-    # Informational note about supported formats — no user action required
     tags$div(
       style = "background-color: #d1ecf1; border-left: 5px solid #17a2b8; padding: 15px; margin-bottom: 20px;",
-      h4(style = "margin-top: 0;", "Supported File Formats"),
-      p("Two column layouts are accepted. The application will detect the format automatically."),
-      tags$ul(
-        tags$li(strong("Without specimen IDs:"), "Column 1 = OTU/group name, Column 2 onward = traits.",
-                "Specimen IDs will be assigned automatically as sequential integers (1, 2, 3, ...)."),
-        tags$li(strong("With specimen IDs:"), "Column 1 = Specimen ID (must be unique per row), Column 2 = OTU/group name, Column 3 onward = traits.")
-      )
+      h4(style = "margin-top: 0;", "How to Format Your File"),
+      p("The application automatically detects whether your file includes specimen identifiers (e.g. museum catalog numbers) based on a simple rule:"),
+      tags$div(
+        style = "background-color: #ffffff; border: 1px solid #bee5eb; border-radius: 4px; padding: 10px; margin: 8px 0;",
+        p(style = "margin: 0;",
+          strong("Detection rule:"), " if every value in Column 1 is unique, it is treated as a Specimen ID column.",
+          " If Column 1 contains repeated values (i.e. multiple specimens share the same label), it is treated as the OTU/group column.")
+      ),
+      fluidRow(
+        column(6,
+               p(strong("Without specimen IDs")),
+               p(em("Column 1 values repeat — detected as OTU/group.")),
+               tags$table(
+                 class = "table table-bordered table-condensed",
+                 style = "font-size: 0.85em; background: white;",
+                 tags$thead(tags$tr(
+                   tags$th("Species"), tags$th("Trait1"), tags$th("Trait2")
+                 )),
+                 tags$tbody(
+                   tags$tr(tags$td("Gekko_smithii"), tags$td("14"), tags$td("22.1")),
+                   tags$tr(tags$td("Gekko_smithii"), tags$td("13"), tags$td("21.4")),
+                   tags$tr(tags$td("Gekko_albomaculatus"), tags$td("16"), tags$td("25.3")),
+                   tags$tr(tags$td("Gekko_albomaculatus"), tags$td("15"), tags$td("24.8"))
+                 )
+               ),
+               tags$div(
+                 style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-top: 6px; font-size: 0.85em;",
+                 tags$p(style = "margin: 0;",
+                        strong("Note:"), " No specimen IDs detected in this format.",
+                        " Sequential integers (1, 2, 3, ...) will be automatically assigned as specimen IDs for outlier reporting and interactive plot labels.")
+               )
+        ),
+        column(6,
+               p(strong("With specimen IDs")),
+               p(em("Column 1 values are all unique — detected as Specimen ID.")),
+               tags$table(
+                 class = "table table-bordered table-condensed",
+                 style = "font-size: 0.85em; background: white;",
+                 tags$thead(tags$tr(
+                   tags$th("CatalogNo"), tags$th("Species"), tags$th("Trait1"), tags$th("Trait2")
+                 )),
+                 tags$tbody(
+                   tags$tr(tags$td("LSUHC 13451"), tags$td("Gekko_smithii"), tags$td("14"), tags$td("22.1")),
+                   tags$tr(tags$td("LSUHC 13452"), tags$td("Gekko_smithii"), tags$td("13"), tags$td("21.4")),
+                   tags$tr(tags$td("ZRC 2.7891"), tags$td("Gekko_albomaculatus"), tags$td("16"), tags$td("25.3")),
+                   tags$tr(tags$td("ZRC 2.7892"), tags$td("Gekko_albomaculatus"), tags$td("15"), tags$td("24.8"))
+                 )
+               )
+        )
+      ),
+      p(style = "margin-bottom: 0;",
+        em("Column headers can be named anything. The detection is based entirely on whether the values in Column 1 repeat."))
     ),
     
     # Upload

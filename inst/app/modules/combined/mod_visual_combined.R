@@ -281,6 +281,29 @@ mod_visual_ui_combined <- function(id) {
                                   numericInput(ns("mfa_3d_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
                                   sliderInput(ns("mfa_3d_point_alpha"), "Point Opacity:", min = 0.1, max = 1, value = 0.8, step = 0.05, width = '150px'),
                                   hr(),
+                                  h5("Centroids"),
+                                  checkboxInput(ns("mfa_3d_centroids"), "Show Group Centroids", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_3d_centroids")),
+                                    numericInput(ns("mfa_3d_centroid_size"), "Centroid Size:", value = 4, min = 2, max = 20, width = '150px'),
+                                    colourInput(ns("mfa_3d_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
+                                  ),
+                                  hr(),
+                                  h5("Convex Hulls"),
+                                  checkboxInput(ns("mfa_3d_hull"), "Show Convex Hulls", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_3d_hull")),
+                                    sliderInput(ns("mfa_3d_hull_alpha"), "Hull Opacity:", min = 0.05, max = 0.5, value = 0.15, step = 0.05, width = '150px')
+                                  ),
+                                  hr(),
+                                  h5("Spider Plot"),
+                                  checkboxInput(ns("mfa_3d_spider"), "Show Spider Lines", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("mfa_3d_spider")),
+                                    sliderInput(ns("mfa_3d_spider_alpha"), "Spider Line Opacity:", min = 0.1, max = 1, value = 0.4, step = 0.05, width = '150px'),
+                                    sliderInput(ns("mfa_3d_spider_width"), "Spider Line Width:", min = 1, max = 6, value = 2, step = 1, width = '150px')
+                                  ),
+                                  hr(),
                                   p(em("Use the camera icon in the plot toolbar to download."))
                            )
                          )
@@ -1570,7 +1593,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         "<br>",     dim_z, ": ", round(mfa_coords[[dim_z]], 3)
       )
       
-      plotly::plot_ly(
+      plt <- plotly::plot_ly(
         data      = mfa_coords,
         x         = ~get(dim_x),
         y         = ~get(dim_y),
@@ -1583,19 +1606,99 @@ mod_visual_server_combined <- function(id, dataset_r,
                          opacity = input$mfa_3d_point_alpha %||% 0.8),
         text      = hover_txt,
         hoverinfo = "text"
-      ) %>%
+      )
+      
+      # Centroids
+      if (isTRUE(input$mfa_3d_centroids)) {
+        centroids_3d <- mfa_coords %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(cx = mean(.data[[dim_x]]), cy = mean(.data[[dim_y]]), cz = mean(.data[[dim_z]]), .groups = "drop")
+        for (grp in centroids_3d$Group) {
+          row <- centroids_3d[centroids_3d$Group == grp, ]
+          col <- color_map[as.character(grp)]
+          plt <- plt %>% plotly::add_trace(
+            x = row$cx, y = row$cy, z = row$cz,
+            type = "scatter3d", mode = "markers",
+            marker = list(symbol = "diamond", size = (input$mfa_3d_centroid_size %||% 8) * 2,
+                          color = input$mfa_3d_centroid_color %||% "#000000",
+                          line  = list(color = col, width = 2)),
+            name = paste0(grp, " (centroid)"), hoverinfo = "text",
+            text = paste0("Centroid<br>Group: ", grp),
+            showlegend = FALSE, inherit = FALSE)
+        }
+      }
+      
+      # Convex hulls
+      if (isTRUE(input$mfa_3d_hull)) {
+        for (grp in groups) {
+          sub <- mfa_coords[mfa_coords$Group == grp, c(dim_x, dim_y, dim_z)]
+          if (nrow(sub) >= 4) {
+            col <- color_map[as.character(grp)]
+            plt <- plt %>% plotly::add_mesh(
+              x = sub[[dim_x]], y = sub[[dim_y]], z = sub[[dim_z]],
+              alphahull  = 0,
+              opacity    = input$mfa_3d_hull_alpha %||% 0.15,
+              colorscale = list(c(0, col), c(1, col)),
+              intensity  = rep(0, nrow(sub)),
+              showscale  = FALSE,
+              name       = paste0(grp, " (hull)"),
+              showlegend = FALSE, hoverinfo = "skip", inherit = FALSE)
+          }
+        }
+      }
+      
+      
+      # Spider lines
+      if (isTRUE(input$mfa_3d_spider)) {
+        centroids_sp <- mfa_coords %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(cx = mean(.data[[dim_x]]), cy = mean(.data[[dim_y]]), cz = mean(.data[[dim_z]]), .groups = "drop")
+        for (grp in groups) {
+          pts <- mfa_coords[mfa_coords$Group == grp, ]
+          cen <- centroids_sp[centroids_sp$Group == grp, ]
+          col <- color_map[as.character(grp)]
+          for (i in seq_len(nrow(pts))) {
+            plt <- plt %>% plotly::add_trace(
+              x = c(pts[[dim_x]][i], cen$cx),
+              y = c(pts[[dim_y]][i], cen$cy),
+              z = c(pts[[dim_z]][i], cen$cz),
+              type = "scatter3d", mode = "lines",
+              line = list(color = col,
+                          width = input$mfa_3d_spider_width %||% 2),
+              opacity    = input$mfa_3d_spider_alpha %||% 0.4,
+              showlegend = FALSE, hoverinfo = "skip", inherit = FALSE
+            )
+          }
+        }
+      }
+      
+      plt %>%
         plotly::layout(
           scene = list(
-            xaxis = list(title = x_label),
-            yaxis = list(title = y_label),
-            zaxis = list(title = z_label)
+            xaxis = list(title = list(text = x_label, font = list(size = plot_axis_label_size() %||% 12)),
+                         tickfont = list(size = plot_axis_text_size() %||% 10)),
+            yaxis = list(title = list(text = y_label, font = list(size = plot_axis_label_size() %||% 12)),
+                         tickfont = list(size = plot_axis_text_size() %||% 10)),
+            zaxis = list(title = list(text = z_label, font = list(size = plot_axis_label_size() %||% 12)),
+                         tickfont = list(size = plot_axis_text_size() %||% 10))
           ),
-          legend = list(title = list(text = stringr::str_to_title(group_col_name)))
+          legend = list(title = list(text = stringr::str_to_title(group_col_name),
+                                     font = list(size = legend_title_size() %||% 12)),
+                        font  = list(size = legend_text_size() %||% 10))
         )
     })
     
     output$mfa_individuals_3d_plot <- plotly::renderPlotly({
-      tryCatch(mfa_individuals_3d(),
+      tryCatch(mfa_individuals_3d() %>%
+                 plotly::config(
+                   toImageButtonOptions = list(
+                     format   = "png",
+                     filename = "mfa_3d",
+                     width    = 1600,
+                     height   = 1200,
+                     scale    = 3
+                   )
+                 ),
                error = function(e) plotly::plot_ly() %>%
                  plotly::add_annotations(
                    text      = paste("Need at least 3 MFA dimensions.", e$message),
@@ -1604,35 +1707,36 @@ mod_visual_server_combined <- function(id, dataset_r,
     
     # Render plots with dynamic height and width
     output$plot_scatter <- renderPlot({
+      req(!isTRUE(input$scatter_interactive))
       plot_scatter_obj()
-    }, height = function() input$plot_scatter_height,
-    width = function() input$plot_scatter_width)
+    }, height = function() input$plot_scatter_height %||% 500,
+    width = function() input$plot_scatter_width %||% 700)
     
     output$plot_box <- renderPlot(
       { plot_box_obj() },
-      height = function() input$plot_box_height,
-      width = function() input$plot_box_width 
+      height = function() input$plot_box_height %||% 500,
+      width = function() input$plot_box_width %||% 700 
     )
     output$plot_violin <- renderPlot(
       { plot_violin_obj() },
-      height = function() input$plot_violin_height,
-      width = function() input$plot_violin_width 
+      height = function() input$plot_violin_height %||% 500,
+      width = function() input$plot_violin_width %||% 700 
     )
     output$mfa_eigen_plot <- renderPlot(
       { mfa_eigen_plot_obj() },
-      height = function() input$mfa_eigen_plot_height,
-      width = function() input$mfa_eigen_plot_width 
+      height = function() input$mfa_eigen_plot_height %||% 500,
+      width = function() input$mfa_eigen_plot_width %||% 700 
     )
     output$mfa_group_contrib_hist <- renderPlot({
       mfa_group_contrib_hist_obj()
-    }, height = function() input$mfa_group_contrib_hist_height,
-    width = function() input$mfa_group_contrib_hist_width)
+    }, height = function() input$mfa_group_contrib_hist_height %||% 500,
+    width = function() input$mfa_group_contrib_hist_width %||% 700)
     
-    output$mfa_individuals_plot <- renderPlot(
-      { mfa_individuals_plot_obj() },
-      height = function() input$mfa_individuals_plot_height,
-      width = function() input$mfa_individuals_plot_width 
-    )
+    output$mfa_individuals_plot <- renderPlot({
+      req(!isTRUE(input$mfa_interactive))
+      mfa_individuals_plot_obj()
+    }, height = function() input$mfa_individuals_plot_height %||% 500,
+    width = function() input$mfa_individuals_plot_width %||% 700)
     
     # Cache MFA Variable Contributions Plot Reactive
     mfa_var_contrib_hist_reactive <- reactive({
@@ -1651,8 +1755,8 @@ mod_visual_server_combined <- function(id, dataset_r,
     output$mfa_var_contrib_hist <- renderPlot({
       mfa_var_contrib_hist_obj()
     }, 
-    height = function() input$mfa_var_contrib_hist_height,
-    width = function() input$mfa_var_contrib_hist_width)
+    height = function() input$mfa_var_contrib_hist_height %||% 500,
+    width = function() input$mfa_var_contrib_hist_width %||% 700)
     
     DEFAULT_DOWNLOAD_WIDTH <- 10
     DEFAULT_DOWNLOAD_HEIGHT <- 8
