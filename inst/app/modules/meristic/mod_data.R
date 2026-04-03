@@ -34,9 +34,11 @@ mod_data_ui_meristic <- function(id) {
     p("Additional details on this dataset can be found at: Grismer et al. (2022). Phylogenetic and multivariate analyses of Gekko smithii Gray, 1842 recover a new species from Peninsular Malaysia and support the resurrection of G. albomaculatus (Giebel, 1861) from Sumatra. Vertebrate Zoology, 72, 47\u201380. https://doi.org/10.3897/vz.72.e77702)"),
     hr(),
     h4("Outlier Detection"),
-    p("The Boxplot Interquartile Range (IQR) method is used to detect values exceeding 1.5\u00d7IQR within each OTU. Useful when comparing across species/populations with heterogeneous distributions. Requires \u22654 samples per group to work well."),
+    p("The Boxplot Interquartile Range (IQR) method flags values that fall beyond a user-defined multiplier of the IQR within each OTU. A multiplier of 3.0 is recommended for morphological data. Requires ≥4 samples per group to work well."),
+    sliderInput(ns("iqr_multiplier"), "IQR Multiplier:", min = 1.5, max = 5.0, value = 3.0, step = 0.5, width = "250px"),
     p(strong("Outliers will be flagged but NOT REMOVED. It is up to the user to determine what to do with them."), style = "color: red;"),
-    actionButton(ns("detect_outliers"), "Detect Outliers"),
+    actionButton(ns("detect_outliers"), "Detect Outliers", icon = icon("play"), class = "btn-primary"),
+    br(),
     verbatimTextOutput(ns("outlier_report")),
     hr(),
     h4("Data Preview"),
@@ -236,7 +238,7 @@ mod_data_server_meristic <- function(id) {
             }
             q   <- quantile(x, probs = c(0.25, 0.75), na.rm = TRUE)
             iqr <- q[2] - q[1]
-            rows[x < (q[1] - 1.5 * iqr) | x > (q[2] + 1.5 * iqr)]
+            rows[x < (q[1] - input$iqr_multiplier * iqr) | x > (q[2] + input$iqr_multiplier * iqr)]
           }
         ))
       }
