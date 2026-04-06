@@ -18,39 +18,54 @@ landing_page_ui <- function() {
                  "in systematic biology and taxonomy. It contains statistical tools optimized for inferring and evaluating group structure",
                  "to aid in species diagnosis, and visualization of morphometric, meristic, and mixed datasets."),
                
-               h4("Available Analyses"),
-               tags$ul(
-                 tags$li(strong("Summary Statistics:"), "Descriptive statistics and data exploration"),
-                 tags$li(strong("Allometric Correction (Morphometric data only):"), "Body-size correction for morphometric data using the Thorpe method"),
-                 tags$li(strong("Inferential Statistics:"), "Univariate/multivariate tests (e.g., t-test, ANOVA, PERMANOVA with dispersion analysis) and PCA/DAPC"),
-                 tags$li(strong("Morphometric Delimitation (Morphometric data only):"),
-                         "A Bayesian framework for delimitating morphometric clusters using Gaussian Mixture Models and diagnostic character identification using machine learning"),
-                 tags$li(strong("Multiple Factor Analysis (Mixed data only):"),
-                         "Simultaneous analysis of quantitative and qualitative variables"),
-                 tags$li(strong("Visualization:"), "Customizable plots including scatterplots, boxplots, violin plots, PCA, DAPC, and more")
-               ),
-               
-               hr(),
-               
                tags$div(
                  style = "background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 15px 0;",
-                 h4(style = "margin-top: 0;", "Citation"),
-                 p(style = "margin: 0; margin-bottom: 10px;",
-                   strong("If you use GroupStruct2, please cite:")),
+                 h4(style = "margin-top: 0;", "\U0001F4DA Citations"),
+                 p(style = "margin: 0; margin-bottom: 8px;",
+                   strong("If you use GroupStruct2, please cite the main application:")),
+                 p(style = "margin: 0; margin-bottom: 15px; font-style: italic;",
+                   "Chan, K. O., & Grismer, L. L. (2025). GroupStruct2: A User-Friendly Graphical User Interface for Statistical and Visual Support in Species Diagnosis.",
+                   em("Systematic Biology,"), "syaf090. https://doi.org/10.1093/sysbio/syaf090"),
+                 p(style = "margin: 0; margin-bottom: 8px;",
+                   strong("If you use the Morphometric Delimitation module, please also cite:")),
+                 p(style = "margin: 0; margin-bottom: 8px; font-style: italic;",
+                   "Chan, K. O., & Grismer, L. L. (2026). Extending GroupStruct2: a Bayesian and machine-learning framework for testing taxonomic hypotheses using morphometric data.",
+                   em("ZooKeys,"), "1276, 125-138. https://doi.org/10.3897/zookeys.1276.182331"),
                  p(style = "margin: 0; font-style: italic;",
-                   "Chan & Grismer (2025). GroupStruct2: A User-Friendly Graphical User Interface for Statistical and Visual Support in Species Diagnosis. Systematic Biology, syaf090. https://doi.org/10.1093/sysbio/syaf090"),
+                   "Tiburtini, M., Scrucca, L., & Peruzzi, L. (2025). Using Gaussian Mixture Models in plant morphometrics.",
+                   em("Perspectives in Plant Ecology, Evolution, and Systematics,"), "69, 125902. https://doi.org/10.1016/j.ppees.2025.125902"),
                ),
                
                hr(),
                
-               h4("Getting Started"),
-               p("Please read through the Suggested Workflows and Example Data sections."),
-               p("When you are ready, select a data type from the dropdown menu on the left to begin:",
-                 tags$ul(
-                   tags$li(strong("Meristic:"), "Count-based characters (e.g., scale counts, fin rays, vertebrae)"),
-                   tags$li(strong("Morphometric:"), "Continuous measurements (e.g., lengths, widths, heights)"),
-                   tags$li(strong("Mixed:"), "Combination of meristic, morphometric, and/or categorical data")
-                 )),
+               h4("Quick Start"),
+               p("Select a data type from the dropdown menu on the left to begin.",
+                 "If you are unsure how to format your data, check the", strong("Example Data"), "tab before uploading."),
+               tags$ul(
+                 tags$li(strong("Meristic:"), "Count-based characters (e.g., scale counts, fin rays, vertebrae).",
+                         "Supports summary statistics, inferential statistics, and visualization."),
+                 tags$li(strong("Morphometric:"), "Continuous measurements (e.g., lengths, widths, heights).",
+                         "Supports allometric correction, inferential statistics, morphometric delimitation, and visualization."),
+                 tags$li(strong("Mixed:"), "Any combination of meristic, morphometric, and categorical data.",
+                         "Supports allometric correction, Multiple Factor Analysis, and visualization.")
+               ),
+               p("For a step-by-step guide tailored to your data type, see the", strong("Suggested Workflows"), "tab."),
+               
+               hr(),
+               
+               h4("Resources and Feedback"),
+               tags$ul(
+                 tags$li("Source code and documentation:",
+                         tags$a("github.com/chankinonn/GroupStruct2",
+                                href = "https://github.com/chankinonn/GroupStruct2",
+                                target = "_blank")),
+                 tags$li("To report a bug or request a feature, open an issue at:",
+                         tags$a("github.com/chankinonn/GroupStruct2/issues",
+                                href = "https://github.com/chankinonn/GroupStruct2/issues",
+                                target = "_blank")),
+                 tags$li("General questions and suggestions are also welcome via the issues page.")
+               ),
+               
                hr(),
       ),
       
@@ -79,7 +94,7 @@ landing_page_ui <- function() {
                    p(style = "margin: 0;",
                      strong("Pro Tip:"),
                      "After performing the outlier test and checking summary statistics, examine scatter plots, box plots, and violin plots in the",
-                     strong("Visualization"), "module to visually identify outliers and erroneous data.",
+                     strong("Visualization"), "module to visually identify potential outliers and erroneous data. Use the Interactive Mode to identify specific data points.",
                      "Visual inspection often reveals data quality issues that numerical summaries might miss.")
                  )
                ),
