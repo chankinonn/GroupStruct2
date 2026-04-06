@@ -134,7 +134,7 @@ landing_page_ui <- function() {
                                  tags$ul(
                                    tags$li("Run univariate tests (e.g., t-test, ANOVA) for individual traits"),
                                    tags$li("Run PCA to visualize morphological variation"),
-                                   tags$li("Run PERMANOVA to test overall group differences between OTUs"),
+                                   tags$li("Run PERMANOVA to test overall differences among groups"),
                                    tags$li("Run dispersion analysis (betadisper) to test homogeneity of within-group variance"),
                                    tags$li("Interpret PERMANOVA and dispersion results jointly: significant PERMANOVA may reflect centroid differences, dispersion differences, or both"),
                                    tags$li("Use pairwise centroid distances to quantify the magnitude of separation between group pairs")
@@ -160,15 +160,15 @@ landing_page_ui <- function() {
                                  tags$ul(
                                    tags$li("Run univariate tests (e.g., t-test, ANOVA) for individual traits"),
                                    tags$li("Run PCA to visualize morphological variation"),
-                                   tags$li("Run PERMANOVA to test overall group differences between OTUs"),
+                                   tags$li("Run PERMANOVA to test overall differences among groups"),
                                    tags$li("Run dispersion analysis (betadisper) to test homogeneity of within-group variance"),
                                    tags$li("Interpret PERMANOVA and dispersion results jointly: significant PERMANOVA may reflect centroid differences, dispersion differences, or both"),
                                    tags$li("Use pairwise centroid distances to quantify the magnitude of separation between group pairs")
                                  )),
                          tags$li(strong("Morphometric Delimitation"),
                                  tags$ul(
-                                   tags$li(strong("Unsupervised Clustering:"), "Discover natural clusters in the data without using pre-defined OTUs"),
-                                   tags$li(strong("Supervised Clustering:"), "Iteratively test pairwise mergings of pre-defined OTUs to identify the best-supported delimitation scheme"),
+                                   tags$li(strong("Unsupervised Clustering:"), "Discover natural clusters in the data without using pre-defined groups"),
+                                   tags$li(strong("Supervised Clustering:"), "Iteratively test pairwise mergings of pre-defined groups to identify the best-supported delimitation scheme"),
                                    tags$li(strong("Model-based Hypothesis Testing:"), "Compare specific user-defined taxonomic hypotheses"),
                                    tags$li(strong("Diagnostic Characters (Machine Learning):"), "Identify which traits best distinguish groups using Random Forest")
                                  )),
@@ -197,7 +197,7 @@ landing_page_ui <- function() {
                            tags$li(strong("Diagnostic Characters"), "(Machine Learning):",
                                    tags$ul(
                                      tags$li("Identifies which traits are most important for distinguishing groups"),
-                                     tags$li("Works with any delimitation scheme (original OTUs or best Bayesian model)")
+                                     tags$li("Works with any delimitation scheme (original groups or best Bayesian model)")
                                    ))
                    ),
                    br(),
@@ -245,7 +245,7 @@ landing_page_ui <- function() {
                                  )),
                          tags$li(strong("Visualization"),
                                  tags$ul(
-                                   tags$li("Visualize OTU differentiation in morphospace"),
+                                   tags$li("Visualize group differentiation in morphospace"),
                                    tags$li("Visualize which variable types contribute most to differentiation"),
                                    tags$li("Visualize which character contributes most to differentiation"),
                                  )),
@@ -298,7 +298,7 @@ landing_page_ui <- function() {
                            "The application detects their presence automatically \u2014 no manual selection is required.",
                            "If no specimen IDs are provided, sequential integers (1, 2, 3, ...) are assigned automatically."),
                    tags$li(strong("Grouping column:"),
-                           "The OTU/group name column (e.g., species or population) must immediately follow the specimen ID column if present, or be the first column if no specimen IDs are included."),
+                           "The group name column (e.g., species or population) must immediately follow the specimen ID column if present, or be the first column if no specimen IDs are included."),
                    tags$li("All trait values must be numeric (except categorical variables in mixed data)"),
                    tags$li("No missing values allowed"),
                    tags$li("Minimum 2 samples per group (no singletons)")
@@ -316,24 +316,24 @@ landing_page_ui <- function() {
                
                h4("Meristic Data Example"),
                p("Count-based characters only.",
-                 "Column 1 = OTU/group, remaining columns = count traits.",
-                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = OTU/group, remaining columns = count traits."),
+                 "Column 1 = species/group, remaining columns = count traits.",
+                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = species/group, remaining columns = count traits."),
                tableOutput("example_meristic"),
                
                hr(),
                
                h4("Morphometric Data Example"),
                p("Continuous measurements only.",
-                 "Column 1 = OTU/group, remaining columns = morphometric traits (body-size column can be in any position).",
-                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = OTU/group, remaining columns = morphometric traits."),
+                 "Column 1 = species/group, remaining columns = morphometric traits (body-size column can be in any position).",
+                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = species/group, remaining columns = morphometric traits."),
                tableOutput("example_morphometric"),
                
                hr(),
                
                h4("Mixed Data Example"),
                p("Combination of count and measurement data.",
-                 "Column 1 = OTU/group, remaining columns = mixed traits (body-size column can be in any position).",
-                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = OTU/group, remaining columns = mixed traits."),
+                 "Column 1 = species/group, remaining columns = mixed traits (body-size column can be in any position).",
+                 "If specimen IDs are included, Column 1 = Specimen ID, Column 2 = species/group, remaining columns = mixed traits."),
                tableOutput("example_mixed"),
                
                hr(),
@@ -358,9 +358,9 @@ mod_home_ui_meristic <- function(id) {
     p("Meristic data are discrete, countable traits such as scale counts, fin rays, vertebrae number, etc."),
     p("Two column layouts are accepted and detected automatically on upload:"),
     tags$ul(
-      tags$li(strong("Without specimen IDs:"), "Column 1 = OTU/group name, Column 2 onward = count traits.",
+      tags$li(strong("Without specimen IDs:"), "Column 1 = species/group name, Column 2 onward = count traits.",
               "Sequential integers will be assigned as specimen IDs automatically."),
-      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = OTU/group name, Column 3 onward = count traits.")
+      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = species/group name, Column 3 onward = count traits.")
     ),
     p("All trait values must be numeric and missing values are NOT ALLOWED."),
     br(),
@@ -382,12 +382,12 @@ mod_home_ui_morphometric <- function(id) {
     p(strong("Allometric adjustments should be performed to correct for body-size variation in the Allometric Correction module.")),
     p("Two column layouts are accepted and detected automatically on upload:"),
     tags$ul(
-      tags$li(strong("Without specimen IDs:"), "Column 1 = OTU/group name, remaining columns = morphometric traits.",
+      tags$li(strong("Without specimen IDs:"), "Column 1 = species/group name, remaining columns = morphometric traits.",
               "Sequential integers will be assigned as specimen IDs automatically."),
-      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = OTU/group name, remaining columns = morphometric traits.")
+      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = species/group name, remaining columns = morphometric traits.")
     ),
     p("The body-size measurement can be in any trait column and is selected in the Allometric Correction module."),
-    p("Each OTU/group must be represented by more than one individual and missing data are NOT ALLOWED for allometric correction."),
+    p("Each species/group must be represented by more than one individual and missing data are NOT ALLOWED for allometric correction."),
     br(),
     h4("Proceed to Input Data")
   )
@@ -407,9 +407,9 @@ mod_home_ui_combined <- function(id) {
     p("The Allometric Correction module allows body-size correction to be performed on morphometric data only."),
     p("Two column layouts are accepted and detected automatically on upload:"),
     tags$ul(
-      tags$li(strong("Without specimen IDs:"), "Column 1 = OTU/group name, remaining columns = trait data.",
+      tags$li(strong("Without specimen IDs:"), "Column 1 = Species/group name, remaining columns = trait data.",
               "Sequential integers will be assigned as specimen IDs automatically."),
-      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = OTU/group name, remaining columns = trait data.")
+      tags$li(strong("With specimen IDs:"), "Column 1 = unique specimen identifier (e.g., museum catalog number), Column 2 = Species/group name, remaining columns = trait data.")
     ),
     p("If morphometric data is included, the body-size measurement can be in any trait column and is selected in the Allometric Correction module."),
     br(),
