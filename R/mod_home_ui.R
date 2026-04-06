@@ -53,6 +53,28 @@ landing_page_ui <- function() {
                
                hr(),
                
+               h4("What's New"),
+               p("GroupStruct2 is actively developed and updated. Run the command below to install the latest version and access new features and bug fixes:"),
+               tags$code(style = "display: block; background: #e9ecef; padding: 8px 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px;",
+                         'devtools::install_github("chankinonn/GroupStruct2")'),
+               tags$div(
+                 style = "background-color: #f8f9fa; border-left: 4px solid #6c757d; padding: 15px; margin: 15px 0;",
+                 p(style = "margin: 0; margin-bottom: 8px;",
+                   strong("v1.2.0"), "(April 2026)"),
+                 tags$ul(style = "margin: 0;",
+                         tags$li("Specimen ID tracking: optional specimen ID column (e.g., museum catalog numbers) now supported across all three module families, detected automatically on upload"),
+                         tags$li("Interactive visualizations: scatter, PCA, and DAPC plots now have an Interactive Mode toggle with hover tooltips showing specimen ID, group, and axis values"),
+                         tags$li("3D plots: 3D PCA added to meristic and morphometric modules; 3D MFA Individuals added to the mixed data module")
+                 ),
+                 p(style = "margin-top: 10px; margin-bottom: 0;",
+                   "Full changelog:",
+                   tags$a("github.com/chankinonn/GroupStruct2/releases",
+                          href = "https://github.com/chankinonn/GroupStruct2/releases",
+                          target = "_blank"))
+               ),
+               
+               hr(),
+               
                h4("Resources and Feedback"),
                tags$ul(
                  tags$li("Source code and documentation:",
@@ -94,7 +116,7 @@ landing_page_ui <- function() {
                    p(style = "margin: 0;",
                      strong("Pro Tip:"),
                      "After performing the outlier test and checking summary statistics, examine scatter plots, box plots, and violin plots in the",
-                     strong("Visualization"), "module to visually identify potential outliers and erroneous data. Use the Interactive Mode to identify specific data points.",
+                     strong("Visualization"), "module to visually identify outliers and erroneous data.",
                      "Visual inspection often reveals data quality issues that numerical summaries might miss.")
                  )
                ),
