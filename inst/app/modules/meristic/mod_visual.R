@@ -295,7 +295,7 @@ mod_visual_ui_meristic <- function(id) {
                                   br(),
                                   tags$div(
                                     style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
-                                    checkboxInput(ns("dapc_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
+                                    checkboxInput(ns("dapc_interactive"), tags$strong("🖱 Interactive Mode"), value = FALSE)
                                   ),
                                   conditionalPanel(
                                     condition = sprintf("input['%s']", ns("dapc_interactive")),
@@ -312,7 +312,7 @@ mod_visual_ui_meristic <- function(id) {
                                   ),
                                   hr(),
                                   uiOutput(ns("n_pca_dapc_ui")),
-                                  sliderInput(ns("n_da_dapc"), "Number of Discriminant Axes (n.da):", min = 1, max = 5, value = 2, step = 1),
+                                  hr(),
                                   numericInput(ns("dapc_point_size"), "Point Size:", value = 3, min = 1, max = 10,width = '150px'),
                                   checkboxInput(ns("dapc_outline_points"), "Outline Points", value = FALSE),
                                   conditionalPanel(
@@ -324,7 +324,6 @@ mod_visual_ui_meristic <- function(id) {
                                     condition = sprintf("input['%s']", ns("dapc_centroids")),
                                     numericInput(ns("dapc_centroid_size"), "Centroid Size:", value = 4, min = 1, max = 15, width = '150px'),
                                     colourInput(ns("dapc_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background"),
-                                    
                                     conditionalPanel(
                                       condition = sprintf("!input['%s']", ns("dapc_interactive")),
                                       checkboxInput(ns("dapc_spider"), "Show Spider Plot", value = FALSE),
@@ -365,11 +364,11 @@ mod_visual_ui_meristic <- function(id) {
                                   conditionalPanel(
                                     condition = sprintf("input['%s']", ns("dapc_outline")),
                                     sliderInput(ns("dapc_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                  ),                                  
+                                  ),
                                   conditionalPanel(
                                     condition = sprintf("input['%s'] || input['%s']", ns("dapc_ellipse"), ns("dapc_convex")),
                                     sliderInput(ns("dapc_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
-                                  ),                                  
+                                  ),
                                   hr(),
                                   conditionalPanel(
                                     condition = sprintf("!input['%s']", ns("dapc_interactive")),
@@ -382,6 +381,47 @@ mod_visual_ui_meristic <- function(id) {
                                     p(em("Use the camera icon in the plot toolbar to download the interactive plot."))
                                   ),
                                   hr()
+                           )
+                         )
+                ),
+                
+                tabPanel("DAPC (3D)",
+                         fluidRow(
+                           column(9,
+                                  plotly::plotlyOutput(ns("plot_dapc_3d"), height = "580px")
+                           ),
+                           column(3,
+                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                  br(),
+                                  uiOutput(ns("dapc_3d_status_ui")),
+                                  hr(),
+                                  numericInput(ns("dapc_3d_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                  sliderInput(ns("dapc_3d_point_alpha"), "Point Opacity:", min = 0.1, max = 1, value = 0.8, step = 0.05, width = '150px'),
+                                  hr(),
+                                  h5("Centroids"),
+                                  checkboxInput(ns("dapc_3d_centroids"), "Show Group Centroids", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("dapc_3d_centroids")),
+                                    numericInput(ns("dapc_3d_centroid_size"), "Centroid Size:", value = 4, min = 2, max = 20, width = '150px'),
+                                    colourInput(ns("dapc_3d_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
+                                  ),
+                                  hr(),
+                                  h5("Convex Hulls"),
+                                  checkboxInput(ns("dapc_3d_hull"), "Show Convex Hulls", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("dapc_3d_hull")),
+                                    sliderInput(ns("dapc_3d_hull_alpha"), "Hull Opacity:", min = 0.05, max = 0.5, value = 0.15, step = 0.05, width = '150px')
+                                  ),
+                                  hr(),
+                                  h5("Spider Plot"),
+                                  checkboxInput(ns("dapc_3d_spider"), "Show Spider Lines", value = FALSE),
+                                  conditionalPanel(
+                                    condition = sprintf("input['%s']", ns("dapc_3d_spider")),
+                                    sliderInput(ns("dapc_3d_spider_alpha"), "Spider Line Opacity:", min = 0.1, max = 1, value = 0.4, step = 0.05, width = '150px'),
+                                    sliderInput(ns("dapc_3d_spider_width"), "Spider Line Width:", min = 1, max = 6, value = 2, step = 1, width = '150px')
+                                  ),
+                                  hr(),
+                                  p(em("Use the camera icon in the plot toolbar to download."))
                            )
                          )
                 )
@@ -414,13 +454,157 @@ mod_visual_server_meristic <- function(id, dataset,
       )
     })
     
-    # Dynamically set max for n.pca based on number of traits
-    output$n_pca_dapc_ui <- renderUI({
+    # DAPC helpers -------------------------------------------------------------
+    dapc_input_data <- reactive({
       req(dataset())
-      n_traits <- ncol(dataset()) - 1
-      sliderInput(ns("n_pca_dapc"), "Number of PCA Components (n.pca). Download the PCA summary table from the PCA tab in Inferential Statstics and retain the number of PCs that explain 80-90% of total variance:",
-                  min = 1, max = n_traits, value = min(5, n_traits), step = 1)
+      df <- dataset()
+      otu_col <- names(df)[1]
+      data_mat <- df[, -1, drop = FALSE]
+      complete_rows <- complete.cases(data_mat)
+      data_for_dapc <- as.data.frame(data_mat[complete_rows, , drop = FALSE])
+      group_for_dapc <- as.factor(df[[otu_col]][complete_rows])
+      n_groups <- dplyr::n_distinct(group_for_dapc)
+      max_n_pca <- max(1, min(ncol(data_for_dapc), max(1, nrow(data_for_dapc) - 1)))
+      list(
+        df = df,
+        otu_col = otu_col,
+        data_mat = data_mat,
+        complete_rows = complete_rows,
+        data_for_dapc = data_for_dapc,
+        group_for_dapc = group_for_dapc,
+        n_groups = n_groups,
+        max_n_pca = max_n_pca
+      )
     })
+    
+    dapc_pca_variance_r <- reactive({
+      x <- dapc_input_data()
+      if (nrow(x$data_for_dapc) < 2 || ncol(x$data_for_dapc) < 2) return(NULL)
+      pca <- stats::prcomp(x$data_for_dapc, center = TRUE, scale. = TRUE)
+      data.frame(
+        pc = seq_along(pca$sdev),
+        cumulative = cumsum((pca$sdev^2) / sum(pca$sdev^2))
+      )
+    })
+    
+    # Unified PC selector — only two deterministic methods
+    dapc_selected_n_pca <- reactive({
+      x      <- dapc_input_data()
+      method <- input$dapc_pc_method %||% "Variance threshold"
+      if (method == "Manual") {
+        return(max(1L, min(x$max_n_pca,
+                           as.integer(input$n_pca_dapc_manual %||% min(5L, x$max_n_pca)))))
+      }
+      # Variance threshold (default)
+      pca_var   <- dapc_pca_variance_r()
+      req(!is.null(pca_var))
+      threshold <- (input$dapc_var_threshold %||% 80) / 100
+      idx       <- which(pca_var$cumulative >= threshold)[1]
+      idx       <- if (is.na(idx) || is.null(idx)) nrow(pca_var) else idx
+      max(1L, min(x$max_n_pca, idx))
+    })
+    
+    output$n_pca_dapc_ui <- renderUI({
+      x <- dapc_input_data()
+      tagList(
+        tags$div(
+          style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 8px; margin-bottom: 8px; border-radius: 3px; font-size: 0.85em;",
+          tags$p(style = "margin: 0;",
+                 strong("Number of discriminant axes (n.da) is set automatically"), " to G\u22121 (number of groups minus 1). ",
+                 "Only the number of PCA components retained before the DA step needs to be chosen.")
+        ),
+        tags$div(
+          style = "background-color: #f8f9fa; border-left: 4px solid #6c757d; padding: 8px; margin-bottom: 8px; border-radius: 3px; font-size: 0.82em;",
+          tags$p(style = "margin: 0 0 4px 0;", strong("Choosing the number of principal components to retain (n.pca):")),
+          tags$p(style = "margin: 0;",
+                 tags$b("Too few PCs"), " \u2014 discriminant signal is lost; groups appear artificially compressed.",
+                 tags$br(),
+                 tags$b("Too many PCs"), " \u2014 noise enters the analysis; groups appear artificially separated and results may not generalise.",
+                 tags$br(),
+                 tags$b("Recommendation:"), " start at 80% and check whether the plot changes meaningfully at 70% and 90%. If the grouping is stable across that range, the result is robust."
+          )
+        ),
+        selectInput(ns("dapc_pc_method"), "Retain PCs by:",
+                    choices  = c("Variance threshold", "Manual"),
+                    selected = "Variance threshold",
+                    width    = "200px"),
+        conditionalPanel(
+          condition = sprintf("input['%s'] == 'Variance threshold'", ns("dapc_pc_method")),
+          sliderInput(ns("dapc_var_threshold"), "Cumulative variance threshold (%)",
+                      min = 70, max = 100, value = 80, step = 5, width = "220px"),
+          textOutput(ns("dapc_threshold_status"))
+        ),
+        conditionalPanel(
+          condition = sprintf("input['%s'] == 'Manual'", ns("dapc_pc_method")),
+          sliderInput(ns("n_pca_dapc_manual"), "Number of PCA components (n.pca)",
+                      min = 1, max = x$max_n_pca,
+                      value = min(5, x$max_n_pca), step = 1, width = "220px")
+        ),
+        hr(),
+        htmlOutput(ns("dapc_retained_summary"))
+      )
+    })
+    
+    output$dapc_threshold_status <- renderText({
+      x       <- dapc_input_data()
+      pca_var <- dapc_pca_variance_r()
+      req(!is.null(pca_var))
+      threshold <- (input$dapc_var_threshold %||% 80) / 100
+      idx <- which(pca_var$cumulative >= threshold)[1]
+      idx <- if (is.na(idx) || is.null(idx)) nrow(pca_var) else idx
+      idx <- max(1L, min(x$max_n_pca, idx))
+      paste0(round(threshold * 100), "% cumulative variance retains ", idx, " PCs.")
+    })
+    
+    output$dapc_retained_summary <- renderUI({
+      x        <- dapc_input_data()
+      method   <- input$dapc_pc_method %||% "Variance threshold"
+      retained <- tryCatch(dapc_selected_n_pca(), error = function(e) NULL)
+      n_da_used <- min(x$n_groups - 1L, 2L)
+      HTML(paste0(
+        "<strong>Groups (G):</strong> ", x$n_groups, "<br>",
+        "<strong>n.pca retained:</strong> ", retained %||% "<em>unknown</em>", "<br>",
+        "<strong>n.da (auto):</strong> ", n_da_used, " (G\u22121, capped at 2 for 2D)", "<br>",
+        "<strong>PC selection method:</strong> ", method
+      ))
+    })
+    
+    output$dapc_3d_status_ui <- renderUI({
+      x <- dapc_input_data()
+      available_ld <- max(0, x$n_groups - 1)
+      if (available_ld >= 3) {
+        tags$div(
+          style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+          tags$p(style = "margin: 0;", paste0("3D DAPC is available. LD1-LD3 will be shown (", available_ld, " discriminant axes available)."))
+        )
+      } else {
+        tags$div(
+          style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
+          tags$p(style = "margin: 0;", paste0("3D DAPC requires at least 3 discriminant axes. Current data allow ", available_ld, "."))
+        )
+      }
+    })
+    
+    run_dapc_model <- function(n_da_target = 2) {
+      x <- dapc_input_data()
+      if (nrow(x$data_for_dapc) < 2 || ncol(x$data_for_dapc) < 2 || x$n_groups < 2) return(NULL)
+      n_pca_use <- tryCatch(dapc_selected_n_pca(), error = function(e) NULL)
+      if (is.null(n_pca_use)) return(structure(list(message = "Select DAPC PC retention settings and run cross-validation if needed."), class = "dapc_waiting"))
+      n_da_use <- min(n_da_target, x$n_groups - 1)
+      if (n_da_use < 1) return(NULL)
+      tryCatch(
+        adegenet::dapc(
+          x$data_for_dapc,
+          x$group_for_dapc,
+          n.pca = n_pca_use,
+          n.da = n_da_use
+        ),
+        error = function(e) structure(list(message = e$message), class = "dapc_error")
+      )
+    }
+    
+    dapc_results_2d_r <- reactive({ run_dapc_model(2) })
+    dapc_results_3d_r <- reactive({ run_dapc_model(3) })
     
     # Add variable selection for box and violin plots
     output$box_variable_selector <- renderUI({
@@ -1518,44 +1702,29 @@ mod_visual_server_meristic <- function(id, dataset,
     
     plot_dapc_obj <- reactive({
       req(dataset())
-      req(input$n_pca_dapc, input$n_da_dapc, input$dapc_point_size,
-          common_plot_inputs_ready())
+      req(input$dapc_point_size, common_plot_inputs_ready())
       
-      df <- dataset()
-      otu_col <- names(df)[1]
-      data_mat <- df[, -1]
-      complete_rows <- complete.cases(data_mat)
-      
-      if (sum(complete_rows) < 2 || ncol(data_mat) < 2 || dplyr::n_distinct(df[[otu_col]]) < 2) {
+      x <- dapc_input_data()
+      if (sum(x$complete_rows) < 2 || ncol(x$data_mat) < 2 || x$n_groups < 2) {
         return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
                                                      label = "Not enough data or groups for DAPC. Need at least 2 complete rows, 2 numeric variables, and 2 groups."))
       }
       
-      data_for_dapc <- as.data.frame(data_mat[complete_rows, ])
-      group_for_dapc <- as.factor(df[[otu_col]][complete_rows])
-      
-      dapc_res <- tryCatch({
-        adegenet::dapc(data_for_dapc, group_for_dapc,
-                       n.pca = input$n_pca_dapc, n.da = input$n_da_dapc)
-      }, error = function(e) {
-        warning("DAPC error: ", e$message)
-        NULL
-      })
-      
-      if (is.null(dapc_res)) {
+      dapc_res <- dapc_results_2d_r()
+      if (inherits(dapc_res, "dapc_waiting")) {
+        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5, label = dapc_res$message))
+      }
+      if (inherits(dapc_res, "dapc_error") || is.null(dapc_res)) {
         return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
                                                      label = "DAPC could not be performed. Check data and parameters."))
       }
-      
       if (ncol(dapc_res$ind.coord) < 2) {
         return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
-                                                     label = "DAPC did not produce enough discriminant axes (LD1, LD2). Try reducing n.da or increasing groups."))
+                                                     label = "DAPC did not produce enough discriminant axes (LD1, LD2)."))
       }
       
       dapc_df <- as.data.frame(dapc_res$ind.coord)
       dapc_df$Group <- dapc_res$grp
-      
-      # Calculate % variance explained for LD1 and LD2
       eig <- dapc_res$eig
       eig_percent <- round(100 * eig / sum(eig), 1)
       ld1_label <- paste0("LD1 (", eig_percent[1], "%)")
@@ -1572,16 +1741,13 @@ mod_visual_server_meristic <- function(id, dataset,
           size = input$dapc_point_size,
           color = "black",
           stroke = input$dapc_point_stroke
-        ) +
-          get_fill_scale(plot_palette())
+        ) + get_fill_scale(plot_palette())
       } else {
         p <- p + ggplot2::geom_point(
           aes(fill = Group, color = Group),
           shape = 21,
           size = input$dapc_point_size
-        ) +
-          get_fill_scale(plot_palette()) +
-          get_color_scale(plot_palette())
+        ) + get_fill_scale(plot_palette()) + get_color_scale(plot_palette())
       }
       
       if (isTRUE(input$dapc_ellipse)) {
@@ -1612,13 +1778,12 @@ mod_visual_server_meristic <- function(id, dataset,
         hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(df) {
           df[chull(df$LD1, df$LD2), ]
         }), .id = "Group")
-        
         if (isTRUE(input$dapc_outline)) {
           p <- p + ggplot2::geom_polygon(
             data = hull_df,
             aes(x = LD1, y = LD2, group = Group, fill = Group, color = Group),
             alpha = input$dapc_alpha_ellipse,
-            linewidth = input$dapc_outline_stroke, 
+            linewidth = input$dapc_outline_stroke,
             inherit.aes = FALSE,
             show.legend = FALSE
           )
@@ -1638,41 +1803,28 @@ mod_visual_server_meristic <- function(id, dataset,
         centroids <- dapc_df %>%
           dplyr::group_by(Group) %>%
           dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
-        
         centroid_size <- if (!is.null(input$dapc_centroid_size)) input$dapc_centroid_size else 4
         
-        # Spider plot
         if (isTRUE(input$dapc_spider)) {
           spider_df <- dapc_df %>%
             dplyr::left_join(centroids, by = "Group", suffix = c("", "_cent"))
-          
           p <- p + ggplot2::geom_segment(
             data = spider_df,
-            aes(
-              x     = LD1,
-              y     = LD2,
-              xend  = LD1_cent,
-              yend  = LD2_cent,
-              color = Group
-            ),
-            alpha       = input$dapc_spider_alpha,
-            linewidth   = input$dapc_spider_width,
+            aes(x = LD1, y = LD2, xend = LD1_cent, yend = LD2_cent, color = Group),
+            alpha = input$dapc_spider_alpha,
+            linewidth = input$dapc_spider_width,
             inherit.aes = FALSE,
             show.legend = FALSE
-          ) +
-            get_color_scale(plot_palette())
+          ) + get_color_scale(plot_palette())
         }
         
-        # MST
         if (isTRUE(input$dapc_mst) && nrow(centroids) >= 2) {
           cent_mat <- as.matrix(dist(centroids[, c("LD1", "LD2")]))
           rownames(cent_mat) <- centroids$Group
           colnames(cent_mat) <- centroids$Group
-          
           mst_obj <- ape::mst(cent_mat)
           mst_idx <- which(mst_obj == 1, arr.ind = TRUE)
           mst_idx <- mst_idx[mst_idx[, 1] < mst_idx[, 2], , drop = FALSE]
-          
           mst_df <- data.frame(
             x_start  = centroids$LD1[mst_idx[, 1]],
             y_start  = centroids$LD2[mst_idx[, 1]],
@@ -1680,35 +1832,30 @@ mod_visual_server_meristic <- function(id, dataset,
             y_end    = centroids$LD2[mst_idx[, 2]],
             x_mid    = (centroids$LD1[mst_idx[, 1]] + centroids$LD1[mst_idx[, 2]]) / 2,
             y_mid    = (centroids$LD2[mst_idx[, 1]] + centroids$LD2[mst_idx[, 2]]) / 2,
-            distance = round(sqrt(
-              (centroids$LD1[mst_idx[, 2]] - centroids$LD1[mst_idx[, 1]])^2 +
-                (centroids$LD2[mst_idx[, 2]] - centroids$LD2[mst_idx[, 1]])^2
-            ), 3)
+            distance = round(sqrt((centroids$LD1[mst_idx[, 2]] - centroids$LD1[mst_idx[, 1]])^2 +
+                                    (centroids$LD2[mst_idx[, 2]] - centroids$LD2[mst_idx[, 1]])^2), 3)
           )
-          
           p <- p + ggplot2::geom_segment(
             data = mst_df,
             aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
-            color       = input$dapc_mst_color,
-            alpha       = input$dapc_mst_alpha,
-            linewidth   = input$dapc_mst_width,
+            color = input$dapc_mst_color,
+            alpha = input$dapc_mst_alpha,
+            linewidth = input$dapc_mst_width,
             inherit.aes = FALSE
           )
-          
           if (isTRUE(input$dapc_mst_labels)) {
             p <- p + ggplot2::geom_label(
               data = mst_df,
               aes(x = x_mid, y = y_mid, label = distance),
-              size          = input$dapc_mst_label_size,
-              color         = "black",
-              fill          = "white",
+              size = input$dapc_mst_label_size,
+              color = "black",
+              fill = "white",
               label.padding = ggplot2::unit(0.15, "lines"),
-              inherit.aes   = FALSE
+              inherit.aes = FALSE
             )
           }
         }
         
-        # Centroid points
         p <- p + ggplot2::geom_point(
           data = centroids,
           aes(x = LD1, y = LD2),
@@ -1718,7 +1865,6 @@ mod_visual_server_meristic <- function(id, dataset,
           inherit.aes = FALSE
         )
         
-        # Pairwise centroid distances
         if (isTRUE(input$dapc_centroid_distances) && nrow(centroids) >= 2) {
           pairs <- combn(nrow(centroids), 2)
           dist_df <- data.frame(
@@ -1728,48 +1874,34 @@ mod_visual_server_meristic <- function(id, dataset,
             y_end    = centroids$LD2[pairs[2, ]],
             x_mid    = (centroids$LD1[pairs[1, ]] + centroids$LD1[pairs[2, ]]) / 2,
             y_mid    = (centroids$LD2[pairs[1, ]] + centroids$LD2[pairs[2, ]]) / 2,
-            distance = round(sqrt(
-              (centroids$LD1[pairs[2, ]] - centroids$LD1[pairs[1, ]])^2 +
-                (centroids$LD2[pairs[2, ]] - centroids$LD2[pairs[1, ]])^2
-            ), 3)
+            distance = round(sqrt((centroids$LD1[pairs[2, ]] - centroids$LD1[pairs[1, ]])^2 +
+                                    (centroids$LD2[pairs[2, ]] - centroids$LD2[pairs[1, ]])^2), 3)
           )
-          
           p <- p +
             ggplot2::geom_segment(
               data = dist_df,
               aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
-              color       = input$dapc_centroid_dist_color,
-              linewidth   = input$dapc_centroid_dist_width,
-              alpha       = input$dapc_centroid_dist_alpha,
+              color = input$dapc_centroid_dist_color,
+              linewidth = input$dapc_centroid_dist_width,
+              alpha = input$dapc_centroid_dist_alpha,
               inherit.aes = FALSE
             ) +
             ggplot2::geom_label(
               data = dist_df,
               aes(x = x_mid, y = y_mid, label = distance),
-              size          = input$dapc_centroid_dist_label_size,
-              color         = "black",
-              fill          = "white",
+              size = input$dapc_centroid_dist_label_size,
+              color = "black",
+              fill = "white",
               label.padding = ggplot2::unit(0.15, "lines"),
-              inherit.aes   = FALSE
+              inherit.aes = FALSE
             )
         }
       }
       
-      p +
-        get_color_scale(plot_palette()) +
-        get_fill_scale(plot_palette()) +
-        get_custom_theme(
-          plot_axis_text_size(),
-          plot_axis_label_size(),
-          0,
-          plot_facet_size(),
-          legend_text_size(),
-          legend_title_size(),
-          plot_theme()
-        )
-      
+      p + get_color_scale(plot_palette()) + get_fill_scale(plot_palette()) +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                         legend_text_size(), legend_title_size(), plot_theme())
     })
-    
     
     # ---- DAPC: switch between static and interactive output ----
     output$dapc_plot_ui <- renderUI({
@@ -1784,87 +1916,42 @@ mod_visual_server_meristic <- function(id, dataset,
     })
     
     plot_dapc_plotly <- reactive({
-      req(dataset(), input$n_pca_dapc, input$n_da_dapc, input$dapc_point_size)
-      
-      df       <- dataset()
-      otu_col  <- names(df)[1]
-      data_mat <- df[, -1]
-      complete_rows <- complete.cases(data_mat)
-      req(sum(complete_rows) >= 2, ncol(data_mat) >= 2,
-          dplyr::n_distinct(df[[otu_col]]) >= 2)
-      
-      data_for_dapc  <- as.data.frame(data_mat[complete_rows, ])
-      group_for_dapc <- as.factor(df[[otu_col]][complete_rows])
-      
-      dapc_res <- tryCatch(
-        adegenet::dapc(data_for_dapc, group_for_dapc,
-                       n.pca = input$n_pca_dapc, n.da = input$n_da_dapc),
-        error = function(e) NULL
-      )
-      req(!is.null(dapc_res), ncol(dapc_res$ind.coord) >= 2)
+      req(dataset(), input$dapc_point_size)
+      x <- dapc_input_data()
+      req(sum(x$complete_rows) >= 2, ncol(x$data_mat) >= 2, x$n_groups >= 2)
+      dapc_res <- dapc_results_2d_r()
+      req(!inherits(dapc_res, "dapc_waiting"), !inherits(dapc_res, "dapc_error"), !is.null(dapc_res), ncol(dapc_res$ind.coord) >= 2)
       
       dapc_df <- as.data.frame(dapc_res$ind.coord)
       dapc_df$Group <- dapc_res$grp
-      dapc_df$SpecimenID <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
-        specimen_ids_r()[complete_rows]
-      } else {
-        as.character(seq_len(sum(complete_rows)))
-      }
-      
-      eig         <- dapc_res$eig
+      dapc_df$SpecimenID <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) specimen_ids_r()[x$complete_rows] else as.character(seq_len(sum(x$complete_rows)))
+      eig <- dapc_res$eig
       eig_percent <- round(100 * eig / sum(eig), 1)
-      ld1_label   <- paste0("LD1 (", eig_percent[1], "%)")
-      ld2_label   <- paste0("LD2 (", eig_percent[2], "%)")
+      ld1_label <- paste0("LD1 (", eig_percent[1], "%)")
+      ld2_label <- paste0("LD2 (", eig_percent[2], "%)")
+      hover_txt <- paste0("ID: ", dapc_df$SpecimenID, "<br>Group: ", dapc_df$Group, "<br>LD1: ", round(dapc_df$LD1, 3), "<br>LD2: ", round(dapc_df$LD2, 3))
       
-      hover_txt <- paste0(
-        "ID: ",    dapc_df$SpecimenID,
-        "<br>Group: ", dapc_df$Group,
-        "<br>LD1: ",   round(dapc_df$LD1, 3),
-        "<br>LD2: ",   round(dapc_df$LD2, 3)
-      )
-      
-      p <- ggplot2::ggplot(dapc_df, ggplot2::aes(
-        x    = LD1, y = LD2,
-        color = Group, fill = Group,
-        text  = hover_txt
-      )) +
+      p <- ggplot2::ggplot(dapc_df, ggplot2::aes(x = LD1, y = LD2, color = Group, fill = Group, text = hover_txt)) +
         ggplot2::geom_point(size = input$dapc_point_size %||% 3, alpha = 0.8) +
         ggplot2::xlab(ld1_label) + ggplot2::ylab(ld2_label) +
-        get_color_scale(plot_palette()) +
-        get_fill_scale(plot_palette()) +
-        ggplot2::guides(fill = "none")
+        get_color_scale(plot_palette()) + get_fill_scale(plot_palette()) + ggplot2::guides(fill = "none")
       
       if (isTRUE(input$dapc_ellipse)) {
-        p <- p + ggplot2::stat_ellipse(
-          ggplot2::aes(group = Group, fill = Group, text = NULL),
-          color = NA, type = "norm", level = 0.67, geom = "polygon",
-          alpha = input$dapc_alpha_ellipse %||% 0.3, show.legend = FALSE
-        )
+        p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Group, fill = Group, text = NULL),
+                                       color = NA, type = "norm", level = 0.67, geom = "polygon",
+                                       alpha = input$dapc_alpha_ellipse %||% 0.3, show.legend = FALSE)
       }
-      
       if (isTRUE(input$dapc_convex)) {
-        hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(d) {
-          d[chull(d$LD1, d$LD2), ]
-        }))
-        p <- p + ggplot2::geom_polygon(
-          data = hull_df,
-          ggplot2::aes(x = LD1, y = LD2, group = Group, fill = Group),
-          color = NA, alpha = input$dapc_alpha_ellipse %||% 0.3,
-          inherit.aes = FALSE, show.legend = FALSE
-        )
+        hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(d) d[chull(d$LD1, d$LD2), ]))
+        p <- p + ggplot2::geom_polygon(data = hull_df, ggplot2::aes(x = LD1, y = LD2, group = Group, fill = Group),
+                                       color = NA, alpha = input$dapc_alpha_ellipse %||% 0.3,
+                                       inherit.aes = FALSE, show.legend = FALSE)
       }
-      
       if (isTRUE(input$dapc_centroids)) {
-        centroids <- dapc_df %>%
-          dplyr::group_by(Group) %>%
-          dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
-        p <- p + ggplot2::geom_point(
-          data = centroids,
-          ggplot2::aes(x = LD1, y = LD2),
-          shape = 8, size = input$dapc_centroid_size %||% 4,
-          color = input$dapc_centroid_color %||% "#000000",
-          inherit.aes = FALSE
-        )
+        centroids <- dapc_df %>% dplyr::group_by(Group) %>% dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
+        p <- p + ggplot2::geom_point(data = centroids, ggplot2::aes(x = LD1, y = LD2), shape = 8,
+                                     size = input$dapc_centroid_size %||% 4,
+                                     color = input$dapc_centroid_color %||% "#000000", inherit.aes = FALSE)
       }
       
       theme_layout <- get_plotly_theme_layout(plot_theme() %||% "theme_classic")
@@ -1878,28 +1965,120 @@ mod_visual_server_meristic <- function(id, dataset,
           paper_bgcolor = theme_layout$paper_bgcolor,
           plot_bgcolor  = theme_layout$plot_bgcolor,
           font          = theme_layout$font,
-          xaxis = modifyList(theme_layout$xaxis, list(
-            autorange = TRUE,
-            title     = list(text = ld1_label, font = list(size = ax_label)),
-            tickfont  = list(size = ax_tick)
-          )),
-          yaxis = modifyList(theme_layout$yaxis, list(
-            autorange = TRUE,
-            title     = list(text = ld2_label, font = list(size = ax_label)),
-            tickfont  = list(size = ax_tick)
-          )),
-          legend = list(
-            font  = list(size = leg_text),
-            title = list(font = list(size = leg_title))
-          )
+          xaxis = modifyList(theme_layout$xaxis, list(autorange = TRUE, title = list(text = ld1_label, font = list(size = ax_label)), tickfont = list(size = ax_tick))),
+          yaxis = modifyList(theme_layout$yaxis, list(autorange = TRUE, title = list(text = ld2_label, font = list(size = ax_label)), tickfont = list(size = ax_tick))),
+          legend = list(font = list(size = leg_text), title = list(font = list(size = leg_title)))
         )
     })
-    
     output$plot_dapc_plotly <- plotly::renderPlotly({
       tryCatch(plot_dapc_plotly(),
                error = function(e) plotly::plot_ly() %>%
                  plotly::add_annotations(text = paste("Error:", e$message),
                                          showarrow = FALSE))
+    })
+    
+    plot_dapc_3d <- reactive({
+      x <- dapc_input_data()
+      if (x$n_groups < 4) {
+        return(plotly::plot_ly() %>% plotly::add_annotations(text = "3D DAPC requires at least 4 groups so that LD1-LD3 are available.", showarrow = FALSE))
+      }
+      dapc_res <- dapc_results_3d_r()
+      if (inherits(dapc_res, "dapc_waiting")) {
+        return(plotly::plot_ly() %>% plotly::add_annotations(text = dapc_res$message, showarrow = FALSE))
+      }
+      if (inherits(dapc_res, "dapc_error") || is.null(dapc_res) || ncol(dapc_res$ind.coord) < 3) {
+        return(plotly::plot_ly() %>% plotly::add_annotations(text = "DAPC did not produce enough discriminant axes for a 3D plot.", showarrow = FALSE))
+      }
+      dapc_df <- as.data.frame(dapc_res$ind.coord)
+      dapc_df$Group <- dapc_res$grp
+      dapc_df$SpecimenID <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) specimen_ids_r()[x$complete_rows] else as.character(seq_len(sum(x$complete_rows)))
+      eig <- dapc_res$eig
+      eig_percent <- round(100 * eig / sum(eig), 1)
+      groups <- levels(factor(dapc_df$Group))
+      n_groups <- length(groups)
+      
+      color_map <- if (!is.null(plot_palette()) && plot_palette() == "manual" && !is.null(manual_colors_r())) {
+        cols <- manual_colors_r(); cols[as.character(groups)]
+      } else if (!is.null(plot_palette()) && startsWith(plot_palette(), "viridis:")) {
+        opt <- sub("viridis:", "", plot_palette()); setNames(viridis::viridis(n_groups, option = opt), groups)
+      } else if (!is.null(plot_palette()) && startsWith(plot_palette(), "brewer:")) {
+        pal_name <- sub("brewer:", "", plot_palette()); max_n <- RColorBrewer::brewer.pal.info[pal_name, "maxcolors"]
+        setNames(RColorBrewer::brewer.pal(max(3L, min(n_groups, max_n)), pal_name)[seq_len(n_groups)], groups)
+      } else if (!is.null(plot_palette()) && startsWith(plot_palette(), "colorblind:")) {
+        pal_name <- sub("colorblind:", "", plot_palette())
+        setNames(RColorBrewer::brewer.pal(max(3L, min(n_groups, 8L)), pal_name)[seq_len(n_groups)], groups)
+      } else {
+        setNames(scales::hue_pal()(n_groups), groups)
+      }
+      
+      hover_txt <- paste0("ID: ", dapc_df$SpecimenID, "<br>Group: ", dapc_df$Group,
+                          "<br>LD1: ", round(dapc_df$LD1, 3),
+                          "<br>LD2: ", round(dapc_df$LD2, 3),
+                          "<br>LD3: ", round(dapc_df$LD3, 3))
+      
+      plt <- plotly::plot_ly(data = dapc_df, x = ~LD1, y = ~LD2, z = ~LD3, color = ~Group, colors = color_map,
+                             type = "scatter3d", mode = "markers",
+                             marker = list(size = (input$dapc_3d_point_size %||% 3) * 2, opacity = input$dapc_3d_point_alpha %||% 0.8),
+                             text = hover_txt, hoverinfo = "text")
+      
+      if (isTRUE(input$dapc_3d_centroids)) {
+        centroids_3d <- dapc_df %>% dplyr::group_by(Group) %>% dplyr::summarize(cx = mean(LD1), cy = mean(LD2), cz = mean(LD3), .groups = "drop")
+        for (grp in centroids_3d$Group) {
+          row <- centroids_3d[centroids_3d$Group == grp, ]
+          col <- color_map[as.character(grp)]
+          plt <- plt %>% plotly::add_trace(x = row$cx, y = row$cy, z = row$cz, type = "scatter3d", mode = "markers",
+                                           marker = list(symbol = "diamond", size = (input$dapc_3d_centroid_size %||% 8) * 2,
+                                                         color = input$dapc_3d_centroid_color %||% "#000000",
+                                                         line = list(color = col, width = 2)),
+                                           name = paste0(grp, " (centroid)"), hoverinfo = "text",
+                                           text = paste0("Centroid<br>Group: ", grp), showlegend = FALSE, inherit = FALSE)
+        }
+      }
+      
+      if (isTRUE(input$dapc_3d_hull)) {
+        for (grp in groups) {
+          sub <- dapc_df[dapc_df$Group == grp, c("LD1", "LD2", "LD3")]
+          if (nrow(sub) >= 4) {
+            col <- color_map[as.character(grp)]
+            plt <- plt %>% plotly::add_mesh(x = sub$LD1, y = sub$LD2, z = sub$LD3, alphahull = 0,
+                                            opacity = input$dapc_3d_hull_alpha %||% 0.15,
+                                            colorscale = list(c(0, col), c(1, col)), intensity = rep(0, nrow(sub)),
+                                            showscale = FALSE, name = paste0(grp, " (hull)"), showlegend = FALSE,
+                                            hoverinfo = "skip", inherit = FALSE)
+          }
+        }
+      }
+      
+      if (isTRUE(input$dapc_3d_spider)) {
+        centroids_sp <- dapc_df %>% dplyr::group_by(Group) %>% dplyr::summarize(cx = mean(LD1), cy = mean(LD2), cz = mean(LD3), .groups = "drop")
+        for (grp in groups) {
+          pts <- dapc_df[dapc_df$Group == grp, ]
+          cen <- centroids_sp[centroids_sp$Group == grp, ]
+          col <- color_map[as.character(grp)]
+          for (i in seq_len(nrow(pts))) {
+            plt <- plt %>% plotly::add_trace(x = c(pts$LD1[i], cen$cx), y = c(pts$LD2[i], cen$cy), z = c(pts$LD3[i], cen$cz),
+                                             type = "scatter3d", mode = "lines",
+                                             line = list(color = col, width = input$dapc_3d_spider_width %||% 2),
+                                             opacity = input$dapc_3d_spider_alpha %||% 0.4,
+                                             showlegend = FALSE, hoverinfo = "skip", inherit = FALSE)
+          }
+        }
+      }
+      
+      plt %>% plotly::layout(
+        scene = list(
+          aspectmode = "cube",
+          xaxis = list(title = list(text = paste0("LD1 (", eig_percent[1], "%)"), font = list(size = plot_axis_label_size() %||% 12)), tickfont = list(size = plot_axis_text_size() %||% 10)),
+          yaxis = list(title = list(text = paste0("LD2 (", eig_percent[2], "%)"), font = list(size = plot_axis_label_size() %||% 12)), tickfont = list(size = plot_axis_text_size() %||% 10)),
+          zaxis = list(title = list(text = paste0("LD3 (", eig_percent[3], "%)"), font = list(size = plot_axis_label_size() %||% 12)), tickfont = list(size = plot_axis_text_size() %||% 10))
+        ),
+        legend = list(title = list(text = "Group", font = list(size = legend_title_size() %||% 12)), font = list(size = legend_text_size() %||% 10))
+      )
+    })
+    
+    output$plot_dapc_3d <- plotly::renderPlotly({
+      tryCatch(plot_dapc_3d() %>% plotly::config(toImageButtonOptions = list(format = "png", filename = "dapc_3d", width = 1600, height = 1200, scale = 3)),
+               error = function(e) plotly::plot_ly() %>% plotly::add_annotations(text = paste("Error:", e$message), showarrow = FALSE))
     })
     
     output$plot_scatter <- renderPlot({
