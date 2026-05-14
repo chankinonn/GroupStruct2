@@ -2,19 +2,14 @@
 
 ## Latest Release
 
-**v1.2.1** (16 April 2026) — Improved DAPC plots
-See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag/v1.2.1) for details.
+**v1.3.0** (May 2026) — Additional MFA-based analyses; a centralized data input module that accommodates more flexible data formatting; improved visualizations
+
+See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag/v1.3.0) for details.
 
 To update:
 ```r
 devtools::install_github("chankinonn/GroupStruct2")
 ```
-
----
-
-**v1.2.0** (April 2026) — Specimen ID tracking, interactive visualizations, and 3D plots.
-See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag/v1.2.0) for details.
-
 
 ---
 
@@ -45,15 +40,46 @@ required_packages <- c("shiny", "DT", "dplyr", "ggplot2", "tidyr", "vegan", "vir
   "shinyjs", "colourpicker", "forcats", "purrr", "scales", "PCAtest",
   "openxlsx", "shinyWidgets", "ggthemes", "broom", "tibble",
   "htmltools", "stringr", "ggpubr", "ggrepel", "patchwork", "mclust", "conflicted",
-  "Boruta", "shinybusy", "plotly", "ggridges")
+  "Boruta", "shinybusy", "plotly", "ggridges", "ape")
 
-# The PCAtest package needs to be installed via GitHub
-devtools::install_github("arleyc/PCAtest")
+
 ```
 
 ---
 
 ## 📋 Changelog
+
+### v1.3.0 (May 2026)
+
+**Centralized data input module**
+- Unified module for data input that is more flexible 
+- Data can now include unique identifiers such as museum catalog numbers, clade labels, etc.
+- Additional data columns that will not be analyzed (e.g. coordinates) can now be selected for exclusion
+
+**DAMF (Discriminant Analysis of Multiple Factors)**
+- New extended analysis available in the mixed data module
+- Performs linear discriminant analysis on retained MFA dimensions, providing a supervised complement to the unsupervised MFA ordination (analogous to DAPC)
+- Users select the number of MFA dimensions to retain via a variance threshold slider
+- A sensitivity test available to determine the stability of results across 70–100% variance thresholds
+- Results are consistent with the MFA individuals factor map, allowing direct visual comparison between unsupervised and supervised ordination spaces
+
+**EDDA (Eigenvalue Decomposition Discriminant Analysis)**
+- New extended analysis implementing Bayesian hypothesis testing via EDDA (Eigenvalue Decomposition Discriminant Analysis) on MFA scores
+- Usupervised clustering analysis infers natural clusters in the data without relying on pre-determined groupings
+- The optimal number of clusters is determined and ranked via BIC
+- Correspondence between inferred clusters and pre-determined groupings are visualized as a heatmap in the Visualization module
+
+**Topology-aware hypothesis testing**
+- New extended analysis that constructs and compares all plausible monophyletic groupings based on a user-supplied reference tree
+- Provides a phylogenetic context to hypothesis testing by only comparing plausible monophyletic partitions (based on the guide tree)
+
+**Dispersion analysis for PERMANOVA**
+- A dispersion analysis is now included to accompany the PERMANOVA
+- PERMANOVA + Dispersion is automatically implemented together
+- A consolidated table summarizes both analyses simultaneously
+- All results can be downloaded as a compressed zip file
+
+---
 
 ### v1.2.0 (April 2026)
 
@@ -75,34 +101,8 @@ devtools::install_github("arleyc/PCAtest")
 - 3D MFA Individuals tab added to the mixed data visualization module
 - All 3D plots support hover tooltips with specimen IDs and support color palette selection
 
-**Species delimitation**
-- PCA clusters (unsupervised clustering) plot now has an Interactive Mode option with hover tooltips showing specimen ID, OTU, and cluster assignment
-- Boruta, unsupervised clustering, supervised GMM, and Bayesian hypothesis testing analyses now use a modal busy spinner consistent with the PERMANOVA notification style
-- PERMANOVA on MFA scores now shows a clear error notification if MFA has not been run first
-
-**Bug fixes and consistency**
-- Plot theme selector now correctly responds in interactive mode across all modules
-- Fixed text aesthetic warning triggered by stat_ellipse and geom_smooth in interactive plots
-- Fixed regex escape sequence error in MFA dimension extraction
+---
 
 ### v1.1.0 (March 2026)
 
 Visualization enhancements and PERMANOVA updates.
-
----
-
-## 📦 Dependencies
-
-GroupStruct2 depends on the following R packages. Most install automatically, but `PCAtest` must be installed manually from GitHub:
-
-```r
-# Required packages (installed automatically with GroupStruct2)
-required_packages <- c("shiny", "DT", "dplyr", "ggplot2", "tidyr", "vegan", "viridis",
-  "RColorBrewer", "rstatix", "car", "readr", "adegenet", "FactoMineR", "factoextra",
-  "shinyjs", "colourpicker", "forcats", "purrr", "scales", "openxlsx", "shinyWidgets",
-  "ggthemes", "broom", "tibble", "htmltools", "stringr", "ggpubr", "ggrepel",
-  "patchwork", "mclust", "conflicted", "Boruta", "shinybusy", "plotly", "ggridges")
-
-# Install PCAtest manually from GitHub
-devtools::install_github("arleyc/PCAtest")
-```
