@@ -6,59 +6,13 @@ mod_data_combined_ui <- function(id) {
     hr(),
     
     tags$div(
-      style = "background-color: #d1ecf1; border-left: 5px solid #17a2b8; padding: 15px; margin-bottom: 20px;",
-      h4(style = "margin-top: 0;", "How to Format Your File"),
-      p("The application automatically detects whether your file includes specimen identifiers (e.g. museum catalog numbers) based on a simple rule:"),
-      tags$div(
-        style = "background-color: #ffffff; border: 1px solid #bee5eb; border-radius: 4px; padding: 10px; margin: 8px 0;",
-        p(style = "margin: 0;",
-          strong("Detection rule:"), " if every value in Column 1 is unique, it is treated as a Specimen ID column.",
-          " If Column 1 contains repeated values (i.e. multiple specimens share the same label), it is treated as the OTU/group column.")
-      ),
-      fluidRow(
-        column(6,
-               p(strong("Without specimen IDs")),
-               p(em("Column 1 values repeat — detected as OTU/group.")),
-               tags$table(
-                 class = "table table-bordered table-condensed",
-                 style = "font-size: 0.85em; background: white;",
-                 tags$thead(tags$tr(
-                   tags$th("Species"), tags$th("Trait1"), tags$th("Trait2")
-                 )),
-                 tags$tbody(
-                   tags$tr(tags$td("Gekko_smithii"), tags$td("14"), tags$td("22.1")),
-                   tags$tr(tags$td("Gekko_smithii"), tags$td("13"), tags$td("21.4")),
-                   tags$tr(tags$td("Gekko_albomaculatus"), tags$td("16"), tags$td("25.3")),
-                   tags$tr(tags$td("Gekko_albomaculatus"), tags$td("15"), tags$td("24.8"))
-                 )
-               ),
-               tags$div(
-                 style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-top: 6px; font-size: 0.85em;",
-                 tags$p(style = "margin: 0;",
-                        strong("Note:"), " No specimen IDs detected in this format.",
-                        " Sequential integers (1, 2, 3, ...) will be automatically assigned as specimen IDs for outlier reporting and interactive plot labels.")
-               )
-        ),
-        column(6,
-               p(strong("With specimen IDs")),
-               p(em("Column 1 values are all unique — detected as Specimen ID.")),
-               tags$table(
-                 class = "table table-bordered table-condensed",
-                 style = "font-size: 0.85em; background: white;",
-                 tags$thead(tags$tr(
-                   tags$th("CatalogNo"), tags$th("Species"), tags$th("Trait1"), tags$th("Trait2")
-                 )),
-                 tags$tbody(
-                   tags$tr(tags$td("LSUHC 13451"), tags$td("Gekko_smithii"), tags$td("14"), tags$td("22.1")),
-                   tags$tr(tags$td("LSUHC 13452"), tags$td("Gekko_smithii"), tags$td("13"), tags$td("21.4")),
-                   tags$tr(tags$td("ZRC 2.7891"), tags$td("Gekko_albomaculatus"), tags$td("16"), tags$td("25.3")),
-                   tags$tr(tags$td("ZRC 2.7892"), tags$td("Gekko_albomaculatus"), tags$td("15"), tags$td("24.8"))
-                 )
-               )
-        )
-      ),
-      p(style = "margin-bottom: 0;",
-        em("Column headers can be named anything. The detection is based entirely on whether the values in Column 1 repeat."))
+      style = "background-color: #d1ecf1; border-left: 5px solid #17a2b8; padding: 12px; margin-bottom: 20px;",
+      p(style = "margin: 0;",
+        strong("File format:"),
+        "Upload a CSV, TSV, or TXT file with one row per specimen.",
+        "After uploading, select which column contains your OTU/group labels and",
+        "(optionally) which column contains specimen identifiers such as catalog numbers.",
+        "All remaining columns are treated as traits.")
     ),
     
     tags$div(
@@ -69,6 +23,8 @@ mod_data_combined_ui <- function(id) {
       fileInput(ns("file_upload"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
       actionButton(ns("load_example_1"), "Load Example 1: Meristic + Morphometric Only"),
       actionButton(ns("load_example_2"), "Load Example 2: Meristic + Morphometric + Categorical Dataset"),
+      br(), br(),
+      uiOutput(ns("column_selector_ui")),
       uiOutput(ns("upload_status_message"))
     ),
     
@@ -99,51 +55,52 @@ mod_data_combined_server <- function(id) {
     processed_combined_data_r <- reactiveVal(NULL)
     specimen_ids_r             <- reactiveVal(NULL)
     full_display_data_r        <- reactiveVal(NULL)
+    raw_df_r                   <- reactiveVal(NULL)   # holds the unprocessed uploaded df
     
     # -------------------------------------------------------------------------
-    # Internal helper: parse a raw data frame into the combined data structure
-    # Auto-detects specimen ID column by uniqueness of column 1
+    # Internal helper: parse with explicit column choices
+    # group_col: column name for OTU/group (required)
+    # id_col:    column name for specimen ID (NULL = none, auto-assign integers)
     # -------------------------------------------------------------------------
-    parse_combined_df <- function(df, success_msg) {
+    parse_combined_df <- function(df, group_col, id_col = NULL, success_msg) {
       
       if (ncol(df) < 2) {
         return(list(ok = FALSE,
-                    message = "Error: Data must have at least two columns (Group/OTU and at least one trait)."))
+                    message = "Error: Data must have at least two columns."))
       }
       
-      # Auto-detect specimen IDs
-      col1_vals <- trimws(as.character(df[[1]]))
-      has_id    <- !anyDuplicated(col1_vals)
-      
-      if (has_id) {
-        ids_out <- col1_vals
-        df      <- df[, -1, drop = FALSE]
+      # Extract specimen IDs
+      if (!is.null(id_col) && id_col %in% names(df)) {
+        ids_out <- trimws(as.character(df[[id_col]]))
+        df      <- df[, !names(df) %in% id_col, drop = FALSE]
       } else {
         ids_out <- as.character(seq_len(nrow(df)))
       }
       
+      if (!group_col %in% names(df)) {
+        return(list(ok = FALSE,
+                    message = paste0("Error: OTU column '", group_col, "' not found after removing ID column.")))
+      }
+      
       if (ncol(df) < 2) {
         return(list(ok = FALSE,
-                    message = "Error: After removing the specimen ID column, data must have at least two columns (Group/OTU and at least one trait)."))
+                    message = "Error: After removing the specimen ID column, at least one trait column is required."))
       }
       
-      group_col_name <- names(df)[1]
-      
-      if (all(is.na(df[[group_col_name]]) | df[[group_col_name]] == "")) {
+      if (all(is.na(df[[group_col]]) | trimws(as.character(df[[group_col]])) == "")) {
         return(list(ok = FALSE,
-                    message = paste0("Error: The OTU/group column ('", group_col_name, "') cannot be empty or contain only missing values.")))
+                    message = paste0("Error: OTU column '", group_col, "' is empty or contains only missing values.")))
       }
       
-      df[[group_col_name]] <- as.factor(trimws(as.character(df[[group_col_name]])))
+      df[[group_col]] <- as.factor(trimws(as.character(df[[group_col]])))
       
-      # Validate and coerce trait columns
-      trait_cols <- names(df)[-1]
+      trait_cols             <- setdiff(names(df), group_col)
       categorical_cols_found <- c()
       
       for (col_name in trait_cols) {
         if (any(is.na(df[[col_name]]))) {
           showNotification(
-            paste0("Warning: Trait column '", col_name, "' contains missing values (NA). These will need to be handled in downstream modules."),
+            paste0("Warning: '", col_name, "' contains missing values. Handle in downstream modules."),
             type = "warning", duration = 8)
         }
         if (!is.numeric(df[[col_name]])) {
@@ -152,7 +109,10 @@ mod_data_combined_server <- function(id) {
         }
       }
       
-      data_list  <- list(data = df, group_col = group_col_name, categorical_cols = categorical_cols_found)
+      # Re-order so group_col is first
+      df <- df[, c(group_col, trait_cols), drop = FALSE]
+      
+      data_list  <- list(data = df, group_col = group_col, categorical_cols = categorical_cols_found)
       display_df <- cbind(data.frame(SpecimenID = ids_out, stringsAsFactors = FALSE), df)
       
       list(ok           = TRUE,
@@ -185,11 +145,71 @@ mod_data_combined_server <- function(id) {
     }
     
     # -------------------------------------------------------------------------
-    # File upload
+    # Column selector UI — appears once a raw df is loaded
+    # -------------------------------------------------------------------------
+    output$column_selector_ui <- renderUI({
+      df <- raw_df_r()
+      if (is.null(df)) return(NULL)
+      
+      col_names <- names(df)
+      
+      # Guess sensible defaults: OTU = first col with repeated values; ID = first all-unique col
+      guess_otu <- col_names[which(vapply(col_names, function(cn) {
+        anyDuplicated(trimws(as.character(df[[cn]]))) > 0
+      }, logical(1)))[1]]
+      if (is.na(guess_otu)) guess_otu <- col_names[1]
+      
+      guess_id_candidates <- col_names[vapply(col_names, function(cn) {
+        !anyDuplicated(trimws(as.character(df[[cn]])))
+      }, logical(1))]
+      guess_id <- if (length(guess_id_candidates) > 0) guess_id_candidates[1] else "None"
+      
+      tagList(
+        fluidRow(
+          column(4,
+                 selectInput(ns("col_otu"), "OTU / Group column:",
+                             choices  = col_names,
+                             selected = guess_otu,
+                             width    = "100%")
+          ),
+          column(4,
+                 selectInput(ns("col_id"), "Specimen ID column (optional):",
+                             choices  = c("None", col_names),
+                             selected = guess_id,
+                             width    = "100%")
+          ),
+          column(4,
+                 br(),
+                 actionButton(ns("apply_cols"), "Apply",
+                              icon  = icon("check"),
+                              class = "btn-primary",
+                              style = "margin-top: 4px;")
+          )
+        )
+      )
+    })
+    
+    # -------------------------------------------------------------------------
+    # Apply column selection
+    # -------------------------------------------------------------------------
+    observeEvent(input$apply_cols, {
+      df <- raw_df_r()
+      req(df, input$col_otu)
+      id_col <- if (!is.null(input$col_id) && input$col_id != "None") input$col_id else NULL
+      if (!is.null(id_col) && id_col == input$col_otu) {
+        showNotification("OTU column and Specimen ID column cannot be the same.", type = "error")
+        return()
+      }
+      result <- parse_combined_df(df, group_col = input$col_otu, id_col = id_col,
+                                  success_msg  = "Data loaded successfully. Proceed to the next module.")
+      apply_result(result)
+    })
+    
+    # -------------------------------------------------------------------------
+    # File upload — stores raw df, then waits for column selection
     # -------------------------------------------------------------------------
     observeEvent(input$file_upload, {
       req(input$file_upload)
-      
       df_raw <- tryCatch({
         ext <- tolower(tools::file_ext(input$file_upload$name))
         if (ext == "csv") {
@@ -206,14 +226,16 @@ mod_data_combined_server <- function(id) {
         })
         return(NULL)
       })
-      
       if (is.null(df_raw)) return()
-      apply_result(parse_combined_df(as.data.frame(df_raw),
-                                     "File uploaded and validated successfully. Proceed to the next module."))
+      raw_df_r(as.data.frame(df_raw))
+      output$upload_status_message <- renderUI({
+        tags$div(class = "alert alert-info",
+                 "File read. Select the OTU and (optionally) Specimen ID columns above, then click Apply.")
+      })
     }, ignoreNULL = FALSE)
     
     # -------------------------------------------------------------------------
-    # Example loaders
+    # Example loaders — auto-apply using guessed columns
     # -------------------------------------------------------------------------
     load_example <- function(filename, msg) {
       file_path <- system.file("examples", filename, package = "GroupStruct2")
@@ -227,7 +249,16 @@ mod_data_combined_server <- function(id) {
           showNotification(paste("Error loading example:", e$message), type = "error")
           return(NULL)
         })
-      if (!is.null(df_raw)) apply_result(parse_combined_df(df_raw, msg))
+      if (is.null(df_raw)) return()
+      raw_df_r(df_raw)
+      # For examples, auto-detect: first repeated col = OTU, first all-unique non-OTU col = ID
+      col_names <- names(df_raw)
+      otu_col <- col_names[which(vapply(col_names, function(cn) {
+        anyDuplicated(trimws(as.character(df_raw[[cn]]))) > 0
+      }, logical(1)))[1]]
+      if (is.na(otu_col)) otu_col <- col_names[1]
+      result <- parse_combined_df(df_raw, group_col = otu_col, id_col = NULL, success_msg = msg)
+      apply_result(result)
     }
     
     observeEvent(input$load_example_1, {

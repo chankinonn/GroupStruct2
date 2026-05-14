@@ -25,7 +25,7 @@ mod_inferential_ui_morphometric <- function(id) {
                          br(),
                          downloadButton(ns("download_all_summary"), "Download Summary of All Traits"),
                          hr(),
-                         h5("Significant Traits by Pairwise Comparison:"),
+                         h4("Significant Traits by Pairwise Comparison:"),
                          uiOutput(ns("alpha_selector_ui")), 
                          uiOutput(ns("significant_traits_ui")), 
                          downloadButton(ns("download_significant_traits"), "Download Significant Traits"),
@@ -56,9 +56,10 @@ mod_inferential_ui_morphometric <- function(id) {
                            "For this reason, a", strong("dispersion analysis (betadisper)"), "is run alongside PERMANOVA as an",
                            "assumption check. Homogeneous dispersion (betadisper p > 0.05) supports a clean centroid-based",
                            "interpretation of a significant PERMANOVA; heterogeneous dispersion (p < 0.05) warrants caution."),
-                         p("The sections below present: (1) the overall PERMANOVA result, (2) pairwise centroid comparisons",
-                           "between groups, (3) dispersion analysis and pairwise dispersion comparisons, (4) pairwise centroid",
-                           "distances as a magnitude measure, and (5) a joint interpretation guide.",
+                         p("The tabs below present: (1) the overall PERMANOVA result, (2) pairwise PERMANOVA comparisons between groups,",
+                           "(3) dispersion analysis (betadisper), (4) pairwise dispersion comparisons (Tukey HSD on distances-to-centroid),",
+                           "(5) pairwise centroid distances as a magnitude measure, (6) a consolidated pairwise summary joining PERMANOVA and",
+                           "BetaDisper results, and (7) a joint interpretation guide.",
                            "You can choose to run the analysis on the original trait data or on PCA scores — the latter is",
                            "recommended when accompanying a PCA."),
                          
@@ -75,45 +76,48 @@ mod_inferential_ui_morphometric <- function(id) {
                          
                          actionButton(ns("run_permanova"), "Run PERMANOVA", icon = icon("play"), class = "btn-primary"),
                          br(), br(),
-                         h5("Main PERMANOVA Results (adonis2):"),
-                         verbatimTextOutput(ns("permanova_main_results")),
-                         downloadButton(ns("download_permanova_main"), "Download Main Results"),
+                         
+                         tabsetPanel(
+                           tabPanel("Main PERMANOVA",
+                                    br(),
+                                    verbatimTextOutput(ns("permanova_main_results"))
+                           ),
+                           tabPanel("Pairwise PERMANOVA",
+                                    br(),
+                                    p(em("Tests whether group ", strong("centroids"), " differ significantly in multivariate trait space.",
+                                         " Distinct from pairwise dispersion comparisons below, which test", strong("spread"),
+                                         " around centroids.")),
+                                    DTOutput(ns("permanova_pairwise_results"))
+                           ),
+                           tabPanel("BetaDisper",
+                                    br(),
+                                    p("Tests the homogeneity of multivariate dispersions using ",
+                                      code("vegan::betadisper()"), ". A significant result indicates groups differ in within-group spread,",
+                                      " an important assumption of PERMANOVA."),
+                                    verbatimTextOutput(ns("betadisper_results"))
+                           ),
+                           tabPanel("Pairwise Dispersion",
+                                    br(),
+                                    p(em(strong("Note:"), "Tukey HSD on within-group", strong("dispersion"), "— not a post-hoc test for group mean differences.")),
+                                    DTOutput(ns("betadisper_tukey_results"))
+                           ),
+                           tabPanel("Centroid Distances",
+                                    br(),
+                                    p("Euclidean distances between group centroids in PCoA space. Larger values indicate greater separation."),
+                                    DTOutput(ns("centroid_dist_results"))
+                           ),
+                           tabPanel("Consolidated Summary",
+                                    br(),
+                                    p("Joint view of pairwise PERMANOVA and BetaDisper results, sorted by R2 (descending)."),
+                                    DTOutput(ns("consolidated_pairwise"))
+                           )
+                         ),
                          br(),
-                         h5("Pairwise PERMANOVA Results:"),
-                         p(em("Tests whether group ", strong("centroids"), " differ significantly in multivariate trait space,",
-                              " i.e. whether groups occupy different locations. This is distinct from the pairwise dispersion",
-                              " comparisons below, which test whether groups differ in their", strong("spread"),
-                              " around those centroids.")),
-                         DTOutput(ns("permanova_pairwise_results")),
-                         downloadButton(ns("download_permanova_pairwise"), "Download Pairwise Results"),
-                         hr(),
-                         
-                         h5("Dispersion Analysis (betadisper):"),
-                         p("Tests the homogeneity of multivariate dispersions (spread around group's centroid) between groups using ",
-                           code("vegan::betadisper()"), ". A significant result indicates that groups differ in their within-group spread,",
-                           " which is an important assumption of PERMANOVA. If dispersion is heterogeneous (p < 0.05), a significant PERMANOVA",
-                           " may reflect differences in spread rather than (or in addition to) differences in group centroids."),
-                         verbatimTextOutput(ns("betadisper_results")),
-                         downloadButton(ns("download_betadisper"), "Download Dispersion Results"),
-                         br(), br(),
-                         h5("Pairwise Dispersion Comparisons (Tukey HSD on distances-to-centroid):"),
-                         p(em(strong("Note:"), "This Tukey HSD tests for significant differences in within-group",
-                              strong("dispersion"), "(spread around each group's centroid) between pairs of groups.",
-                              "It is", strong("not"), "a post-hoc test for differences in group means — that is the role of the",
-                              "Tukey HSD in the Univariate ANOVA section.")),
-                         DTOutput(ns("betadisper_tukey_results")),
-                         downloadButton(ns("download_betadisper_tukey"), "Download Pairwise Dispersion"),
-                         hr(),
-                         
-                         h5("Pairwise Centroid Distances:"),
-                         p("Euclidean distances between group centroids in PCoA space (computed from the ",
-                           code("betadisper"), " centroids). Larger values indicate greater separation between group centroids,",
-                           " complementing the PERMANOVA significance test with a relative magnitude measure."),
-                         DTOutput(ns("centroid_dist_results")),
-                         downloadButton(ns("download_centroid_dist"), "Download Centroid Distances"),
+                         downloadButton(ns("download_all_permanova"), "Download All PERMANOVA Tables"),
                          hr(),
                          
                          h5("Interpreting Results Together:"),
+                         
                          p("PERMANOVA significance alone is not sufficient to conclude group divergence. The three analyses above",
                            "should be interpreted jointly. The table below summarizes how combinations of results bear on",
                            "evidence for significant morphological divergence between groups."),
@@ -135,23 +139,23 @@ mod_inferential_ui_morphometric <- function(id) {
                            ),
                            tags$tbody(
                              tags$tr(
-                               tags$td("Significant"), tags$td("Homogeneous"), tags$td("Large"),
+                               tags$td("Significant"), tags$td("Non-significant (Homogeneous)"), tags$td("Large"),
                                tags$td("Clean divergence — groups differ in location, not spread. Strongest evidence for divergence.")
                              ),
                              tags$tr(
-                               tags$td("Significant"), tags$td("Heterogeneous"), tags$td("Large"),
+                               tags$td("Significant"), tags$td("Significant (Heterogeneous)"), tags$td("Large"),
                                tags$td("Divergence likely real but complicated by unequal spread — interpret with caution.")
                              ),
                              tags$tr(
-                               tags$td("Significant"), tags$td("Heterogeneous"), tags$td("Small"),
+                               tags$td("Significant"), tags$td("Significant (Heterogeneous)"), tags$td("Small"),
                                tags$td("Significance may be driven by dispersion differences, not centroid displacement — weak evidence for divergence.")
                              ),
                              tags$tr(
-                               tags$td("Non-significant"), tags$td("Homogeneous"), tags$td("Small"),
+                               tags$td("Non-significant"), tags$td("Non-significant (Homogeneous)"), tags$td("Small"),
                                tags$td("Groups are not distinguishable in multivariate trait space — no support for divergence.")
                              ),
                              tags$tr(
-                               tags$td("Non-significant"), tags$td("Heterogeneous"), tags$td("Small"),
+                               tags$td("Non-significant"), tags$td("Significant (Heterogeneous)"), tags$td("Small"),
                                tags$td("Groups overlap in centroid space but differ in variability — possibly one group is more morphologically variable than the other.")
                              )
                            )
@@ -174,6 +178,51 @@ mod_inferential_server_morphometric <- function(id, data_r) {
     permanova_pairwise_results_r <- reactiveVal(NULL)
     betadisper_results_r <- reactiveVal(NULL)
     centroid_dist_r <- reactiveVal(NULL)
+    
+    consolidated_pairwise_r <- reactive({
+      perm_df <- permanova_pairwise_results_r()
+      bd_res  <- betadisper_results_r()
+      if (is.null(perm_df) || is.null(bd_res)) return(NULL)
+      if ("Message" %in% names(perm_df)) return(NULL)
+      
+      sig_stars <- function(p) dplyr::case_when(
+        p < 0.001 ~ "***", p < 0.01 ~ "**", p < 0.05 ~ "*", TRUE ~ "ns"
+      )
+      norm_key <- function(s) paste(sort(strsplit(s, "-", fixed = TRUE)[[1]]), collapse = "-")
+      
+      if (!is.null(bd_res$tukey)) {
+        tukey_df <- as.data.frame(bd_res$tukey$group) %>%
+          tibble::rownames_to_column("Comparison") %>%
+          dplyr::rename(BD_diff = diff, BD_lower = lwr, BD_upper = upr, BD_p_adj = `p adj`)
+        perm_df$key  <- sapply(perm_df$pairs,       norm_key)
+        tukey_df$key <- sapply(tukey_df$Comparison, norm_key)
+        merged <- dplyr::inner_join(perm_df, tukey_df, by = "key", suffix = c("", "_bd"))
+        if (nrow(merged) == 0) return(NULL)
+        merged %>%
+          dplyr::mutate(PERMANOVA_sig = sig_stars(p.adjusted), BD_sig = sig_stars(BD_p_adj)) %>%
+          dplyr::select(pairs, F.Model, R2, p.value, p.adjusted, PERMANOVA_sig,
+                        BD_p_adj, BD_sig) %>%
+          dplyr::rename(Comparison = pairs, `F` = F.Model, `PERMANOVA p` = p.value,
+                        `PERMANOVA p.adj` = p.adjusted, `PERMANOVA sig.` = PERMANOVA_sig,
+                        `Betadisper p (adj.)` = BD_p_adj, `Betadisper sig.` = BD_sig) %>%
+          dplyr::arrange(dplyr::desc(R2)) %>%
+          dplyr::mutate(dplyr::across(where(is.numeric), ~ round(.x, 4)))
+      } else {
+        gd <- bd_res$betadisper$group.distances
+        bd_diff <- as.numeric(gd[2] - gd[1])
+        bd_p    <- bd_res$permutest$tab$`Pr(>F)`[1]
+        perm_df %>%
+          dplyr::mutate(PERMANOVA_sig = sig_stars(p.adjusted),
+                        BD_diff = bd_diff, BD_lower = NA_real_, BD_upper = NA_real_,
+                        BD_p_adj = bd_p, BD_sig = sig_stars(bd_p)) %>%
+          dplyr::select(pairs, F.Model, R2, p.value, p.adjusted, PERMANOVA_sig,
+                        BD_p_adj, BD_sig) %>%
+          dplyr::rename(Comparison = pairs, `F` = F.Model, `PERMANOVA p` = p.value,
+                        `PERMANOVA p.adj` = p.adjusted, `PERMANOVA sig.` = PERMANOVA_sig,
+                        `Betadisper p (adj.)` = BD_p_adj, `Betadisper sig.` = BD_sig) %>%
+          dplyr::mutate(dplyr::across(where(is.numeric), ~ round(.x, 4)))
+      }
+    })
     # Reactive for PCA results
     # Reactive for PCA results based on allometric data
     pca_results_r <- reactive({
@@ -923,7 +972,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             # Check for constant values within subsetted traits data
             if (ncol(x_subset) > 0 && all(apply(x_subset, 2, function(col) length(unique(col)) == 1))) {
               warning(paste("All traits in subset for", grp1, "vs", grp2, "are constant. Cannot compute distance matrix."))
-              pairs = c(pairs, paste(grp1, 'vs', grp2));
+              pairs = c(pairs, paste(grp1, grp2, sep = '-'));
               F.Model =c(F.Model, NA);
               R2 = c(R2, NA);
               p.value =c(p.value, NA);
@@ -935,7 +984,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
             
             ad = vegan::adonis2(x1 ~ factors_subset, permutations = permutations);
             
-            pairs = c(pairs, paste(grp1, 'vs', grp2));
+            pairs = c(pairs, paste(grp1, grp2, sep = '-'));
             F.Model =c(F.Model, ad$F[1]);
             R2 = c(R2, ad$R2[1]);
             p.value =c(p.value, ad$`Pr(>F)`[1]);
@@ -1044,23 +1093,16 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           
           permanova_main_results_r(main_result)
           
-          # Check if significant and run pairwise comparisons if necessary
-          if (!is.null(main_result) && "Pr(>F)" %in% names(main_result) &&
-              main_result$`Pr(>F)`[1] < 0.05 && n_distinct(species_data_clean) > 2) {
-            pairwise_result <- tryCatch({
-              pairwise.adonis(x = permanova_data_input,
-                              factors = species_data_clean,
-                              sim.method = "euclidean",
-                              permutations = input$permanova_permutations)
-            }, error = function(e) {
-              showNotification(paste("Error running pairwise PERMANOVA:", e$message), type = "error")
-              return(NULL)
-            })
-            permanova_pairwise_results_r(pairwise_result)
-          } else {
-            reason <- if (is.null(main_result)) "Main PERMANOVA failed" else if (main_result$`Pr(>F)`[1] >= 0.05) "Main PERMANOVA not significant" else "Less than 3 groups"
-            permanova_pairwise_results_r(data.frame(Message = paste("Pairwise test not performed (", reason, ").")))
-          }
+          pairwise_result <- tryCatch({
+            pairwise.adonis(x = permanova_data_input,
+                            factors = species_data_clean,
+                            sim.method = "euclidean",
+                            permutations = input$permanova_permutations)
+          }, error = function(e) {
+            showNotification(paste("Error running pairwise PERMANOVA:", e$message), type = "error")
+            return(NULL)
+          })
+          permanova_pairwise_results_r(pairwise_result)
           
           # Betadisper — runs unconditionally as an assumption check for PERMANOVA
           betadisper_capture <- tryCatch({
@@ -1111,49 +1153,23 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           }
         })
         
-        output$download_permanova_main <- downloadHandler(
-          filename = function() { paste0("permanova_main_results_", Sys.Date(), ".txt") },
-          content = function(file) {
-            req(permanova_main_results_r())
-            sink(file)
-            print(permanova_main_results_r())
-            sink()
-          }
-        )
         
-        output$download_permanova_pairwise <- downloadHandler(
-          filename = function() { paste0("permanova_pairwise_results_", Sys.Date(), ".csv") },
-          content = function(file) {
-            req(permanova_pairwise_results_r())
-            write.csv(permanova_pairwise_results_r(), file, row.names = FALSE)
-          }
-        )
-        
-        # Betadisper results
         output$betadisper_results <- renderPrint({
           res <- betadisper_results_r()
-          if (is.null(res)) {
-            cat("Dispersion analysis not yet run or could not be computed.\n")
-            return()
-          }
-          bd <- res$betadisper
-          pt <- res$permutest
-          
+          if (is.null(res)) { cat("Dispersion analysis not yet run.\n"); return() }
           cat("=== Multivariate Homogeneity of Group Dispersions (betadisper) ===\n\n")
           cat("Average distance to group centroid (within-group spread):\n")
-          print(round(bd$group.distances, 4))
+          print(round(res$betadisper$group.distances, 4))
           cat("\n--- Permutation test (permutest) ---\n")
-          cat("(Pairwise comparisons are shown in the table below)\n\n")
-          print(pt$tab)
+          cat("(Pairwise comparisons are shown in the Pairwise Dispersion tab)\n\n")
+          print(res$permutest$tab)
         })
         
         output$betadisper_tukey_results <- renderDT({
           res <- betadisper_results_r()
           if (is.null(res) || is.null(res$tukey)) {
-            return(datatable(
-              data.frame(Message = "Pairwise dispersion comparisons are only shown for more than 2 groups."),
-              options = list(dom = 't', paging = FALSE, searching = FALSE)
-            ))
+            return(datatable(data.frame(Message = "Pairwise dispersion comparisons require more than 2 groups."),
+                             options = list(dom = 't', paging = FALSE, searching = FALSE)))
           }
           tukey_df <- as.data.frame(res$tukey$group) %>%
             tibble::rownames_to_column("Comparison") %>%
@@ -1165,59 +1181,77 @@ mod_inferential_server_morphometric <- function(id, data_r) {
         output$centroid_dist_results <- renderDT({
           df <- centroid_dist_r()
           if (is.null(df)) {
-            return(datatable(
-              data.frame(Message = "Centroid distances not available."),
-              options = list(dom = 't', paging = FALSE, searching = FALSE)
-            ))
+            return(datatable(data.frame(Message = "Centroid distances not available."),
+                             options = list(dom = 't', paging = FALSE, searching = FALSE)))
           }
           datatable(df, options = list(dom = 't', paging = FALSE, searching = FALSE), rownames = FALSE)
         })
         
-        output$download_betadisper <- downloadHandler(
-          filename = function() { paste0("betadisper_results_", Sys.Date(), ".txt") },
-          content = function(file) {
-            res <- betadisper_results_r()
-            req(res)
-            sink(file)
-            cat("=== Multivariate Homogeneity of Group Dispersions (betadisper) ===\n\n")
-            cat("Average distance to group centroid:\n")
-            print(round(res$betadisper$group.distances, 4))
-            cat("\n--- Permutation test ---\n")
-            print(res$permutest$tab)
-            if (!is.null(res$tukey)) {
-              cat("\n--- Pairwise Tukey HSD on dispersions ---\n")
-              print(res$tukey)
-            }
-            sink()
+        output$consolidated_pairwise <- renderDT({
+          df <- consolidated_pairwise_r()
+          if (is.null(df) || nrow(df) == 0) {
+            return(datatable(data.frame(Message = "Consolidated table unavailable. Run both PERMANOVA and BetaDisper first."),
+                             options = list(dom = 't', paging = FALSE, searching = FALSE)))
           }
-        )
+          datatable(df, rownames = FALSE, options = list(dom = 'tip', pageLength = 25, scrollX = TRUE))
+        })
         
-        output$download_betadisper_tukey <- downloadHandler(
-          filename = function() { paste0("betadisper_pairwise_", Sys.Date(), ".csv") },
+        output$download_all_permanova <- downloadHandler(
+          filename = function() paste0("permanova_results_morphometric_", Sys.Date(), ".zip"),
           content = function(file) {
-            res <- betadisper_results_r()
-            req(res)
-            if (is.null(res$tukey)) {
-              writeLines("Pairwise dispersion comparisons only available for more than 2 groups.", file)
-              return()
+            tmpdir <- tempdir()
+            files  <- c()
+            perm_main <- permanova_main_results_r()
+            if (!is.null(perm_main)) {
+              f <- file.path(tmpdir, paste0("permanova_main_morphometric_", Sys.Date(), ".txt"))
+              sink(f); print(perm_main); sink()
+              files <- c(files, f)
             }
-            tukey_df <- as.data.frame(res$tukey$group) %>%
-              tibble::rownames_to_column("Comparison") %>%
-              dplyr::rename(diff = diff, lower = lwr, upper = upr, p_adj = `p adj`)
-            write.csv(tukey_df, file, row.names = FALSE)
-          }
-        )
-        
-        output$download_centroid_dist <- downloadHandler(
-          filename = function() { paste0("centroid_distances_", Sys.Date(), ".csv") },
-          content = function(file) {
-            df <- centroid_dist_r()
-            req(df)
-            write.csv(df, file, row.names = FALSE)
+            perm_pair <- permanova_pairwise_results_r()
+            if (!is.null(perm_pair)) {
+              f <- file.path(tmpdir, paste0("permanova_pairwise_morphometric_", Sys.Date(), ".csv"))
+              write.csv(perm_pair, f, row.names = FALSE)
+              files <- c(files, f)
+            }
+            bd <- betadisper_results_r()
+            if (!is.null(bd)) {
+              f <- file.path(tmpdir, paste0("betadisper_morphometric_", Sys.Date(), ".txt"))
+              sink(f)
+              cat("=== Multivariate Homogeneity of Group Dispersions (betadisper) ===\n\n")
+              cat("Average distance to group centroid:\n")
+              print(round(bd$betadisper$group.distances, 4))
+              cat("\n--- Permutation test ---\n")
+              print(bd$permutest$tab)
+              if (!is.null(bd$tukey)) { cat("\n--- Pairwise Tukey HSD ---\n"); print(bd$tukey) }
+              sink()
+              files <- c(files, f)
+              if (!is.null(bd$tukey)) {
+                f <- file.path(tmpdir, paste0("betadisper_pairwise_morphometric_", Sys.Date(), ".csv"))
+                tukey_df <- as.data.frame(bd$tukey$group) %>%
+                  tibble::rownames_to_column("Comparison") %>%
+                  dplyr::rename(diff = diff, lower = lwr, upper = upr, p_adj = `p adj`)
+                write.csv(tukey_df, f, row.names = FALSE)
+                files <- c(files, f)
+              }
+            }
+            df_cent <- centroid_dist_r()
+            if (!is.null(df_cent)) {
+              f <- file.path(tmpdir, paste0("centroid_distances_morphometric_", Sys.Date(), ".csv"))
+              write.csv(df_cent, f, row.names = FALSE)
+              files <- c(files, f)
+            }
+            df_cons <- consolidated_pairwise_r()
+            if (!is.null(df_cons)) {
+              f <- file.path(tmpdir, paste0("consolidated_pairwise_morphometric_", Sys.Date(), ".csv"))
+              write.csv(df_cons, f, row.names = FALSE)
+              files <- c(files, f)
+            }
+            zip(file, files, flags = "-j")
           }
         )
       } 
     }) 
+    
     
     return(data_r)
   })

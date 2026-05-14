@@ -14,6 +14,7 @@ app_server <- function(input, output, session) {
   observeEvent(input$go_stats, current_module("stats"))
   observeEvent(input$go_visual, current_module("visual"))
   observeEvent(input$go_mfa, current_module("mfa"))
+  observeEvent(input$go_mfa_delim, current_module("mfa_delim"))
   observeEvent(input$go_species_delim, current_module("species_delim"))
   
   # Render example datasets for landing page
@@ -45,38 +46,85 @@ app_server <- function(input, output, session) {
   }, striped = TRUE, hover = TRUE)
   
   
-  # Reactive values to hold outputs of data input modules
-  # Meristic Data
-  meristic_data_output <- reactiveVal(NULL)
+  # ── Unified data input module ──────────────────────────────────────────────
+  # Initialized once at startup. Detects data type from column assignments and
+  # populates the data reactives used by all downstream modules.
+  unified_data_output <- mod_data_unified_server("data_ui_1_unified")
   
-  # mod_data_server_meristic returns list(data, specimen_ids) — unpack each
+  # When the unified module detects a data type, update the hidden selectInput
+  # so that all existing conditionalPanel / observe(req(input$data_type == ...)) 
+  # logic continues to work unchanged.
+  observeEvent(unified_data_output$detected_type_r(), {
+    type <- unified_data_output$detected_type_r()
+    if (type == "") return()
+    updateSelectInput(session, "data_type", selected = type)
+    current_module("data")
+  })
+  
+  # Data type indicator in the sidebar
+  output$data_type_indicator_ui <- renderUI({
+    type <- unified_data_output$detected_type_r()
+    if (type == "") return(NULL)
+    label <- switch(type,
+                    meristic    = "Meristic",
+                    morphometric = "Morphometric",
+                    combined    = "Mixed Data"
+    )
+    colour <- switch(type,
+                     meristic    = "#d4edda", morphometric = "#d1ecf1", combined = "#fff3cd")
+    border <- switch(type,
+                     meristic    = "#28a745", morphometric = "#17a2b8", combined = "#856404")
+    tags$div(
+      style = paste0("background-color:", colour, "; border-left: 3px solid ", border,
+                     "; padding: 6px 8px; margin: 6px 0; font-size: 0.85em; border-radius: 3px;"),
+      strong("Data type: "), label
+    )
+  })
+  
+  # Wire unified module outputs into the reactive chain used by downstream modules.
+  # These replace the old meristic_data_output / morphometric_data_output / 
+  # data_combined_output reactiveVals.
+  
   meristic_data_r <- reactive({
-    req(meristic_data_output())
-    meristic_data_output()$data()
+    req(unified_data_output$detected_type_r() == "meristic")
+    unified_data_output$meristic_data_r()
   })
   
   meristic_specimen_ids_r <- reactive({
-    req(meristic_data_output())
-    meristic_data_output()$specimen_ids()
+    req(unified_data_output$detected_type_r() == "meristic")
+    unified_data_output$meristic_ids_r()
   })
   
-  # Morphometric Data
-  morphometric_data_output <- reactiveVal(NULL)
-  
-  # mod_data_server_morphometric returns list(data, specimen_ids) — unpack each
   morphometric_data_r <- reactive({
-    req(morphometric_data_output())
-    morphometric_data_output()$data()
+    req(unified_data_output$detected_type_r() == "morphometric")
+    unified_data_output$morpho_data_r()
   })
   
   morphometric_specimen_ids_r <- reactive({
-    req(morphometric_data_output())
-    morphometric_data_output()$specimen_ids()
+    req(unified_data_output$detected_type_r() == "morphometric")
+    unified_data_output$morpho_ids_r()
   })
   
-  # Reactive for morphometric allometry module's output
-  # mod_allometry_server_morphometric returns list(data, specimen_ids) — unpack each
-  allometry_module_output <- reactiveVal(NULL)
+  combined_data_list_r <- reactive({
+    req(unified_data_output$detected_type_r() == "combined")
+    unified_data_output$combined_data_r()
+  })
+  
+  combined_specimen_ids_r <- reactive({
+    req(unified_data_output$detected_type_r() == "combined")
+    unified_data_output$combined_ids_r()
+  })
+  
+  combined_data_df_r        <- reactive({ req(combined_data_list_r()$data) })
+  combined_data_group_col_r <- reactive({ req(combined_data_list_r()$group_col) })
+  
+  combined_group_col_name_r <- reactive({
+    req(combined_data_list_r()$group_col)
+    combined_data_list_r()$group_col
+  })
+  
+  # Allometry module outputs (unchanged from original)
+  allometry_module_output  <- reactiveVal(NULL)
   adjusted_data_r <- reactive({
     req(allometry_module_output())
     allometry_module_output()$data()
@@ -86,30 +134,9 @@ app_server <- function(input, output, session) {
     allometry_module_output()$specimen_ids()
   })
   
-  # Combined Data
-  # mod_data_combined_server returns list(data_list, specimen_ids) — unpack each
-  data_combined_output <- reactiveVal(NULL)
-  combined_data_list_r <- reactive({
-    req(data_combined_output())
-    data_combined_output()$data_list()
-  })
-  combined_specimen_ids_r <- reactive({
-    req(data_combined_output())
-    data_combined_output()$specimen_ids()
-  })
-  combined_data_df_r <- reactive({ req(combined_data_list_r()$data) })
-  combined_data_group_col_r <- reactive({ req(combined_data_list_r()$group_col) })
-  
-  # Explicitly pass the group column name to visual module
-  combined_group_col_name_r <- reactive({
-    req(combined_data_list_r()$group_col)
-    combined_data_list_r()$group_col
-  })
-  
-  # mod_allometry_server_combined returns list(data, specimen_ids) — unpack via helpers below
   allometry_combined_output <- reactiveVal(NULL)
-  
   mfa_combined_module_output <- reactiveVal(NULL)
+  mfa_delim_module_output    <- reactiveVal(NULL)
   
   # Extract and *call* the individual reactives from the MFA module's output list
   mfa_results_for_plot_r <- reactive({
@@ -118,9 +145,29 @@ app_server <- function(input, output, session) {
   })
   
   trait_group_df_for_plot_r <- reactive({
-    
     req(mfa_combined_module_output()) 
     mfa_combined_module_output()$trait_group_df_r() 
+  })
+  
+  # Extract BEDDA results from the MFA Delimitation module for the visualization module
+  mfa_bedda_unsup_for_plot_r <- reactive({
+    req(mfa_delim_module_output())
+    mfa_delim_module_output()$mfa_bedda_unsup_results_r()
+  })
+  
+  mfa_bedda_boruta_for_plot_r <- reactive({
+    req(mfa_delim_module_output())
+    mfa_delim_module_output()$mfa_bedda_boruta_results_r()
+  })
+  
+  mfa_bedda_sup_models_for_plot_r <- reactive({
+    req(mfa_delim_module_output())
+    mfa_delim_module_output()$mfa_bedda_sup_models_r()
+  })
+  
+  mfa_hyp_data_for_plot_r <- reactive({
+    req(mfa_delim_module_output())
+    mfa_delim_module_output()$mfa_hypothesis_data_r()
   })
   
   # Prioritize allometry-adjusted data if available, otherwise fall back to raw combined data.
@@ -232,29 +279,12 @@ app_server <- function(input, output, session) {
   # Home landing page
   observeEvent(input$reset_data_type, {
     updateSelectInput(session, "data_type", selected = "")
+    current_module("home")
   })
   
-  # Initialize data module servers based on data_type selection
-  
-  observeEvent(input$data_type, {
-    if (input$data_type == "meristic") {
-      if (is.null(meristic_data_output())) {
-        meristic_data_output(mod_data_server_meristic("data_ui_1_meristic"))
-      }
-    } else if (input$data_type == "morphometric") {
-      if (is.null(morphometric_data_output())) {
-        morphometric_data_output(mod_data_server_morphometric("data_ui_1_morphometric"))
-      }
-    } else if (input$data_type == "combined") {
-      if (is.null(data_combined_output())) {
-        data_combined_output(mod_data_combined_server("data_ui_1_combined"))
-      }
-    }
-    
-    # Reset to landing/home page every time data_type is changed
-    current_module("home")
-    
-  }, ignoreInit = FALSE)
+  # Initialize data module servers based on data_type
+  # Note: data_type is now set programmatically by the unified data module above.
+  # The observers below react to data_type changes to initialize downstream modules.
   
   
   # Meristic module servers
@@ -286,6 +316,11 @@ app_server <- function(input, output, session) {
   
   # Capture the results from species delimitation module
   species_delim_output <- reactiveVal(NULL)
+  
+  species_delim_bayesian_models_r <- reactive({
+    req(species_delim_output())
+    species_delim_output()$bayesian_models_r()
+  })
   
   observe({
     req(input$data_type == "morphometric")
@@ -326,9 +361,9 @@ app_server <- function(input, output, session) {
     
     mod_inferential_server_morphometric("inferential_ui_1_morphometric", stats_visual_data_source_r)
     
-    # Remove the if (is.null(...)) check to allow re-initialization when data changes
-    # This will make it reactive to allometry corrections
-    species_delim_output(mod_species_delim_server("species_delim_ui_1", stats_visual_data_source_r))
+    if (is.null(species_delim_output())) {
+      species_delim_output(mod_species_delim_server("species_delim_ui_1", stats_visual_data_source_r))
+    }
     
     mod_visual_server_morphometric(
       "visual_ui_1_morphometric",
@@ -345,23 +380,34 @@ app_server <- function(input, output, session) {
       specimen_ids_r = stats_visual_specimen_ids_r,
       species_delim_results_r = reactive({
         if (!is.null(species_delim_output())) {
-          species_delim_output()()
+          species_delim_output()$results_r()
         } else {
           NULL
         }
       }),
-      
       boruta_results_r = reactive({
         if (!is.null(species_delim_output())) {
-          results <- species_delim_output()()
-          if (!is.null(results$boruta)) {
-            results$boruta  # Changed from results$boruta_results to results$boruta
-          } else {
-            NULL
-          }
+          results <- species_delim_output()$results_r()
+          if (!is.null(results$boruta)) results$boruta else NULL
         } else {
           NULL
         }
+      }),
+      bayesian_models_r = species_delim_bayesian_models_r,
+      morpho_phylo_results_r = reactive({
+        if (!is.null(species_delim_output()))
+          species_delim_output()$morpho_phylo_results_r()
+        else NULL
+      }),
+      morpho_phylo_tree_r = reactive({
+        if (!is.null(species_delim_output()))
+          species_delim_output()$morpho_phylo_tree_r()
+        else NULL
+      }),
+      morpho_phylo_sup_r = reactive({
+        if (!is.null(species_delim_output()))
+          species_delim_output()$morpho_phylo_sup_r()
+        else NULL
       })
     )
   })
@@ -386,6 +432,18 @@ app_server <- function(input, output, session) {
       )
     }
     
+    if (is.null(mfa_delim_module_output())) {
+      req(mfa_combined_module_output())
+      mfa_delim_module_output(
+        mod_mfa_delim_server(
+          "mfa_delim_ui_1_combined",
+          mfa_results_r           = reactive(mfa_combined_module_output()$mfa_results_r()),
+          mfa_data_for_analysis_r = reactive(mfa_combined_module_output()$mfa_data_for_analysis_r()),
+          group_col_name_r        = combined_group_col_name_r
+        )
+      )
+    }
+    
     mod_visual_server_combined(
       "visual_ui_1_combined",
       dataset_r = combined_data_with_adjusted_morphometrics_r,
@@ -406,7 +464,11 @@ app_server <- function(input, output, session) {
       mfa_ellipse_alpha = reactive(input[["visual_ui_1_combined-mfa_ellipse_alpha"]]),
       manual_colors_r   = manual_colors_r,
       mfa_type_colors_r = mfa_type_colors_r,
-      specimen_ids_r    = combined_visual_specimen_ids_r
+      specimen_ids_r    = combined_visual_specimen_ids_r,
+      mfa_bedda_unsup_results_r  = mfa_bedda_unsup_for_plot_r,
+      mfa_bedda_boruta_results_r = mfa_bedda_boruta_for_plot_r,
+      mfa_bedda_sup_models_r     = mfa_bedda_sup_models_for_plot_r,
+      mfa_hyp_data_r             = mfa_hyp_data_for_plot_r
     )
     
   })
@@ -414,7 +476,7 @@ app_server <- function(input, output, session) {
   
   # Observer to manage active button styling
   observe({
-    all_button_ids <- c("go_data", "go_summary", "go_allometry", "go_mfa", "go_visual", "go_stats","go_species_delim")
+    all_button_ids <- c("go_data", "go_summary", "go_allometry", "go_mfa", "go_mfa_delim", "go_visual", "go_stats", "go_species_delim")
     active_mod <- current_module()
     
     for (btn_id in all_button_ids) {
@@ -428,16 +490,39 @@ app_server <- function(input, output, session) {
     }
   })
   
-  # Conditional UI for Allometric Correction button
-  output$allometry_button_ui <- renderUI({
+  # All module navigation buttons rendered in a single pass so they appear
+  # simultaneously rather than staggering as five separate renderUI calls.
+  output$module_nav_ui <- renderUI({
     req(input$data_type)
-    if (input$data_type %in% c("morphometric", "combined")) {
-      actionButton("go_allometry", "Allometric Correction", width = "100%")
-    } else {
-      NULL
-    }
+    dt <- input$data_type
+    
+    # Button order per data type:
+    #   Meristic  : Summary → Inferential Statistics → Visualization
+    #   Morphometric: Summary → Allometric Correction → Inferential Statistics
+    #                 → Morphometric Delimitation → Visualization
+    #   Combined  : Summary → Allometric Correction → Multiple Factor Analysis
+    #                 → MFA Delimitation → Visualization
+    tagList(
+      actionButton("go_summary",  "Summary Statistics",   width = "100%"),
+      
+      if (dt %in% c("morphometric", "combined"))
+        actionButton("go_allometry", "Allometric Correction", width = "100%"),
+      
+      if (dt %in% c("meristic", "morphometric"))
+        actionButton("go_stats",   "Inferential Statistics", width = "100%"),
+      
+      if (dt == "morphometric")
+        actionButton("go_species_delim", "Morphometric Delimitation", width = "100%"),
+      
+      if (dt == "combined")
+        actionButton("go_mfa",     "Multiple Factor Analysis", width = "100%"),
+      
+      if (dt == "combined")
+        actionButton("go_mfa_delim", "MFA Delimitation",      width = "100%"),
+      
+      actionButton("go_visual",   "Visualization",        width = "100%")
+    )
   })
-  
   
   observe({
     req(input$data_type)
@@ -458,74 +543,44 @@ app_server <- function(input, output, session) {
     }
   })
   
-  output$stats_button_ui <- renderUI({
-    req(input$data_type)
-    if (input$data_type %in% c("meristic", "morphometric")) {
-      actionButton("go_stats", "Inferential Statistics", width = "100%")
-    } else {
-      NULL # Hide for combined data type
-    }
-  })
-  
-  #output$stats_button_ui <- renderUI({
-  #  req(input$data_type)
-  # Show button for all data types
-  #  actionButton("go_stats", "Inferential Statistics", width = "100%")
-  #})
-  
-  # Conditional UI for Multiple Factor Analysis button
-  output$mfa_button_ui <- renderUI({
-    req(input$data_type)
-    if (input$data_type == "combined") {
-      actionButton("go_mfa", "Multiple Factor Analysis", width = "100%")
-    } else {
-      NULL
-    }
-  })
-  
-  # Conditional UI for Species Delimitation button (morphometric only)
-  output$species_delim_button_ui <- renderUI({
-    req(input$data_type)
-    if (input$data_type == "morphometric") {
-      actionButton("go_species_delim", "Morphometric Delimitation", width = "100%")
-    } else {
-      NULL
-    }
-  })
-  
   # UI for module content
   output$module_ui <- renderUI({
-    if (is.null(input$data_type) || input$data_type == "") {
-      landing_page_ui()
-    } else {
-      switch(input$data_type,
-             
-             meristic = switch(current_module(),
-                               home = mod_home_ui_meristic("home_ui_1_meristic"),
-                               data = mod_data_ui_meristic("data_ui_1_meristic"),
-                               summary = mod_summary_ui_meristic("summary_ui_1_meristic"),
-                               stats = mod_inferential_ui_meristic("inferential_ui_1_meristic"),
-                               visual = mod_visual_ui_meristic("visual_ui_1_meristic")),
-             
-             morphometric = switch(current_module(),
-                                   home = mod_home_ui_morphometric("home_ui_1_morphometric"),
-                                   data = mod_data_ui_morphometric("data_ui_1_morphometric"),
-                                   summary = mod_summary_ui_morphometric("summary_ui_1_morphometric"),
-                                   allometry = mod_allometry_ui_morphometric("allometry_ui_1_morphometric"),
-                                   stats = mod_inferential_ui_morphometric("inferential_ui_1_morphometric"),
-                                   species_delim = mod_species_delim_ui("species_delim_ui_1"), 
-                                   visual = mod_visual_ui_morphometric("visual_ui_1_morphometric")),
-             
-             combined = switch(current_module(),
-                               home = mod_home_ui_combined("home_ui_1_combined"),
-                               data = mod_data_combined_ui("data_ui_1_combined"),
-                               summary = mod_summary_ui_combined("summary_ui_1_combined"),
-                               allometry = mod_allometry_ui_combined("allometry_ui_1_combined"),
-                               stats = mod_inferential_ui_combined("stats_ui_1_combined"),
-                               mfa = mod_mfa_ui("mfa_ui_1_combined"),
-                               visual = mod_visual_ui_combined("visual_ui_1_combined"))
-      )
+    if (current_module() == "home") {
+      return(landing_page_ui())
     }
+    
+    if (current_module() == "data") {
+      return(mod_data_unified_ui("data_ui_1_unified"))
+    }
+    
+    if (is.null(input$data_type) || input$data_type == "") {
+      return(landing_page_ui())
+    }
+    switch(input$data_type,
+           
+           meristic = switch(current_module(),
+                             home = mod_home_ui_meristic("home_ui_1_meristic"),
+                             summary = mod_summary_ui_meristic("summary_ui_1_meristic"),
+                             stats = mod_inferential_ui_meristic("inferential_ui_1_meristic"),
+                             visual = mod_visual_ui_meristic("visual_ui_1_meristic")),
+           
+           morphometric = switch(current_module(),
+                                 home = mod_home_ui_morphometric("home_ui_1_morphometric"),
+                                 summary = mod_summary_ui_morphometric("summary_ui_1_morphometric"),
+                                 allometry = mod_allometry_ui_morphometric("allometry_ui_1_morphometric"),
+                                 stats = mod_inferential_ui_morphometric("inferential_ui_1_morphometric"),
+                                 species_delim = mod_species_delim_ui("species_delim_ui_1"), 
+                                 visual = mod_visual_ui_morphometric("visual_ui_1_morphometric")),
+           
+           combined = switch(current_module(),
+                             home = mod_home_ui_combined("home_ui_1_combined"),
+                             summary = mod_summary_ui_combined("summary_ui_1_combined"),
+                             allometry = mod_allometry_ui_combined("allometry_ui_1_combined"),
+                             stats = mod_inferential_ui_combined("stats_ui_1_combined"),
+                             mfa = mod_mfa_ui("mfa_ui_1_combined"),
+                             mfa_delim = mod_mfa_delim_ui("mfa_delim_ui_1_combined"),
+                             visual = mod_visual_ui_combined("visual_ui_1_combined"))
+    )
   })
   
   # Dynamic UI for customization based on active visual tab
@@ -552,8 +607,7 @@ app_server <- function(input, output, session) {
     
     wellPanel(
       id = ns_visual_target("plot_settings_panel"),
-      #h4("Plot Settings"),
-      #hr(),
+      style = "padding-bottom: 60px;",
       # Only show plot_palette for non-MFA var contribs if combined
       # Or for all plots if not combined
       if (!(input$data_type == "combined" && tab == "MFA: Variable Contributions")) {
@@ -611,8 +665,7 @@ app_server <- function(input, output, session) {
           sliderInput(ns_visual_target("plot_x_angle"), "X-axis Label Angle:", min = 0, max = 90, value = 0),
         )
       } else if (input$data_type == "combined") {
-        conditionalPanel(
-          condition = paste0("input['", ns_visual_target("visual_tab"), "'] == 'Boxplot' || input['", ns_visual_target("visual_tab"), "'] == 'Violin Plot' || input['", ns_visual_target("visual_tab"), "'] == 'Categorical Bar Plots'"),
+        tagList(
           numericInput(ns_visual_target("plot_facet_size"), "Facet Label Size:", value = 14, min = 8, max = 24),
           sliderInput(ns_visual_target("plot_x_angle"), "X-axis Label Angle:", min = 0, max = 90, value = 0)
         )
@@ -674,13 +727,9 @@ app_server <- function(input, output, session) {
       tryCatch({ shinyjs::enable(x_angle_id) }, error = function(e){})
       tryCatch({ shinyjs::enable(facet_size_id) }, error = function(e){})
     } else if (input$data_type == "combined") {
-      if (current_tab %in% c("Boxplot", "Violin Plot", "Categorical Bar Plots")) {
-        tryCatch({ shinyjs::enable(x_angle_id) }, error = function(e){})
-        tryCatch({ shinyjs::enable(facet_size_id) }, error = function(e){})
-      } else {
-        tryCatch({ shinyjs::disable(x_angle_id) }, error = function(e){})
-        tryCatch({ shinyjs::disable(facet_size_id) }, error = function(e){})
-      }
+      # Always enabled for combined data - relevant for multiple plot types
+      tryCatch({ shinyjs::enable(x_angle_id) }, error = function(e){})
+      tryCatch({ shinyjs::enable(facet_size_id) }, error = function(e){})
     }
   })
   

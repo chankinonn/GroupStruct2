@@ -7,6 +7,11 @@ source("global.R", local = TRUE)
 
 app_ui <- function(request) {
   tagList(
+    shinybusy::add_busy_spinner(
+      spin = "fading-circle",
+      color = "#337ab7",
+      position = "bottom-right"
+    ),
     fluidPage(
       titlePanel("GroupStruct2"),
       useShinyjs(),
@@ -58,33 +63,45 @@ app_ui <- function(request) {
               margin-left: 0;
             }
           }
+
         "))
       ),
       sidebarLayout(
         sidebarPanel(
-          id = "fixed_sidebar", 
-          actionButton("reset_data_type", label = tagList(icon("home"), "GroupStruct2 Home"), 
+          id = "fixed_sidebar",
+          
+          # --- Home button (always visible) ---
+          actionButton("reset_data_type",
+                       label = tagList(icon("home"), "GroupStruct2 Home"),
                        class = "btn btn-primary btn-block"),
+          
+          # Links row (GitHub, Report Issue, version)
+          sidebar_welcome_ui(),
+          
           hr(),
-          h4("1. Select type of data:"),
-          #br(),
-          selectInput("data_type", label = NULL,
-                      choices = c("Please select" = "", 
-                                  "Meristic" = "meristic",
-                                  "Morphometric" = "morphometric",
-                                  "Mixed data" = "combined"),
-                      selected = ""),
+          
+          # --- Input Data (always visible) ---
+          actionButton("go_data", "Input Data", width = "100%"),
+          
+          # Detected data type indicator
+          uiOutput("data_type_indicator_ui"),
+          
+          # Hidden input — kept so existing conditionalPanel JS logic still works.
+          # Updated programmatically by app_server.R when unified module detects data type.
+          tags$div(style = "display: none;",
+                   selectInput("data_type", label = NULL,
+                               choices = c("Please select" = "", "meristic" = "meristic",
+                                           "morphometric" = "morphometric", "combined" = "combined"),
+                               selected = "")
+          ),
+          
+          # --- Module navigation (visible only once data type is set) ---
+          # All buttons are server-rendered together as one block so they
+          # appear simultaneously rather than staggered.
           conditionalPanel(
             condition = "input.data_type != ''",
-            hr(),
-            h4("2. Modules"),
-            actionButton("go_data", "Input Data", width = "100%"),
-            actionButton("go_summary", "Summary Statistics", width = "100%"),
-            uiOutput("allometry_button_ui"),
-            uiOutput("stats_button_ui"),
-            uiOutput("mfa_button_ui"),
-            uiOutput("species_delim_button_ui"),
-            actionButton("go_visual", "Visualization", width = "100%"),
+            sidebar_modules_header_ui(),
+            uiOutput("module_nav_ui"),
             hr(),
             uiOutput("visual_customization_ui")
           )
@@ -97,4 +114,3 @@ app_ui <- function(request) {
     )
   )
 }
-

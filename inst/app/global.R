@@ -7,8 +7,11 @@ required_packages <- c(
   "shinyjs", "colourpicker", "forcats", "purrr", "scales", "PCAtest",
   "openxlsx", "shinyWidgets", "ggthemes", "broom", "tibble",
   "htmltools", "stringr", "ggpubr", "ggrepel", "patchwork", "mclust", "conflicted", 
-  "Boruta", "shinybusy", "plotly", "ggridges"
+  "Boruta", "shinybusy", "plotly", "ggridges", "ape"
 )
+
+# Source Unified Data Input module
+source("modules/mod_data_unified.R")
 
 # Source Meristic modules
 source("modules/meristic/mod_data.R")
@@ -31,6 +34,7 @@ source("modules/combined/mod_allometry_combined.R")
 #source("modules/combined/mod_stats_combined.R")
 source("modules/combined/mod_visual_combined.R")
 source("modules/combined/mod_mfa.R")
+source("modules/combined/mod_mfa_delim.R")
 
 # Function to check for and install missing packages
 check_and_install_packages <- function(packages) {
@@ -63,17 +67,22 @@ check_and_install_packages <- function(packages) {
 # Load required packages
 check_and_install_packages(required_packages)
 
+if (!exists(".groupstruct2_startup_done", envir = globalenv())) {
+  cat("\n  All packages loaded. Starting app...\n\n")
+  assign(".groupstruct2_startup_done", TRUE, envir = globalenv())
+}
+
 # Resolve conflicts using conflicted package
 if (requireNamespace("conflicted", quietly = TRUE)) {
-  conflicted::conflict_prefer("select", "dplyr")
-  conflicted::conflict_prefer("filter", "dplyr")
-  conflicted::conflicts_prefer(dplyr::matches)
-  conflicted::conflict_prefer("rename", "dplyr")
-  conflicted::conflict_prefer("em", "shiny")
-  conflicted::conflict_prefer("count", "dplyr")
-  conflicted::conflict_prefer("map", "purrr")
-  conflicted::conflict_prefer("renderDataTable", "DT")
-  conflicted::conflict_prefer("colourInput", "colourpicker")
+  conflicted::conflict_prefer("select",          "dplyr",        quiet = TRUE)
+  conflicted::conflict_prefer("filter",          "dplyr",        quiet = TRUE)
+  conflicted::conflict_prefer("matches",         "dplyr",        quiet = TRUE)
+  conflicted::conflict_prefer("rename",          "dplyr",        quiet = TRUE)
+  conflicted::conflict_prefer("em",              "shiny",        quiet = TRUE)
+  conflicted::conflict_prefer("count",           "dplyr",        quiet = TRUE)
+  conflicted::conflict_prefer("map",             "purrr",        quiet = TRUE)
+  conflicted::conflict_prefer("renderDataTable", "DT",           quiet = TRUE)
+  conflicted::conflict_prefer("colourInput",     "colourpicker", quiet = TRUE)
 }
 
 # Define %||% operator (if not already defined)
@@ -193,6 +202,264 @@ summarize_class_merge <- function(result, digits = 3) {
 }
 
 # Bayesian species delimitation function
+# ── Phylogenetic hypothesis enumeration ───────────────────────────────────────
+# Enumerates all valid monophyletic partitions from a rooted Newick species tree.
+# Tip labels must exactly match OTU names in the dataset.
+generate_all_phylo_hypotheses <- function(tree, species_col) {
+  spec_vec     <- as.character(species_col)
+  data_species <- unique(spec_vec)
+  tree_tips    <- tree$tip.label
+  
+  only_in_tree <- setdiff(tree_tips, data_species)
+  only_in_data <- setdiff(data_species, tree_tips)
+  
+  # Prune tips absent from data
+  if (length(only_in_tree) > 0)
+    tree <- ape::drop.tip(tree, only_in_tree)
+  
+  n_tips <- length(tree$tip.label)
+  if (n_tips < 2)
+    return(list(error = "Fewer than 2 tree tips matched the dataset OTU labels."))
+  
+  internal_nodes <- (n_tips + 1L):(n_tips + tree$Nnode)
+  n_int          <- length(internal_nodes)
+  node_tips      <- lapply(internal_nodes, function(nd)
+    ape::extract.clade(tree, nd)$tip.label)
+  
+  anc <- matrix(FALSE, n_int, n_int)
+  for (i in seq_len(n_int))
+    for (j in seq_len(n_int))
+      if (i != j) anc[i, j] <- all(node_tips[[j]] %in% node_tips[[i]])
+  
+  CAP_COMBOS    <- 20000L
+  antichains    <- list()
+  total_checked <- 0L
+  capped        <- FALSE
+  
+  for (sz in seq_len(n_int)) {
+    n_c <- choose(n_int, sz)
+    if (total_checked + n_c > CAP_COMBOS) { capped <- TRUE; break }
+    total_checked <- total_checked + n_c
+    combos <- combn(n_int, sz, simplify = FALSE)
+    for (cmb in combos) {
+      ok <- TRUE
+      if (sz > 1L) {
+        for (a in seq_len(sz - 1L)) {
+          for (b in (a + 1L):sz) {
+            if (anc[cmb[a], cmb[b]] || anc[cmb[b], cmb[a]]) { ok <- FALSE; break }
+          }
+          if (!ok) break
+        }
+      }
+      if (ok) antichains <- c(antichains, list(cmb))
+    }
+  }
+  
+  hyp_cols   <- list()
+  disp_names <- character(0)
+  k_vals     <- integer(0)
+  
+  k_full <- length(data_species)
+  hyp_cols[["K_full"]] <- spec_vec
+  disp_names["K_full"] <- paste0("K=", k_full, ": All split (original OTUs)")
+  k_vals["K_full"]     <- k_full
+  
+  for (ac in antichains) {
+    labels <- spec_vec
+    lumped <- character(0)
+    for (idx in ac) {
+      grp    <- paste(sort(node_tips[[idx]]), collapse = "+")
+      labels[spec_vec %in% node_tips[[idx]]] <- grp
+      lumped <- c(lumped, grp)
+    }
+    k <- length(unique(labels))
+    if (k < 2L) next
+    
+    key <- paste0("K", k, "_", paste(sort(lumped), collapse = "__"))
+    if (!is.null(hyp_cols[[key]])) key <- paste0(key, "_", length(hyp_cols) + 1L)
+    
+    hyp_cols[[key]] <- labels
+    disp_names[key] <- paste0("K=", k, ": ", paste(sort(unique(labels)), collapse = " | "))
+    k_vals[key]     <- k
+  }
+  
+  list(
+    hyp_df        = as.data.frame(hyp_cols, stringsAsFactors = FALSE, check.names = FALSE),
+    display_names = disp_names,
+    k_values      = k_vals,
+    only_in_tree  = only_in_tree,
+    only_in_data  = only_in_data,
+    tree_used     = tree,
+    n_hypotheses  = length(hyp_cols),
+    capped        = capped
+  )
+}
+# ── End phylogenetic hypothesis enumeration ────────────────────────────────────
+
+# ── Tree layout and phylogenetic hypothesis plot helpers ──────────────────────
+# These are used by both mod_visual_combined and mod_visual_morphometric.
+
+compute_tree_layout <- function(tree, type = "cladogram") {
+  tree   <- ape::ladderize(tree)
+  n_tips <- length(tree$tip.label)
+  n_all  <- n_tips + tree$Nnode
+  root   <- n_tips + 1L
+  children_of <- vector("list", n_all)
+  for (i in seq_len(nrow(tree$edge))) {
+    p <- tree$edge[i, 1L]; ch <- tree$edge[i, 2L]
+    children_of[[p]] <- c(children_of[[p]], ch)
+  }
+  x <- numeric(n_all)
+  for (i in seq_len(nrow(tree$edge))) {
+    p <- tree$edge[i, 1L]; ch <- tree$edge[i, 2L]
+    bl <- if (type == "phylogram" && !is.null(tree$edge.length))
+      tree$edge.length[i] else 1
+    x[ch] <- x[p] + bl
+  }
+  if (type != "phylogram" || is.null(tree$edge.length))
+    x[seq_len(n_tips)] <- max(x[seq_len(n_tips)])
+  y <- numeric(n_all)
+  tip_counter <- 0L
+  stack <- root
+  post_order <- integer(0)
+  while (length(stack) > 0L) {
+    nd <- stack[length(stack)]; stack <- stack[-length(stack)]
+    post_order <- c(nd, post_order)
+    ch <- children_of[[nd]]
+    if (length(ch) == 0L) {
+      tip_counter <- tip_counter + 1L; y[nd] <- tip_counter
+    } else {
+      stack <- c(stack, rev(ch))
+    }
+  }
+  for (nd in post_order) {
+    ch <- children_of[[nd]]
+    if (length(ch) > 0L) y[nd] <- mean(y[ch])
+  }
+  tip_df <- data.frame(label = tree$tip.label,
+                       x = x[seq_len(n_tips)], y = y[seq_len(n_tips)],
+                       stringsAsFactors = FALSE)
+  h_segs <- data.frame(x    = x[tree$edge[, 1L]], xend = x[tree$edge[, 2L]],
+                       y    = y[tree$edge[, 2L]],  yend = y[tree$edge[, 2L]])
+  v_segs <- do.call(rbind, lapply(unique(tree$edge[, 1L]), function(nd) {
+    ch <- children_of[[nd]]
+    data.frame(x = x[nd], xend = x[nd], y = min(y[ch]), yend = max(y[ch]))
+  }))
+  list(tip_df = tip_df, h_segs = h_segs, v_segs = v_segs,
+       max_x = max(x), n_tips = n_tips, tree = tree)
+}
+
+build_phylo_hyp_plot <- function(sup_data, n_top, tree_type, tip_sz, rect_alpha) {
+  tree         <- sup_data$tree_used
+  hyp_df       <- sup_data$hyp_df
+  ordered_keys <- sup_data$ordered_hyp_keys
+  species_col  <- as.character(sup_data$species_col)
+  summary_tbl  <- sup_data$summary_table
+  if (is.null(tree) || is.null(hyp_df) || length(ordered_keys) == 0) return(NULL)
+  layout  <- compute_tree_layout(tree, type = tree_type)
+  tip_df  <- layout$tip_df; max_x <- layout$max_x; n_tips <- layout$n_tips
+  n_top_actual <- min(n_top, length(ordered_keys))
+  top_keys     <- head(ordered_keys, n_top_actual)
+  sp_to_group_list <- lapply(top_keys, function(key) {
+    col_labels <- as.character(hyp_df[[key]])
+    setNames(vapply(tip_df$label, function(sp) {
+      idx <- which(species_col == sp)
+      if (length(idx) == 0L) return(sp)
+      unique(col_labels[idx])[1L]
+    }, character(1L)), tip_df$label)
+  })
+  qual_pal <- c("#E41A1C","#377EB8","#4DAF4A","#984EA3","#FF7F00",
+                "#A65628","#F781BF","#66C2A5","#FC8D62","#8DA0CB",
+                "#E78AC3","#FFD92F")
+  label_width <- max(nchar(tip_df$label)) * max_x * 0.022
+  col_w   <- max_x * 0.10; col_gap <- max_x * 0.015
+  col_x_ctr <- max_x + label_width + col_w / 2 +
+    (seq_len(n_top_actual) - 1L) * (col_w + col_gap)
+  rect_rows <- list()
+  for (i in seq_len(n_top_actual)) {
+    sp_grp <- sp_to_group_list[[i]]
+    grp_sizes <- table(sp_grp[tip_df$label])
+    lumped <- names(grp_sizes)[grp_sizes > 1L]
+    colors <- setNames(qual_pal[seq_along(lumped)], lumped)
+    for (grp in unique(sp_grp)) {
+      tips_in <- tip_df$label[sp_grp[tip_df$label] == grp]
+      ys <- tip_df$y[tip_df$label %in% tips_in]
+      if (length(ys) == 0L) next
+      rect_rows <- c(rect_rows, list(data.frame(
+        xmin = col_x_ctr[i] - col_w / 2, xmax = col_x_ctr[i] + col_w / 2,
+        ymin = min(ys) - 0.38, ymax = max(ys) + 0.38,
+        fill = if (grp %in% lumped) colors[grp] else "#CCCCCC",
+        stringsAsFactors = FALSE)))
+    }
+  }
+  rect_df  <- if (length(rect_rows) > 0L) dplyr::bind_rows(rect_rows) else data.frame()
+  k_col    <- if ("K" %in% names(summary_tbl)) "K" else NULL
+  dbic_col <- grep("BIC", names(summary_tbl), value = TRUE)[2]
+  hyp_col  <- "Hypothesis"
+  k_vals   <- if (!is.null(k_col))
+    summary_tbl[[k_col]][match(top_keys, summary_tbl[[hyp_col]])] else rep("?", n_top_actual)
+  dbic_raw  <- if (!is.null(dbic_col))
+    summary_tbl[[dbic_col]][match(top_keys, summary_tbl[[hyp_col]])] else rep(NA, n_top_actual)
+  dbic_vals <- round(as.numeric(dbic_raw), 1)
+  header_df <- data.frame(x = col_x_ctr, label  = paste0("K=", k_vals),
+                          label2 = paste0("\u0394=", dbic_vals), stringsAsFactors = FALSE)
+  rank_df   <- data.frame(x = col_x_ctr, label = paste0("#", seq_len(n_top_actual)),
+                          stringsAsFactors = FALSE)
+  x_max_plot <- max(col_x_ctr) + col_w / 2 + max_x * 0.01
+  
+  # Balanced spacing - reduced from original but enough to prevent overlap
+  # Original was: rank at +2.1, K at +1.6, delta at +1.1 (0.5 spacing)
+  # New spacing: 0.4 between rows
+  rank_y_pos <- n_tips + 1.8    # Was 2.1
+  k_y_pos    <- n_tips + 1.4    # Was 1.6  
+  delta_y_pos <- n_tips + 1.0   # Was 1.1
+  
+  max_y_needed <- rank_y_pos + 0.5  # Small padding above highest text
+  
+  p <- ggplot2::ggplot() +
+    ggplot2::geom_segment(data = layout$v_segs,
+                          ggplot2::aes(x = x, xend = xend, y = y, yend = yend),
+                          color = "black", linewidth = 0.55) +
+    ggplot2::geom_segment(data = layout$h_segs,
+                          ggplot2::aes(x = x, xend = xend, y = y, yend = yend),
+                          color = "black", linewidth = 0.55) +
+    ggplot2::geom_text(data = tip_df,
+                       ggplot2::aes(x = max_x + max_x * 0.025, y = y, label = label),
+                       hjust = 0, size = tip_sz, fontface = "italic") +
+    ggplot2::geom_rect(data = rect_df,
+                       ggplot2::aes(xmin = xmin, xmax = xmax, ymin = ymin, ymax = ymax,
+                                    fill = fill),
+                       color = "white", linewidth = 0.35, alpha = rect_alpha) +
+    ggplot2::scale_fill_identity() +
+    ggplot2::geom_text(data = rank_df,
+                       ggplot2::aes(x = x, y = rank_y_pos, label = label),
+                       size = 3.8, hjust = 0.5, fontface = "bold") +
+    ggplot2::geom_text(data = header_df,
+                       ggplot2::aes(x = x, y = k_y_pos, label = label),
+                       size = 3.4, hjust = 0.5) +
+    ggplot2::geom_text(data = header_df,
+                       ggplot2::aes(x = x, y = delta_y_pos, label = label2),
+                       size = 3.2, hjust = 0.5, color = "#444444") +
+    # Moderate expansion - enough for the text but no extra
+    ggplot2::scale_y_continuous(expand = ggplot2::expansion(add = c(0.5, 0.2)),
+                                limits = c(NA, max_y_needed)) +
+    ggplot2::coord_cartesian(xlim = c(-max_x * 0.02, x_max_plot), clip = "off") +
+    ggplot2::theme_void() +
+    # Small top margin to prevent text from being cut off
+    ggplot2::theme(plot.margin = ggplot2::margin(t = 5, r = 15, b = 5, l = 15, unit = "pt"))
+  
+  if (tree_type == "phylogram" && !is.null(tree$edge.length)) {
+    sb_len <- signif(max_x / 5, 1)
+    p <- p +
+      ggplot2::annotate("segment", x = 0, xend = sb_len, y = -0.5, yend = -0.5, linewidth = 0.5) +
+      ggplot2::annotate("text", x = sb_len / 2, y = -0.9, label = as.character(sb_len), size = 2.5)
+  }
+  p
+}
+
+
+# ── End tree layout helpers ────────────────────────────────────────────────────
+
 GMMBayesFactorTable <- function(..., prior = NULL) {
   stopifnot(requireNamespace("mclust", quietly = TRUE))
   stopifnot(packageVersion("mclust") >= "6.1")
@@ -291,4 +558,3 @@ example_mixed <- data.frame(
   Eye_Color = rep(c("Brown", "Green", "Blue"), 3),
   stringsAsFactors = FALSE
 )
-

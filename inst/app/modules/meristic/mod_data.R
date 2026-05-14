@@ -6,59 +6,13 @@ mod_data_ui_meristic <- function(id) {
     hr(),
     
     tags$div(
-      style = "background-color: #d1ecf1; border-left: 5px solid #17a2b8; padding: 15px; margin-bottom: 20px;",
-      h4(style = "margin-top: 0;", "How to Format Your File"),
-      p("The application automatically detects whether your file includes specimen identifiers (e.g. museum catalog numbers) based on a simple rule:"),
-      tags$div(
-        style = "background-color: #ffffff; border: 1px solid #bee5eb; border-radius: 4px; padding: 10px; margin: 8px 0;",
-        p(style = "margin: 0;",
-          strong("Detection rule:"), " if every value in Column 1 is unique, it is treated as a Specimen ID column.",
-          " If Column 1 contains repeated values (i.e. multiple specimens share the same label), it is treated as the OTU/group column.")
-      ),
-      fluidRow(
-        column(6,
-               p(strong("Without specimen IDs")),
-               p(em("Column 1 values repeat — detected as OTU/group.")),
-               tags$table(
-                 class = "table table-bordered table-condensed",
-                 style = "font-size: 0.85em; background: white;",
-                 tags$thead(tags$tr(
-                   tags$th("Species"), tags$th("Trait1"), tags$th("Trait2")
-                 )),
-                 tags$tbody(
-                   tags$tr(tags$td("Gekko_smithii"), tags$td("14"), tags$td("22.1")),
-                   tags$tr(tags$td("Gekko_smithii"), tags$td("13"), tags$td("21.4")),
-                   tags$tr(tags$td("Gekko_albomaculatus"), tags$td("16"), tags$td("25.3")),
-                   tags$tr(tags$td("Gekko_albomaculatus"), tags$td("15"), tags$td("24.8"))
-                 )
-               ),
-               tags$div(
-                 style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-top: 6px; font-size: 0.85em;",
-                 tags$p(style = "margin: 0;",
-                        strong("Note:"), " No specimen IDs detected in this format.",
-                        " Sequential integers (1, 2, 3, ...) will be automatically assigned as specimen IDs for outlier reporting and interactive plot labels.")
-               )
-        ),
-        column(6,
-               p(strong("With specimen IDs")),
-               p(em("Column 1 values are all unique — detected as Specimen ID.")),
-               tags$table(
-                 class = "table table-bordered table-condensed",
-                 style = "font-size: 0.85em; background: white;",
-                 tags$thead(tags$tr(
-                   tags$th("CatalogNo"), tags$th("Species"), tags$th("Trait1"), tags$th("Trait2")
-                 )),
-                 tags$tbody(
-                   tags$tr(tags$td("LSUHC 13451"), tags$td("Gekko_smithii"), tags$td("14"), tags$td("22.1")),
-                   tags$tr(tags$td("LSUHC 13452"), tags$td("Gekko_smithii"), tags$td("13"), tags$td("21.4")),
-                   tags$tr(tags$td("ZRC 2.7891"), tags$td("Gekko_albomaculatus"), tags$td("16"), tags$td("25.3")),
-                   tags$tr(tags$td("ZRC 2.7892"), tags$td("Gekko_albomaculatus"), tags$td("15"), tags$td("24.8"))
-                 )
-               )
-        )
-      ),
-      p(style = "margin-bottom: 0;",
-        em("Column headers can be named anything. The detection is based entirely on whether the values in Column 1 repeat."))
+      style = "background-color: #d1ecf1; border-left: 5px solid #17a2b8; padding: 12px; margin-bottom: 20px;",
+      p(style = "margin: 0;",
+        strong("File format:"),
+        "Upload a CSV, TSV, or TXT file with one row per specimen.",
+        "After uploading, select which column contains your OTU/group labels and",
+        "(optionally) which column contains specimen identifiers such as catalog numbers.",
+        "All remaining columns are treated as traits.")
     ),
     
     # Upload
@@ -69,6 +23,8 @@ mod_data_ui_meristic <- function(id) {
       p(strong("Missing values and singletons are not allowed.")),
       fileInput(ns("file"), "Upload file (.csv, .tsv, or .txt)", accept = c(".csv", ".tsv", ".txt")),
       actionButton(ns("load_example"), "Load Example Meristic Dataset"),
+      br(), br(),
+      uiOutput(ns("column_selector_ui")),
       uiOutput(ns("upload_status_message"))
     ),
     
@@ -94,166 +50,149 @@ mod_data_ui_meristic <- function(id) {
 
 mod_data_server_meristic <- function(id) {
   moduleServer(id, function(input, output, session) {
-    data         <- reactiveVal(NULL)  # OTU + traits only (analysis-ready)
-    specimen_ids <- reactiveVal(NULL)  # character vector or NULL
-    full_data    <- reactiveVal(NULL)  # full data including ID col, for display only
+    ns <- session$ns
+    data         <- reactiveVal(NULL)
+    specimen_ids <- reactiveVal(NULL)
+    full_data    <- reactiveVal(NULL)
+    raw_df_r     <- reactiveVal(NULL)
     
     output$upload_status_message <- renderUI({ NULL })
     
     # -------------------------------------------------------------------------
-    # Internal helper: validate and parse a raw data frame
-    # Returns a list: list(ok, data, specimen_ids, full_data, message)
+    # Internal helper: validate and parse with explicit column choices
     # -------------------------------------------------------------------------
-    parse_meristic_df <- function(df) {
+    parse_meristic_df <- function(df, group_col, id_col = NULL) {
       
-      # Auto-detect format: all-unique col 1 values mean specimen IDs are present.
-      # An OTU column with all unique values would imply all singletons, which is
-      # already disallowed, so this detection is unambiguous.
-      col1_vals <- trimws(as.character(df[[1]]))
-      has_id    <- !anyDuplicated(col1_vals)
-      
-      min_cols  <- if (has_id) 3L else 2L
-      id_label  <- if (has_id) " (specimen ID + OTU + at least one trait)" else " (OTU + at least one trait)"
-      
-      if (ncol(df) < min_cols) {
-        return(list(ok = FALSE,
-                    message = paste0("Error: Meristic data must have at least ", min_cols,
-                                     " columns", id_label, ".")))
-      }
+      if (!group_col %in% names(df))
+        return(list(ok = FALSE, message = paste0("Error: OTU column '", group_col, "' not found.")))
       
       # Extract or auto-generate specimen IDs
-      # When present: use the values from col 1 (uniqueness already confirmed above)
-      # When absent:  assign sequential integers so IDs are always available downstream
-      if (has_id) {
-        ids_out <- col1_vals
-        df      <- df[, -1, drop = FALSE]  # drop ID col; OTU is now col 1
+      if (!is.null(id_col) && id_col %in% names(df)) {
+        ids_out <- trimws(as.character(df[[id_col]]))
+        df      <- df[, !names(df) %in% id_col, drop = FALSE]
       } else {
         ids_out <- as.character(seq_len(nrow(df)))
       }
       
-      # Standardise OTU column (always col 1 after possible strip above)
-      df[[1]] <- factor(trimws(as.character(df[[1]])))
+      if (ncol(df) < 2)
+        return(list(ok = FALSE, message = "Error: At least one trait column is required after removing the ID column."))
       
-      # Validate trait columns (col 2 onward)
-      trait_cols <- df[, 2:ncol(df), drop = FALSE]
+      if (all(is.na(df[[group_col]]) | trimws(as.character(df[[group_col]])) == ""))
+        return(list(ok = FALSE, message = paste0("Error: OTU column '", group_col, "' is empty.")))
       
-      for (i in seq_along(trait_cols)) {
-        col_name <- names(trait_cols)[i]
-        col_vals <- trait_cols[[i]]
-        
-        if (any(is.na(col_vals))) {
-          return(list(ok = FALSE,
-                      message = paste0("Error: Trait column '", col_name,
-                                       "' contains missing values (NA). Missing values are not allowed.")))
-        }
-        if (!is.numeric(col_vals)) {
-          return(list(ok = FALSE,
-                      message = paste0("Error: Trait column '", col_name,
-                                       "' is not numeric. All trait columns must be numeric for meristic data.")))
-        }
+      df[[group_col]] <- factor(trimws(as.character(df[[group_col]])))
+      trait_cols      <- setdiff(names(df), group_col)
+      
+      for (col_name in trait_cols) {
+        col_vals <- df[[col_name]]
+        if (any(is.na(col_vals)))
+          return(list(ok = FALSE, message = paste0("Error: Trait column '", col_name,
+                                                   "' contains missing values. Missing values are not allowed.")))
+        if (!is.numeric(col_vals))
+          return(list(ok = FALSE, message = paste0("Error: Trait column '", col_name,
+                                                   "' is not numeric. All trait columns must be numeric for meristic data.")))
       }
       
-      # Reconstruct full display data — SpecimenID column always present
+      # Re-order so OTU is first
+      df         <- df[, c(group_col, trait_cols), drop = FALSE]
       display_df <- cbind(data.frame(SpecimenID = ids_out, stringsAsFactors = FALSE), df)
       
-      list(ok           = TRUE,
-           data         = df,
-           specimen_ids = ids_out,
-           full_data    = display_df,
-           message      = NULL)
+      list(ok = TRUE, data = df, specimen_ids = ids_out, full_data = display_df, message = NULL)
     }
     
     # -------------------------------------------------------------------------
-    # File upload
+    # Apply a successful parse result
     # -------------------------------------------------------------------------
-    observeEvent(input$file, {
-      req(input$file)
-      
-      file_path <- input$file$datapath
-      
-      df <- tryCatch({
-        ext <- tools::file_ext(input$file$name)
-        if (ext == "csv") {
-          read.csv(file_path, stringsAsFactors = FALSE)
-        } else if (ext %in% c("tsv", "txt")) {
-          read.delim(file_path, stringsAsFactors = FALSE)
-        } else {
-          output$upload_status_message <- renderUI({
-            tags$div(class = "alert alert-danger",
-                     "Error: Unsupported file type. Please upload a .csv, .tsv, or .txt file.")
-          })
-          return(NULL)
-        }
-      }, error = function(e) {
-        output$upload_status_message <- renderUI({
-          tags$div(class = "alert alert-danger",
-                   paste0("Error reading file: ", e$message))
-        })
-        return(NULL)
-      })
-      
-      req(df)
-      
-      result <- parse_meristic_df(df)
-      
+    apply_result <- function(result, success_msg) {
       if (!result$ok) {
-        output$upload_status_message <- renderUI({
-          tags$div(class = "alert alert-danger", result$message)
-        })
-        data(NULL)
-        specimen_ids(NULL)
-        full_data(NULL)
+        output$upload_status_message <- renderUI(tags$div(class = "alert alert-danger", result$message))
+        data(NULL); specimen_ids(NULL); full_data(NULL)
         return()
       }
+      data(result$data); specimen_ids(result$specimen_ids); full_data(result$full_data)
+      output$upload_status_message <- renderUI(tags$div(class = "alert alert-success", success_msg))
+    }
+    
+    # -------------------------------------------------------------------------
+    # Column selector UI — appears once a raw df is loaded
+    # -------------------------------------------------------------------------
+    output$column_selector_ui <- renderUI({
+      df <- raw_df_r()
+      if (is.null(df)) return(NULL)
+      col_names <- names(df)
       
-      data(result$data)
-      specimen_ids(result$specimen_ids)
-      full_data(result$full_data)
-      output$upload_status_message <- renderUI({
-        tags$div(class = "alert alert-success",
-                 "File uploaded and validated successfully. Proceed to the next module.")
-      })
+      guess_otu <- col_names[which(vapply(col_names, function(cn)
+        anyDuplicated(trimws(as.character(df[[cn]]))) > 0, logical(1)))[1]]
+      if (is.na(guess_otu)) guess_otu <- col_names[1]
+      
+      unique_cols <- col_names[vapply(col_names, function(cn)
+        !anyDuplicated(trimws(as.character(df[[cn]]))), logical(1))]
+      guess_id <- if (length(unique_cols) > 0) unique_cols[1] else "None"
+      
+      tagList(
+        fluidRow(
+          column(4, selectInput(ns("col_otu"), "OTU / Group column:",
+                                choices = col_names, selected = guess_otu, width = "100%")),
+          column(4, selectInput(ns("col_id"),  "Specimen ID column (optional):",
+                                choices = c("None", col_names), selected = guess_id, width = "100%")),
+          column(4, br(), actionButton(ns("apply_cols"), "Apply",
+                                       icon = icon("check"), class = "btn-primary",
+                                       style = "margin-top: 4px;"))
+        )
+      )
+    })
+    
+    observeEvent(input$apply_cols, {
+      df <- raw_df_r(); req(df, input$col_otu)
+      id_col <- if (!is.null(input$col_id) && input$col_id != "None") input$col_id else NULL
+      if (!is.null(id_col) && id_col == input$col_otu) {
+        showNotification("OTU and Specimen ID columns cannot be the same.", type = "error"); return()
+      }
+      apply_result(parse_meristic_df(df, group_col = input$col_otu, id_col = id_col),
+                   "Data loaded successfully. Proceed to the next module.")
     })
     
     # -------------------------------------------------------------------------
-    # Load example dataset (no specimen IDs; format selection is ignored)
+    # File upload — stores raw df, waits for column selection
+    # -------------------------------------------------------------------------
+    observeEvent(input$file, {
+      req(input$file)
+      df <- tryCatch({
+        ext <- tools::file_ext(input$file$name)
+        if (ext == "csv") read.csv(input$file$datapath, stringsAsFactors = FALSE)
+        else if (ext %in% c("tsv", "txt")) read.delim(input$file$datapath, stringsAsFactors = FALSE)
+        else stop("Unsupported file type. Please upload a .csv, .tsv, or .txt file.")
+      }, error = function(e) {
+        output$upload_status_message <- renderUI(
+          tags$div(class = "alert alert-danger", paste0("Error reading file: ", e$message)))
+        return(NULL)
+      })
+      if (is.null(df)) return()
+      raw_df_r(df)
+      output$upload_status_message <- renderUI(
+        tags$div(class = "alert alert-info",
+                 "File read. Select the OTU and (optionally) Specimen ID columns above, then click Apply."))
+    })
+    
+    # -------------------------------------------------------------------------
+    # Load example dataset — auto-apply with guessed OTU column
     # -------------------------------------------------------------------------
     observeEvent(input$load_example, {
       example_path <- system.file("examples", "Meristic-only.csv", package = "GroupStruct2")
       req(file.exists(example_path))
-      
-      df <- tryCatch({
-        read.csv(example_path, stringsAsFactors = FALSE)
-      }, error = function(e) {
-        output$upload_status_message <- renderUI({
-          tags$div(class = "alert alert-danger",
-                   paste0("Error loading example data: ", e$message))
-        })
+      df <- tryCatch(read.csv(example_path, stringsAsFactors = FALSE), error = function(e) {
+        output$upload_status_message <- renderUI(
+          tags$div(class = "alert alert-danger", paste0("Error loading example: ", e$message)))
         return(NULL)
       })
-      
-      req(df)
-      
-      # Example files never carry specimen IDs
-      result <- parse_meristic_df(df)
-      
-      if (!result$ok) {
-        output$upload_status_message <- renderUI({
-          tags$div(class = "alert alert-danger", result$message)
-        })
-        data(NULL)
-        specimen_ids(NULL)
-        full_data(NULL)
-        return()
-      }
-      
-      data(result$data)
-      specimen_ids(result$specimen_ids)
-      full_data(result$full_data)
-      output$upload_status_message <- renderUI({
-        tags$div(class = "alert alert-success",
-                 "Example dataset loaded successfully.")
-      })
+      if (is.null(df)) return()
+      raw_df_r(df)
+      col_names <- names(df)
+      otu_col <- col_names[which(vapply(col_names, function(cn)
+        anyDuplicated(trimws(as.character(df[[cn]]))) > 0, logical(1)))[1]]
+      if (is.na(otu_col)) otu_col <- col_names[1]
+      apply_result(parse_meristic_df(df, group_col = otu_col),
+                   "Example dataset loaded successfully.")
     })
     
     # -------------------------------------------------------------------------

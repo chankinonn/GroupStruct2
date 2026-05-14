@@ -6,27 +6,18 @@ mod_species_delim_ui <- function(id) {
     h3("Gaussian Mixture Models (GMM) for Morphometric Species Delimitation"),
     hr(),
     p("Traditional morphometric analyses use univariate/multivariate statistics",
-      "to test the significance of trait differences between pre-defined OTUs.",
-      "In contrast, the GMM approach uses unsupervised and supervised methods under a Bayesian framework,",
-      "allowing for rigorous testing of competing taxonomic hypotheses."),
-    
-    tags$div(
-      style = "background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 15px 0;",
-      p(style = "margin: 0; margin-bottom: 10px;",
-        strong("Citation:"),
-        "These analyses were inspired and adapted from the original work of Tiburtini et al. (2025).",
-        "If you use any of these methods, please cite:"),
-      p(style = "margin: 0; font-style: italic;",
-        "Tiburtini, M., Scrucca, L. & Peruzzi, L. (2025) Using Gaussian Mixture Models in plant morphometrics.",
-        em("Perspectives in Plant Ecology, Evolution and Systematics"), ", 69:125902.")
-    ),
+      "to test the significance of trait differences between pre-defined groups",
+      "In contrast, the GMM approach uses Eigenvalue Decomposition Discriminant Analysis (EDDA)",
+      "to test competing taxonomic hypotheses under a Bayesian framework."),
     
     tags$div(
       style = "background-color: #fff3cd; border: 2px solid #dc3545; border-radius: 5px; padding: 15px; margin: 15px 0;",
       p(style = "color: #dc3545; margin: 0;",
         strong("⚠ IMPORTANT CAVEAT:"),
-        "Statistical support for splitting OTUs does",
-        strong("NOT"), "automatically indicate distinct species.",
+        "Morphometric delimitation is",
+        strong("NOT THE SAME"), "as species delimitation.", 
+        "Analyses are purely based on morphometric data and statistical support for splitting groups does",
+        strong("NOT"), "necessarily indicate distinct species.",
         "Morphological structure may reflect population-level or geographic variation,",
         "rather than species boundaries.",
         strong("Other independent lines of evidence"), 
@@ -45,7 +36,7 @@ mod_species_delim_ui <- function(id) {
                  column(12,
                         h4("Unsupervised Model-Based Clustering"),
                         p("This analysis uses unsupervised Gaussian Mixture Models (GMM)", 
-                          "to discover morphological clusters in the data", 
+                          "to discover natural morphological clusters in the data", 
                           strong("without relying on pre-designated species groupings."), 
                           "The algorithm tests different numbers of clusters (G) and covariance structures,",
                           "selecting the best model using Bayesian Information Criterion (BIC)."),
@@ -76,11 +67,14 @@ mod_species_delim_ui <- function(id) {
                                    br(),
                                    verbatimTextOutput(ns("cluster_summary")),
                                    hr(),
-                                   h4("Cluster-Species Correspondence"),
-                                   tableOutput(ns("cluster_species_table")),
+                                   h4("Per-specimen Cluster Assignment"),
+                                   p("Specimen ID, original OTU, assigned cluster, and posterior probability of belonging to each cluster."),
+                                   DT::dataTableOutput(ns("cluster_specimen_table")),
                                    br(),
+                                   downloadButton(ns("download_unsupervised_csv"), "Download Table (CSV)"),
+                                   hr(),
                                    h5("Interpretation Guide:"),
-                                   p("The correspondence table shows how unsupervised clusters inferred from the data align with your OTUs.",
+                                   p("The table shows cluster assignments and posterior probabilities for each specimen.",
                                      "Each column represents a cluster discovered by the algorithm, and the rows show",
                                      "how many specimens from each OTU fall into that cluster."),
                                    tags$ul(
@@ -89,19 +83,20 @@ mod_species_delim_ui <- function(id) {
                                      tags$li(strong("Mixed clusters:"), "A cluster contains specimens from multiple OTUs,",
                                              "suggesting morphological overlap or similarity between those OTUs"),
                                      tags$li(strong("Split species:"), "One OTU is distributed across multiple clusters,",
-                                             "indicating potential cryptic diversity or intraspecific variation that rivals interspecific differences.")
+                                             "indicating potential cryptic diversity or intraspecific variation that rivals interspecific differences."),
+                                     tags$li(strong("Posterior probabilities:"), "Values close to 1 indicate high confidence in cluster assignment.",
+                                             "Values close to 0.5 indicate a specimen is morphologically intermediate between clusters.")
                                    )
                           ),
-                          
+                          hr(),
                           tabPanel("Top Models",
                                    br(),
                                    h4("Model Comparison"),
-                                   p("All models tested, ranked by BIC. Models with ∆BIC < 2 have substantial support,",
-                                     "∆BIC 2-6 have moderate support, ∆BIC 6-10 have weak support, and ∆BIC > 10 have essentially no support."),
+                                   p("All models tested, ranked by BIC. Models with \u0394BIC < 2 have substantial support,",
+                                     "\u0394BIC 2-6 have moderate support, \u0394BIC 6-10 have weak support, and \u0394BIC > 10 have essentially no support."),
                                    DT::dataTableOutput(ns("top_models_table")),
                                    hr(),
-                                   downloadButton(ns("download_top_models_csv"), "Download Top Models Table"),
-                                   hr()
+                                   downloadButton(ns("download_top_models_csv"), "Download Top Models Table")
                           ),
                           
                           tabPanel("Model Details",
@@ -134,147 +129,91 @@ mod_species_delim_ui <- function(id) {
                                      tags$li(strong("VVV"), "= Ellipsoidal, varying volume, shape, and orientation")
                                    )
                           )
-                        ),
+                        )
                         
+                 )
+               )
+      ),
+      
+      tabPanel("Topology-aware Hypothesis Testing",
+               fluidRow(
+                 column(12,
+                        h4("Topology-aware Hypothesis Testing"),
+                        p("This analysis generates and tests monophyletic hypotheses consistent with a",
+                          "reference tree topology. Every hypothesis corresponds to a biologically valid",
+                          "partition \u2014 one where each group is a clade on the tree.",
+                          "Models are compared simultaneously using EDDA and ranked by BIC and Bayes Factors."),
+                        p(strong("Method:"),
+                          "Given a tree topology, monophyletic partitions are enumerated by testing all valid",
+                          "combinations of non-nested internal nodes. For tractability, enumeration is capped",
+                          "at 20,000 combinations. Each is fit with EDDA directly on the morphometric data and ranked by BIC."),
                         hr(),
                         
+                        h5("\u276f Step 1: Upload Tree"),
                         tags$div(
-                          style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
-                          p(style = "margin: 0; margin-bottom: 10px;", 
-                            strong("Understanding Unsupervised vs. Supervised Clustering:")),
-                          p(style = "margin: 0;",
-                            strong("Unsupervised Clustering"), "must solve two problems simultaneously:",
-                            tags$ul(style = "margin: 5px 0;",
-                                    tags$li(strong("How many groups?"), "- Testing different numbers of clusters (G = 1, 2, 3, ...)"),
-                                    tags$li(strong("What structure?"), "- Testing different covariance patterns (spherical, ellipsoidal, etc.)")
-                            ),
-                            "Without knowing the 'true' groups in advance, the algorithm must infer both cluster membership",
-                            "and model structure from the data alone. This double uncertainty often favors simpler models."
-                          ),
-                          br(),
-                          p(style = "margin: 0;",
-                            strong("Supervised Clustering"), "uses your pre-defined OTU labels, so it only needs to:",
-                            tags$ul(style = "margin: 5px 0;",
-                                    tags$li("Evaluate which grouping scheme (lumping/splitting) best fits the data"),
-                                    tags$li("The group membership is known, reducing uncertainty")
-                            ),
-                            "By using labeled data, discriminant analysis can detect structure that unsupervised methods miss.",
-                            "This is why supervised analyses often reveal differentiation even when unsupervised finds no clusters."
+                          class = "alert alert-info",
+                          style = "margin-bottom: 10px;",
+                          tags$b("Accepted formats:"),
+                          tags$ul(style = "margin: 6px 0 0 0;",
+                                  tags$li(tags$b("Newick"), " \u2014 IQ-TREE (.treefile, .contree), RAxML (.tre), or any plain Newick file."),
+                                  tags$li(tags$b("NEXUS"), " \u2014 MrBayes consensus tree (.con.tre) or BEAST maximum clade credibility tree (.tree, .trees)."),
+                                  tags$li("Tips can be", tags$b("OTU names"), " (direct match) or", tags$b("individual specimen IDs"),
+                                          " \u2014 if tips don't match OTU names, a specimen-to-OTU mapping step will appear.")
                           )
                         ),
                         
+                        fileInput(ns("morpho_phylo_newick_file"),
+                                  "Choose tree file:",
+                                  accept = c(".nwk", ".newick", ".tre", ".tree", ".txt",
+                                             ".treefile", ".contree", ".con.tre",
+                                             ".nexus", ".nex", ".xml"),
+                                  placeholder = "No file selected"),
+                        p("Or load the example tree (works with the morphometric example dataset):"),
+                        actionButton(ns("load_morpho_example_tree"), "Load Example Tree",
+                                     icon = icon("tree"), class = "btn-default btn-sm"),
+                        uiOutput(ns("morpho_phylo_tree_status_ui")),
+                        uiOutput(ns("morpho_phylo_tip_assign_ui")),
+                        uiOutput(ns("morpho_phylo_tree_preview_ui")),
                         hr(),
                         
-                        p(strong("Note:"), "For visualizations of these patterns, see the",
-                          strong("Visualization > Morphometric Delimitation"), "tab for BIC plots and PCA cluster plots."),
-                        hr(),
-                        downloadButton(ns("download_unsupervised_csv"), "Download Correspondence Table"),
-                        hr()
-                 )
-               )
-      ),
-      
-      tabPanel("Supervised Clustering",
-               fluidRow(
-                 column(12,
-                        h4("Supervised Clustering Based on Pre-defined OTU Groupings"),
-                        p("This analysis uses supervised Gaussian Mixture Models (GMM)", 
-                          "to evaluate competing taxonomic hypotheses through a", 
-                          strong("stepwise merging algorithm."), 
-                          "Starting with the original OTU groupings, the algorithm iteratively tests all possible",
-                          strong("pairwise"), "mergings at each step,",
-                          "computing Bayesian Information Criterion (BIC) and Bayes Factors for each scenario.",
-                          "The best-supported merge is selected, and the process repeats with the reduced set of groups",
-                          "until all taxa are lumped into a single cluster."),
-                        
-                        p(strong("Method:"), 
-                          "At each iteration, the algorithm generates all possible pairs of taxa for merging",
-                          "using the EDDA (Eigenvalue Decomposition Discriminant Analysis) model",
-                          "and selects the merge with the highest BIC.",
-                          "This continues until only one taxon remains, generating a hierarchical sequence",
-                          "of increasingly lumped delimitation schemes ranked by BIC.",
-                          "Higher BIC indicates better fit; Bayes Factors quantify strength of evidence between competing models."),
-                        
-                        p(strong("Important:"), 
-                          "This is a", strong("greedy stepwise search"), "that follows a single optimal merging path,",
-                          "not an exhaustive test of all possible partitions.",
-                          "For comprehensive hypothesis testing of specific delimitation schemes,",
-                          "use the", strong("Hypothesis Testing"), "tab where you can define and compare",
-                          "all taxonomic hypotheses of interest.",
-                          "For best results, assign the most plausible splitty grouping scheme to your original uploaded data."),
-                        
-                        tags$div(
-                          style = "background-color: #fff3cd; border-left: 4px solid #856404; padding: 10px; margin: 15px 0;",
-                          p(style = "margin: 0;", 
-                            strong("⚠ Performance Warning:"),
-                            "Datasets with >10 initial OTUs may take several minutes to hours to complete.",
-                            "For complex scenarios, consider using", strong("Bayesian Species Delimitation"), 
-                            "to test specific hypotheses instead of exhaustive search.")
-                        ),
-                        hr(),
-                        actionButton(ns("run_supervised"), 
-                                     "Run Supervised Analysis", 
+                        h5("\u276f Step 2: Run Analysis"),
+                        actionButton(ns("run_morpho_phylo"),
+                                     "Run Topology-aware Hypothesis Testing",
                                      icon = icon("play"),
                                      class = "btn-primary"),
                         hr(),
-                        h4("Bayes Factor Comparison"),
-                        DT::dataTableOutput(ns("bayes_factor_table")),
-                        hr(),
                         
-                        tags$div(
-                          style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 15px 0;",
-                          p(style = "margin: 0;",
-                            strong("Key Difference from Unsupervised:"),
-                            "This analysis uses your", strong("pre-assigned OTU labels"), "to fit discriminant models.",
-                            "Because group membership is known, discriminant analysis can detect morphological structure",
-                            "that unsupervised clustering might miss. Supervised clustering often achieves higher BIC values",
-                            "than unsupervised methods because it doesn't need to simultaneously infer both group and structure.",
-                            "If unsupervised found G=1 but supervised supports K≥2, this indicates",
-                            strong("weak but real differentiation"), "detectable when groups are defined.")
-                        ),
+                        h4("Results"),
+                        p(em("Results sorted by BIC. Top 10 hypotheses shown; download for full results.")),
+                        DT::dataTableOutput(ns("morpho_phylo_results_table")),
                         hr(),
-                        uiOutput(ns("supervised_interpretation")),  
+                        downloadButton(ns("download_morpho_phylo_csv"),  "Download CSV"),
+                        downloadButton(ns("download_morpho_phylo_xlsx"), "Download Excel"),
                         hr(),
-                        downloadButton(ns("download_supervised_csv"), "Download CSV"),
-                        downloadButton(ns("download_supervised_xlsx"), "Download Excel"),
+                        uiOutput(ns("morpho_phylo_interpretation")),
                         hr()
                  )
                )
       ),
       
-      tabPanel("Hypothesis Testing",
+      tabPanel("User-specified Hypothesis Testing",
                fluidRow(
                  column(12,
-                        h4("Bayesian Model-testing of Explicit Taxonomic Hypotheses"),
-                        p("This analysis evaluates competing taxonomic hypotheses using Bayesian model comparison.",
-                          "In a separate file, the user defines multiple hypotheses about how OTUs should be grouped (lumped or split),",
-                          "and the algorithm computes Bayesian Information Criterion (BIC) and posterior probabilities",
-                          "to determine which hypothesis is best supported by the morphometric data."),
-                        
-                        p(strong("Method:"), 
-                          "The analysis uses", code("modelType = 'EDDA'"), 
-                          "with G=1 (one Gaussian component per group), which assumes each taxonomic group",
-                          "can be described by a single multivariate Gaussian distribution.",
-                          "If you suspect substructure within a group",
-                          "(e.g., cryptic species or distinct populations), test this by creating",
-                          "additional split hypotheses."),
-                        
-                        p(strong("Priors:"),
-                          "The analysis uses flat (uninformative) priors of 0.2 for each hypothesis,",
-                          "treating all hypotheses as equally likely before examining the data.",
-                          "Posterior probabilities are then calculated based solely on how well",
-                          "each hypothesis fits the morphometric data."),
-                        
+                        h4("User-specified Hypothesis Testing"),
+                        p("This analysis tests explicit user-defined taxonomic hypotheses.",
+                          "Each hypothesis defines how OTUs should be grouped (lumped or split).",
+                          "Models are compared simultaneously using EDDA and ranked by BIC and Bayes Factors."),
+                        p(strong("Method:"),
+                          "Each hypothesis is fit with EDDA directly on the morphometric data.",
+                          "Flat priors are applied across all hypotheses.",
+                          "Results are ranked by BIC; Bayes Factors quantify evidence between competing models."),
                         hr(),
                         
                         h4("Upload Hypothesis File"),
-                        p("Upload a CSV file with your taxonomic hypotheses.",
-                          strong("Important:"), "The order of rows in this file", 
-                          strong("must match exactly"), "the order of specimens in your original morphometric input data."),
-                        
-                        p("File format: Each column represents one hypothesis to be tested.",
-                          "Column names are hypothesis names (e.g., HYP_1, HYP_2, Lump_AB, Split_A, etc.)."),
-                        p(strong("DO NOT include morphometric data in the hypothesis file.")),
+                        p("Upload a CSV file where each column is one hypothesis to be tested.",
+                          "Column names are hypothesis labels (e.g., HYP_1, Lump_AB).",
+                          strong("Row order must match exactly the order of specimens in your morphometric data."),
+                          strong("Do not include morphometric data in this file.")),
                         
                         p(strong("Example:")),
                         
@@ -334,19 +273,18 @@ mod_species_delim_ui <- function(id) {
                         hr(),
                         
                         actionButton(ns("run_bayesian"), 
-                                     "Run Bayesian Delimitation", 
+                                     "Run User-specified Hypothesis Testing", 
                                      icon = icon("play"),
                                      class = "btn-primary"),
                         
                         hr(),
-                        
                         h4("Results"),
                         DT::dataTableOutput(ns("bayesian_results_table")),
                         hr(),
-                        uiOutput(ns("bayesian_interpretation")),
-                        hr(),
                         downloadButton(ns("download_bayesian_csv"), "Download CSV"),
                         downloadButton(ns("download_bayesian_xlsx"), "Download Excel"),
+                        hr(),
+                        uiOutput(ns("bayesian_interpretation")),
                         hr(),
                  )
                )
@@ -355,7 +293,7 @@ mod_species_delim_ui <- function(id) {
       tabPanel("Diagnostic Characters (Machine Learning)",
                fluidRow(
                  column(12,
-                        h3("Diagnostic Character Identification using Machine Learning"),
+                        h4("Diagnostic Character Identification using Machine Learning"),
                         p("This analysis is based on the Boruta feature selection algorithim that uses Random Forest to identify",
                           "morphometric variables that are statistically important for distinguishing between",
                           "taxonomic groups. It compares the importance of real variables against randomly",
@@ -400,7 +338,7 @@ mod_species_delim_ui <- function(id) {
                             "Note that this is NOT a Bayesian approach. The algorithm uses machine learning to measure importance, then uses p-values to test the significance of that importance. ")
                         ),
                         
-                        p("If you've run Bayesian Species Delimitation, you can select a hypothesis",
+                        p("If you've run the User-specified Hypothesis Testing analysis, you can select a hypothesis",
                           "to test which variables are diagnostic for that particular taxonomic scheme.",
                           "Otherwise, the analysis uses your original species labels."),
                         
@@ -476,10 +414,6 @@ mod_species_delim_ui <- function(id) {
                         DT::dataTableOutput(ns("boruta_descriptive_table")),
                         
                         br(),
-                        
-                        p(strong("Note:"), "For visualizations of variable importance, see the",
-                          strong("Visualization > Species Delimitation > Boruta Importance"), "tabs."),
-                        
                         hr(),
                         
                         downloadButton(ns("download_boruta_confirmed_csv"), "Download Descriptive Stats (CSV)"),
@@ -494,6 +428,7 @@ mod_species_delim_ui <- function(id) {
 
 mod_species_delim_server <- function(id, dataset_r) {
   moduleServer(id, function(input, output, session) {
+    ns <- session$ns
     
     
     # Reactive values to store results
@@ -501,6 +436,7 @@ mod_species_delim_server <- function(id, dataset_r) {
     supervised_results <- reactiveVal(NULL)
     hypothesis_data <- reactiveVal(NULL)
     bayesian_results <- reactiveVal(NULL)
+    bayesian_models  <- reactiveVal(NULL)
     boruta_results <- reactiveVal(NULL)
     
     ## Boruta analysis
@@ -1026,6 +962,12 @@ mod_species_delim_server <- function(id, dataset_r) {
         results_table <- results_table[order(-results_table$BIC), ]
         
         bayesian_results(results_table)
+        bayesian_models(list(
+          models      = models,
+          morpho_data = as.matrix(morpho_data),
+          species_col = data[[1]],
+          hyp_df      = hyp_df
+        ))
         
         showNotification("Bayesian delimitation complete!", type = "message")
         
@@ -1085,7 +1027,8 @@ mod_species_delim_server <- function(id, dataset_r) {
         ),
         p(strong("Note:"), "If no single hypothesis strongly dominates (PostMod < 0.75),",
           "examine whether similar hypotheses collectively have high probability,",
-          "which may indicate consistent patterns in the data.")
+          "which may indicate consistent patterns in the data."),
+        hr()
       )
     })
     
@@ -1374,12 +1317,45 @@ mod_species_delim_server <- function(id, dataset_r) {
     })
     
     # Display cluster-species table
-    output$cluster_species_table <- renderTable({
+    # Per-specimen cluster assignment table with posteriors
+    output$cluster_specimen_table <- DT::renderDataTable({
       req(unsupervised_results())
-      
       results <- unsupervised_results()
-      as.data.frame.matrix(results$cluster_table)
-    }, rownames = TRUE, striped = TRUE, hover = TRUE)
+      model   <- results$model
+      ids     <- as.character(seq_len(length(results$species_col)))
+      post    <- as.data.frame(round(model$z, 4))
+      names(post) <- paste0("Post_Cluster", seq_len(ncol(post)))
+      tbl <- data.frame(
+        Specimen_ID = ids,
+        OTU         = as.character(results$species_col),
+        Cluster     = as.character(model$classification),
+        post,
+        check.names = FALSE, stringsAsFactors = FALSE
+      )
+      DT::datatable(tbl, options = list(pageLength = 15, scrollX = TRUE, dom = "tp"),
+                    rownames = FALSE)
+    })
+    
+    # Download comprehensive per-specimen table
+    output$download_unsupervised_csv <- downloadHandler(
+      filename = function() paste0("unsupervised_clustering_", Sys.Date(), ".csv"),
+      content  = function(file) {
+        req(unsupervised_results())
+        results <- unsupervised_results()
+        model   <- results$model
+        ids     <- as.character(seq_len(length(results$species_col)))
+        post    <- as.data.frame(round(model$z, 4))
+        names(post) <- paste0("Post_Cluster", seq_len(ncol(post)))
+        tbl <- data.frame(
+          Specimen_ID = ids,
+          OTU         = as.character(results$species_col),
+          Cluster     = as.character(model$classification),
+          post,
+          check.names = FALSE, stringsAsFactors = FALSE
+        )
+        write.csv(tbl, file, row.names = FALSE)
+      }
+    )
     
     # Display Bayes Factor table
     output$bayes_factor_table <- DT::renderDataTable({
@@ -1430,49 +1406,6 @@ mod_species_delim_server <- function(id, dataset_r) {
       )
     })
     
-    # Download CSV
-    output$download_unsupervised_csv <- downloadHandler(
-      filename = function() {
-        paste0("unsupervised_clustering_", Sys.Date(), ".csv")
-      },
-      content = function(file) {
-        req(unsupervised_results())
-        
-        results <- unsupervised_results()
-        model <- results$model
-        
-        # Create summary data frame
-        summary_df <- data.frame(
-          Metric = c("Model Type", "Optimal G", "BIC", "Log-likelihood", "DF"),
-          Value = c(
-            model$modelName,
-            as.character(model$G),
-            round(model$bic, 3),
-            round(model$loglik, 3),
-            as.character(model$df)
-          )
-        )
-        
-        # Cluster sizes
-        cluster_sizes <- as.data.frame(table(model$classification))
-        names(cluster_sizes) <- c("Cluster", "Count")
-        
-        # Cluster-species table
-        cluster_species <- as.data.frame.matrix(results$cluster_table)
-        cluster_species <- cbind(Cluster = rownames(cluster_species), cluster_species)
-        
-        # Write to CSV (multiple tables)
-        write.csv(summary_df, file, row.names = FALSE)
-        write.table("\n", file, append = TRUE, row.names = FALSE, col.names = FALSE, quote = FALSE)
-        write.table("Cluster Sizes:", file, append = TRUE, row.names = FALSE, col.names = FALSE, quote = FALSE)
-        write.table(cluster_sizes, file, append = TRUE, row.names = FALSE, sep = ",")
-        write.table("\n", file, append = TRUE, row.names = FALSE, col.names = FALSE, quote = FALSE)
-        write.table("Cluster-Species Correspondence:", file, append = TRUE, row.names = FALSE, col.names = FALSE, quote = FALSE)
-        write.csv(cluster_species, file, append = TRUE, row.names = FALSE)
-      }
-    )
-    
-    
     # Download supervised CSV
     output$download_supervised_csv <- downloadHandler(
       filename = function() {
@@ -1499,6 +1432,562 @@ mod_species_delim_server <- function(id, dataset_r) {
       }
     )
     
+    # ── Topology-aware Hypothesis Testing (morphometric) ──────────────────────
+    morpho_phylo_results_r <- reactiveVal(NULL)  # results table (for display)
+    morpho_phylo_sup_r     <- reactiveVal(NULL)   # full sup_data (for tree plot)
+    
+    ## ---- Morpho tree reactives ----
+    morpho_phylo_tree_r        <- reactiveVal(NULL)
+    morpho_phylo_raw_tree_r    <- reactiveVal(NULL)
+    morpho_phylo_outgroup_r    <- reactiveVal(character(0))
+    morpho_phylo_mode_r        <- reactiveVal("otu")
+    morpho_phylo_unassigned_r  <- reactiveVal(character(0))
+    morpho_phylo_assignments_r <- reactiveVal(list())
+    morpho_phylo_rooted_r      <- reactiveVal(FALSE)
+    
+    is_properly_rooted_morpho <- function(tree) {
+      root_node     <- length(tree$tip.label) + 1L
+      root_children <- sum(tree$edge[, 1L] == root_node)
+      root_children == 2L
+    }
+    
+    ## Parse any supported tree format (Newick or NEXUS, single tree only)
+    load_any_format_tree_morpho <- function(path) {
+      # Try Newick first (IQ-TREE .treefile/.contree, RAxML .tre, plain Newick)
+      tree <- tryCatch(ape::read.tree(path), error = function(e) NULL)
+      if (!is.null(tree) && inherits(tree, "phylo")) {
+        fmt <- "Newick"
+      } else {
+        # Try NEXUS (MrBayes .con.tre, BEAST MCC .tree)
+        result <- tryCatch(ape::read.nexus(path), error = function(e) NULL)
+        if (is.null(result)) {
+          showNotification(
+            paste0("Could not parse tree file. Supported formats: ",
+                   "Newick (.nwk, .treefile, .contree) and single-tree NEXUS ",
+                   "(.con.tre from MrBayes, MCC .tree from BEAST). ",
+                   "Do not upload full posterior tree samples (.t, .trees)."),
+            type = "error", duration = 12)
+          return(NULL)
+        }
+        # Reject multi-tree files (posterior samples, etc.)
+        if (inherits(result, "multiPhylo")) {
+          showNotification(
+            paste0("This file contains ", length(result), " trees. ",
+                   "Only a single consensus tree is accepted. ",
+                   "For MrBayes, use the .con.tre file. ",
+                   "For BEAST, export the MCC tree as a single-tree file."),
+            type = "error", duration = 12)
+          return(NULL)
+        }
+        tree <- result
+        fmt  <- "NEXUS"
+      }
+      if (!inherits(tree, "phylo")) {
+        showNotification("Could not extract a valid phylogenetic tree from this file.",
+                         type = "error"); return(NULL)
+      }
+      tree
+    }
+    
+    ## Reset helper
+    reset_morpho_phylo_assignment <- function() {
+      morpho_phylo_raw_tree_r(NULL)
+      morpho_phylo_tree_r(NULL)
+      morpho_phylo_outgroup_r(character(0))
+      morpho_phylo_rooted_r(FALSE)
+      morpho_phylo_mode_r("otu")
+      morpho_phylo_unassigned_r(character(0))
+      morpho_phylo_assignments_r(list())
+    }
+    
+    observeEvent(input$morpho_phylo_newick_file, {
+      req(input$morpho_phylo_newick_file)
+      reset_morpho_phylo_assignment()
+      tree <- load_any_format_tree_morpho(input$morpho_phylo_newick_file$datapath)
+      if (is.null(tree)) return()
+      already_rooted <- is_properly_rooted_morpho(tree)
+      morpho_phylo_raw_tree_r(tree)
+      morpho_phylo_rooted_r(already_rooted)
+      morpho_phylo_unassigned_r(sort(tree$tip.label))
+      showNotification(
+        paste0("Tree parsed: ", length(tree$tip.label), " tips. ",
+               if (already_rooted)
+                 "Tree appears to be rooted. Designate an outgroup below to re-root, or confirm as-is."
+               else
+                 "Tree is unrooted \u2014 designate an outgroup below to root it."),
+        type = if (already_rooted) "message" else "warning", duration = 7)
+    })
+    
+    observeEvent(input$load_morpho_example_tree, {
+      path <- system.file("examples", "Gekko_tree.txt", package = "GroupStruct2")
+      if (!file.exists(path)) {
+        showNotification("Example tree file not found.", type = "error"); return()
+      }
+      reset_morpho_phylo_assignment()
+      tree <- load_any_format_tree_morpho(path)
+      if (!is.null(tree)) {
+        morpho_phylo_raw_tree_r(tree)
+        morpho_phylo_rooted_r(is_properly_rooted_morpho(tree))
+        morpho_phylo_unassigned_r(sort(tree$tip.label))
+      }
+    })
+    
+    output$morpho_phylo_tree_status_ui <- renderUI({
+      tree   <- morpho_phylo_raw_tree_r()
+      if (is.null(tree)) return(NULL)
+      og     <- morpho_phylo_outgroup_r()
+      rooted <- morpho_phylo_rooted_r()
+      
+      rooting_msg <- if (length(og) > 0)
+        tagList(strong(paste0(length(og), " outgroup tip(s) designated: ")),
+                paste(og, collapse = ", "),
+                " \u2014 tree will be rooted here and outgroup pruned.")
+      else if (rooted)
+        tagList(icon("check"), " Tree is already rooted. ",
+                "Optionally designate an outgroup to re-root, or confirm as-is.")
+      else
+        tagList(icon("exclamation-triangle"), strong(" Tree is unrooted. "),
+                "You must designate an outgroup tip below before confirming.")
+      
+      alert_class <- if (!rooted && length(og) == 0) "alert alert-warning" else "alert alert-info"
+      tags$div(class = alert_class, style = "margin-top: 8px;",
+               length(tree$tip.label), " tips parsed. ", rooting_msg)
+    })
+    
+    ## ---- Unified tip assignment + outgroup UI (Step 1b) ----
+    output$morpho_phylo_tip_assign_ui <- renderUI({
+      raw_tree <- morpho_phylo_raw_tree_r()
+      if (is.null(raw_tree)) return(NULL)
+      
+      og           <- morpho_phylo_outgroup_r()
+      unassigned   <- morpho_phylo_unassigned_r()
+      assignments  <- morpho_phylo_assignments_r()
+      data         <- dataset_r()
+      data_species <- if (!is.null(data)) sort(unique(as.character(data[[1]]))) else character(0)
+      
+      ingroup_tips <- setdiff(raw_tree$tip.label, og)
+      otu_mode     <- (length(setdiff(ingroup_tips, data_species)) == 0) &&
+        (length(setdiff(data_species, ingroup_tips)) == 0)
+      
+      if (!otu_mode && (length(assignments) == 0 || !all(data_species %in% names(assignments)))) {
+        init_asgn <- setNames(vector("list", length(data_species)), data_species)
+        for (nm in names(init_asgn)) init_asgn[[nm]] <- assignments[[nm]] %||% character(0)
+        isolate(morpho_phylo_assignments_r(init_asgn))
+        assignments <- init_asgn
+      }
+      
+      all_assigned <- otu_mode || (length(unassigned) == 0)
+      
+      # Outgroup row (amber)
+      og_row <- if (length(og) > 0) {
+        list(tags$tr(
+          style = "background-color: #fff3cd;",
+          tags$td(style = "font-weight: bold; color: #856404; white-space: nowrap;",
+                  icon("arrow-left"), " Outgroup"),
+          tags$td(style = "font-size: 12px; color: #856404; word-break: break-word;",
+                  paste(og, collapse = ", ")),
+          tags$td(style = "text-align: center; color: #856404;", length(og)),
+          tags$td(style = "text-align: center;",
+                  actionButton(ns("morpho_phylo_clear_og_btn"), label = "", icon = icon("times"),
+                               class = "btn-xs btn-warning",
+                               onclick = sprintf("Shiny.setInputValue('%s', true, {priority: 'event'})",
+                                                 ns("morpho_phylo_clear_og_clicked"))))
+        ))
+      } else list()
+      
+      # OTU assignment rows
+      otu_rows <- if (!otu_mode) {
+        lapply(data_species, function(otu) {
+          tips_for_otu <- assignments[[otu]]
+          tags$tr(
+            tags$td(style = "font-weight: bold; white-space: nowrap;", otu),
+            tags$td(style = "font-size: 12px; word-break: break-word;",
+                    if (length(tips_for_otu) == 0) em("(none)") else paste(tips_for_otu, collapse = ", ")),
+            tags$td(style = "text-align: center;", length(tips_for_otu)),
+            tags$td(style = "text-align: center;",
+                    if (length(tips_for_otu) > 0)
+                      actionButton(
+                        ns(paste0("morpho_clear_otu_", gsub("[^A-Za-z0-9_]", "_", otu))),
+                        label = "", icon = icon("times"), class = "btn-xs btn-danger",
+                        onclick = sprintf("Shiny.setInputValue('%s', '%s', {priority: 'event'})",
+                                          ns("morpho_clear_otu_clicked"), otu)))
+          )
+        })
+      } else list()
+      
+      tags$div(
+        style = "border: 1px solid #dee2e6; border-radius: 6px; padding: 15px; margin-top: 10px; background: #fafafa;",
+        h5(icon("sitemap"), strong(" Step 1b: Assign Tips")),
+        p(style = "font-size: 0.9em; color: #555;",
+          "Hold ", tags$kbd("Ctrl"), " (Windows/Linux) or ", tags$kbd("\u2318 Cmd"), " (Mac)",
+          " to select multiple tips."),
+        
+        fluidRow(
+          column(6,
+                 if (otu_mode) {
+                   tagList(
+                     tags$div(class = "alert alert-success",
+                              style = "margin: 0 0 8px 0; padding: 8px; font-size: 0.9em;",
+                              icon("check"),
+                              paste0(" All ", length(ingroup_tips),
+                                     " ingroup tips match OTU names \u2014 no assignment needed.")),
+                     tags$div(style = "margin-bottom: 4px; font-size: 0.88em; color: #555;",
+                              "Select tips to designate as outgroup (optional):"),
+                     tags$select(
+                       id = ns("morpho_phylo_tip_select"),
+                       multiple = "multiple",
+                       size = as.character(min(10, max(4, length(ingroup_tips)))),
+                       style = paste0("width: 100%; font-family: monospace; font-size: 12px;",
+                                      " border: 1px solid #ced4da; border-radius: 4px; padding: 4px;",
+                                      " background: white; min-height: 80px;"),
+                       lapply(ingroup_tips, function(tip) tags$option(value = tip, tip))
+                     )
+                   )
+                 } else {
+                   tagList(
+                     tags$div(style = "margin-bottom: 6px;",
+                              strong(paste0("Unassigned specimens (", length(unassigned), " remaining):"))),
+                     if (length(unassigned) == 0) {
+                       tags$div(class = "alert alert-success", style = "margin: 0; padding: 8px;",
+                                icon("check"), " All specimens assigned!")
+                     } else {
+                       tags$select(
+                         id = ns("morpho_phylo_tip_select"),
+                         multiple = "multiple",
+                         size = as.character(min(14, max(5, length(unassigned)))),
+                         style = paste0("width: 100%; font-family: monospace; font-size: 12px;",
+                                        " border: 1px solid #ced4da; border-radius: 4px; padding: 4px;",
+                                        " background: white; min-height: 100px;"),
+                         lapply(unassigned, function(tip) tags$option(value = tip, tip))
+                       )
+                     }
+                   )
+                 }
+          ),
+          column(6,
+                 if (!otu_mode) {
+                   tagList(
+                     tags$div(style = "margin-bottom: 4px;", strong("Assign to OTU:")),
+                     selectInput(ns("morpho_phylo_target_otu"), label = NULL,
+                                 choices = data_species, selected = data_species[1], width = "100%"),
+                     actionButton(ns("morpho_phylo_assign_btn"),
+                                  label = tagList(icon("arrow-right"), " Assign to OTU"),
+                                  class = "btn-primary btn-block",
+                                  disabled = if (length(unassigned) == 0) "disabled" else NULL),
+                     tags$hr(style = "margin: 8px 0; border-top: 1px dashed #ccc;"),
+                     tags$p(style = "text-align: center; margin: 4px 0; font-size: 0.85em; color: #888;", "\u2014 or \u2014")
+                   )
+                 },
+                 actionButton(ns("morpho_phylo_designate_og_btn"),
+                              label = tagList(icon("arrow-left"), " Designate as Outgroup"),
+                              class = "btn-warning btn-block",
+                              disabled = if (length(unassigned) == 0) "disabled" else NULL),
+                 tags$p(style = "font-size: 0.8em; color: #888; margin-top: 4px;",
+                        if (!morpho_phylo_rooted_r())
+                          "Required: tree is unrooted. Select outgroup tip(s) to root the tree. Outgroup will be excluded from analysis."
+                        else
+                          "Optional: re-root on a specific outgroup tip. Leave empty to use the existing root."),
+                 if (!otu_mode) {
+                   tagList(
+                     tags$hr(style = "margin: 8px 0;"),
+                     actionButton(ns("morpho_phylo_clear_all_btn"),
+                                  label = tagList(icon("trash"), " Clear All"),
+                                  class = "btn-danger btn-sm btn-block")
+                   )
+                 }
+          )
+        ),
+        
+        hr(style = "margin: 12px 0;"),
+        h6(strong("Assignments:")),
+        tags$div(
+          style = "overflow-x: auto;",
+          tags$table(
+            class = "table table-condensed table-bordered",
+            style = "font-size: 12px; width: 100%; background: white;",
+            tags$thead(tags$tr(
+              tags$th("Group"), tags$th("Tips"),
+              tags$th(style = "text-align: center;", "N"),
+              tags$th(style = "text-align: center;", "Clear")
+            )),
+            tags$tbody(c(og_row, otu_rows))
+          )
+        ),
+        
+        if (!morpho_phylo_rooted_r() && length(og) == 0) {
+          tags$div(
+            class = "alert alert-danger", style = "margin-top: 10px;",
+            icon("times-circle"), " ",
+            strong("Cannot confirm: "), "tree is unrooted. Select at least one outgroup tip above."
+          )
+        } else if (all_assigned) {
+          tags$div(
+            style = "margin-top: 10px;",
+            tags$p(style = "font-size: 0.9em; margin-bottom: 8px;",
+                   icon("info-circle"), " ",
+                   strong("Rooting: "),
+                   if (length(og) > 0)
+                     paste0("Outgroup (", paste(og, collapse = ", "),
+                            ") will root the tree and be pruned.")
+                   else
+                     "Existing root will be used as-is."),
+            actionButton(ns("morpho_phylo_confirm_mapping"),
+                         label = tagList(icon("check-circle"), " Confirm & Build Tree"),
+                         class = "btn-primary btn-block")
+          )
+        } else {
+          tags$p(style = "color: #888; font-size: 0.88em; margin-top: 10px;",
+                 icon("info-circle"), " ",
+                 paste0(length(unassigned), " tip(s) still unassigned."))
+        }
+      )
+    })
+    
+    ## Designate as outgroup
+    observeEvent(input$morpho_phylo_designate_og_btn, {
+      selected <- input$morpho_phylo_tip_select
+      if (is.null(selected) || length(selected) == 0) {
+        showNotification("No tips selected.", type = "warning"); return()
+      }
+      morpho_phylo_outgroup_r(sort(union(morpho_phylo_outgroup_r(), selected)))
+      morpho_phylo_unassigned_r(setdiff(morpho_phylo_unassigned_r(), selected))
+      morpho_phylo_assignments_r(lapply(morpho_phylo_assignments_r(), function(tips) setdiff(tips, selected)))
+      morpho_phylo_tree_r(NULL)
+    })
+    
+    ## Clear outgroup
+    observeEvent(input$morpho_phylo_clear_og_clicked, {
+      og <- morpho_phylo_outgroup_r()
+      if (length(og) == 0) return()
+      morpho_phylo_unassigned_r(sort(c(morpho_phylo_unassigned_r(), og)))
+      morpho_phylo_outgroup_r(character(0))
+      morpho_phylo_tree_r(NULL)
+    }, ignoreNULL = TRUE, ignoreInit = TRUE)
+    
+    
+    observeEvent(input$morpho_phylo_assign_btn, {
+      selected_tips <- input$morpho_phylo_tip_select
+      target_otu    <- input$morpho_phylo_target_otu
+      if (is.null(selected_tips) || length(selected_tips) == 0) {
+        showNotification("No specimens selected. Use Ctrl/Cmd+click to select.", type = "warning"); return()
+      }
+      asgn <- morpho_phylo_assignments_r()
+      asgn[[target_otu]] <- unique(c(asgn[[target_otu]], selected_tips))
+      morpho_phylo_assignments_r(asgn)
+      morpho_phylo_unassigned_r(setdiff(morpho_phylo_unassigned_r(), selected_tips))
+      morpho_phylo_tree_r(NULL)
+    })
+    
+    observeEvent(input$morpho_phylo_clear_all_btn, {
+      data         <- dataset_r()
+      data_species <- if (!is.null(data)) sort(unique(as.character(data[[1]]))) else character(0)
+      raw_tree     <- morpho_phylo_raw_tree_r()
+      og           <- morpho_phylo_outgroup_r()
+      if (!is.null(raw_tree)) morpho_phylo_unassigned_r(sort(setdiff(raw_tree$tip.label, og)))
+      init_asgn <- setNames(vector("list", length(data_species)), data_species)
+      for (nm in names(init_asgn)) init_asgn[[nm]] <- character(0)
+      morpho_phylo_assignments_r(init_asgn)
+      morpho_phylo_tree_r(NULL)
+    })
+    
+    observeEvent(input$morpho_clear_otu_clicked, {
+      otu  <- input$morpho_clear_otu_clicked
+      asgn <- morpho_phylo_assignments_r()
+      if (!otu %in% names(asgn)) return()
+      tips_to_restore <- asgn[[otu]]
+      asgn[[otu]] <- character(0)
+      morpho_phylo_assignments_r(asgn)
+      morpho_phylo_unassigned_r(sort(c(morpho_phylo_unassigned_r(), tips_to_restore)))
+      morpho_phylo_tree_r(NULL)
+    }, ignoreNULL = TRUE, ignoreInit = TRUE)
+    
+    observeEvent(input$morpho_phylo_confirm_mapping, {
+      raw_tree       <- morpho_phylo_raw_tree_r(); req(raw_tree)
+      og             <- morpho_phylo_outgroup_r()
+      already_rooted <- morpho_phylo_rooted_r()
+      ingroup_tips   <- setdiff(raw_tree$tip.label, og)
+      data           <- dataset_r()
+      data_species   <- if (!is.null(data)) sort(unique(as.character(data[[1]]))) else character(0)
+      otu_mode       <- (length(setdiff(ingroup_tips, data_species)) == 0) &&
+        (length(setdiff(data_species, ingroup_tips)) == 0)
+      
+      # Safety guard
+      if (!already_rooted && length(og) == 0) {
+        showNotification(
+          "Tree is unrooted and no outgroup has been designated. Please select an outgroup.",
+          type = "error", duration = 8); return()
+      }
+      
+      if (!otu_mode) {
+        assignments <- morpho_phylo_assignments_r()
+        empty_otus  <- data_species[sapply(data_species, function(o) length(assignments[[o]]) == 0)]
+        if (length(empty_otus) > 0) {
+          showNotification(
+            paste0("Cannot confirm: OTUs with no specimens assigned: ",
+                   paste(empty_otus, collapse = ", "), "."),
+            type = "error", duration = 10); return()
+        }
+      }
+      
+      if (length(og) > 0) {
+        tree_rooted <- tryCatch(
+          ape::root(raw_tree, outgroup = og, resolve.root = TRUE),
+          error = function(e) {
+            showNotification(paste("Outgroup rooting failed:", e$message), type = "error"); NULL
+          }
+        )
+        if (is.null(tree_rooted)) return()
+      } else {
+        tree_rooted <- raw_tree  # already rooted, use as-is
+      }
+      
+      tree_ingroup <- if (length(og) > 0)
+        ape::keep.tip(tree_rooted, ingroup_tips)
+      else
+        tree_rooted
+      
+      tree_final <- if (otu_mode) tree_ingroup else
+        collapse_individuals_to_otu_morpho(tree_ingroup, morpho_phylo_assignments_r())
+      
+      morpho_phylo_tree_r(tree_final)
+      root_msg <- if (length(og) > 0)
+        paste0("Rooted on outgroup (", paste(og, collapse = ", "), "), outgroup pruned.")
+      else
+        "Existing root used as-is."
+      showNotification(
+        paste0("Tree built: ", length(tree_final$tip.label), " taxa. ", root_msg),
+        type = "message")
+    })
+    
+    output$morpho_phylo_tree_preview_ui <- renderUI({
+      if (is.null(morpho_phylo_tree_r())) return(NULL)
+      tagList(
+        hr(),
+        h5(strong("OTU-level tree preview:")),
+        plotOutput(ns("morpho_phylo_tree_preview"), height = "380px")
+      )
+    })
+    
+    output$morpho_phylo_tree_preview <- renderPlot({
+      tree <- morpho_phylo_tree_r(); req(tree)
+      n     <- length(tree$tip.label)
+      cex_t <- max(0.55, min(1.0, 20 / n))
+      has_nl <- !is.null(tree$node.label) && any(nchar(trimws(tree$node.label)) > 0)
+      par(mar = c(1, 1, 2, max(4, nchar(max(tree$tip.label)) * 0.55)))
+      ape::plot.phylo(tree, type = "cladogram", use.edge.length = FALSE,
+                      show.tip.label = TRUE, cex = cex_t,
+                      show.node.label = isTRUE(input$morpho_phylo_show_support) && has_nl,
+                      label.offset = 0.5, no.margin = FALSE)
+      title(main = paste0("OTU-level tree (", n, " taxa)"), cex.main = 1.1)
+    })
+    
+    ## Helper (module-local)
+    collapse_individuals_to_otu_morpho <- function(raw_tree, assignments) {
+      otus     <- names(assignments)
+      rep_tips <- sapply(otus, function(otu) sort(assignments[[otu]])[1])
+      tree_pruned <- ape::keep.tip(raw_tree, unname(rep_tips))
+      for (otu in otus) {
+        idx <- which(tree_pruned$tip.label == rep_tips[[otu]])
+        if (length(idx) > 0) tree_pruned$tip.label[idx] <- otu
+      }
+      tree_pruned
+    }
+    
+    observeEvent(input$run_morpho_phylo, {
+      tree <- morpho_phylo_tree_r()
+      data <- dataset_r()
+      if (is.null(tree)) {
+        showNotification(
+          "Please upload a tree file and complete the specimen-to-OTU mapping (if required) before running.",
+          type = "error", duration = 8); return()
+      }
+      if (is.null(data) || nrow(data) == 0) {
+        showNotification("Please load morphometric data first.", type = "error"); return()
+      }
+      
+      species_col  <- as.character(data[[1]])
+      morpho_data  <- data[, -1, drop = FALSE]
+      tree_for_hyp <- morpho_phylo_tree_r()
+      
+      shinybusy::show_modal_spinner(
+        spin = "fading-circle",
+        text = "Generating and testing topology-aware hypotheses..."
+      )
+      on.exit(shinybusy::remove_modal_spinner())
+      
+      tryCatch({
+        result    <- generate_all_phylo_hypotheses(tree_for_hyp, species_col)
+        if (!is.null(result$error)) {
+          showNotification(result$error, type = "error", duration = 10); return()
+        }
+        phylo_hyps <- result$hyp_df
+        n_hyp      <- ncol(phylo_hyps)
+        priors     <- rep(1 / n_hyp, n_hyp); names(priors) <- colnames(phylo_hyps)
+        
+        models <- list()
+        for (hn in colnames(phylo_hyps)) {
+          models[[hn]] <- mclust::MclustDA(
+            as.matrix(morpho_data),
+            factor(phylo_hyps[[hn]]),
+            modelType = "EDDA", verbose = FALSE)
+        }
+        results <- do.call(GMMBayesFactorTable, c(models, list(prior = priors)))
+        results <- results[order(-results$BIC), ]
+        if (nrow(results) > 10)
+          showNotification(paste0("Showing top 10 of ", nrow(results),
+                                  " hypotheses. Download for full results."),
+                           type = "message", duration = 6)
+        morpho_phylo_results_r(results)
+        morpho_phylo_sup_r(list(
+          summary_table    = results,
+          species_col      = species_col,
+          hyp_df           = phylo_hyps,
+          ordered_hyp_keys = colnames(phylo_hyps),
+          tree_used        = tree_for_hyp
+        ))
+        showNotification("Topology-aware hypothesis testing complete!", type = "message")
+      }, error = function(e) {
+        showNotification(paste("Error:", e$message), type = "error", duration = 10)
+      })
+    })
+    
+    output$morpho_phylo_results_table <- DT::renderDataTable({
+      req(morpho_phylo_results_r())
+      tbl <- head(morpho_phylo_results_r(), 10)
+      tbl <- tbl[, !names(tbl) %in% "Taxonomic groupings", drop = FALSE]
+      DT::datatable(tbl, class = "display nowrap",
+                    options = list(pageLength = 10, scrollX = TRUE, dom = "t"),
+                    rownames = FALSE)
+    })
+    
+    output$morpho_phylo_interpretation <- renderUI({
+      req(morpho_phylo_results_r())
+      tagList(
+        h5("Interpretation:"),
+        tags$ul(
+          tags$li(strong("BIC:"), "Higher = better fit. Best hypothesis has \u0394BIC = 0."),
+          tags$li(strong("\u0394BIC < 2:"), "Weak evidence against; 2\u20136 positive; > 10 very strong."),
+          tags$li(strong("PostMod:"), "Posterior probability under uniform priors across all tested hypotheses.")
+        )
+      )
+    })
+    
+    output$download_morpho_phylo_csv <- downloadHandler(
+      filename = function() paste0("topology_hypotheses_", Sys.Date(), ".csv"),
+      content  = function(f) { req(morpho_phylo_results_r()); write.csv(morpho_phylo_results_r(), f, row.names = FALSE) }
+    )
+    output$download_morpho_phylo_xlsx <- downloadHandler(
+      filename = function() paste0("topology_hypotheses_", Sys.Date(), ".xlsx"),
+      content  = function(f) {
+        req(morpho_phylo_results_r())
+        wb <- openxlsx::createWorkbook()
+        openxlsx::addWorksheet(wb, "Topology Hypotheses")
+        openxlsx::writeData(wb, "Topology Hypotheses", morpho_phylo_results_r())
+        openxlsx::saveWorkbook(wb, f, overwrite = TRUE)
+      }
+    )
+    # ── End topology-aware ────────────────────────────────────────────────────
+    
     # Placeholder for other tabs
     output$boruta_plot <- renderPlot({
       plot(1, 1, main = "Click 'Identify Diagnostic Characters' to generate plot")
@@ -1509,14 +1998,20 @@ mod_species_delim_server <- function(id, dataset_r) {
     })
     
     # Return results for visualization module
-    return(reactive({
-      list(
-        unsupervised = unsupervised_results(),
-        supervised = supervised_results(),
-        bayesian = bayesian_results(),
-        boruta = boruta_results()
-      )
-    }))
+    return(list(
+      results_r = reactive({
+        list(
+          unsupervised = unsupervised_results(),
+          supervised   = supervised_results(),
+          bayesian     = bayesian_results(),
+          boruta       = boruta_results()
+        )
+      }),
+      bayesian_models_r      = bayesian_models,
+      morpho_phylo_results_r = morpho_phylo_results_r,
+      morpho_phylo_tree_r    = morpho_phylo_tree_r,
+      morpho_phylo_sup_r     = morpho_phylo_sup_r
+    ))
     
   })
 }

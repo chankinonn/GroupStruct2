@@ -3,512 +3,722 @@ mod_visual_ui_morphometric <- function(id) {
   tagList(
     h3("Data Visualization"),
     hr(),
+    tags$style(HTML(paste0(
+      "#", ns("visual_tab"), " > li > a {",
+      "  background: none; font-weight: bold;",
+      "}",
+      "#", ns("visual_tab"), " > li.active > a,",
+      "#", ns("visual_tab"), " > li.active > a:hover,",
+      "#", ns("visual_tab"), " > li.active > a:focus {",
+      "  background-color: #e8f4fc; font-weight: bold;",
+      "  border-top: 3px solid #337ab7;",
+      "}",
+      "#", ns("visual_subtabs_exploratory"), " > li > a,",
+      "#", ns("visual_subtabs_ordination"), " > li > a,",
+      "#", ns("species_delim_subtab"), " > li > a {",
+      "  background: none; white-space: nowrap;",
+      "  border-bottom: 2px solid transparent;",
+      "}",
+      "#", ns("visual_subtabs_exploratory"), " > li.active > a,",
+      "#", ns("visual_subtabs_exploratory"), " > li.active > a:hover,",
+      "#", ns("visual_subtabs_exploratory"), " > li.active > a:focus,",
+      "#", ns("visual_subtabs_ordination"), " > li.active > a,",
+      "#", ns("visual_subtabs_ordination"), " > li.active > a:hover,",
+      "#", ns("visual_subtabs_ordination"), " > li.active > a:focus,",
+      "#", ns("species_delim_subtab"), " > li.active > a,",
+      "#", ns("species_delim_subtab"), " > li.active > a:hover,",
+      "#", ns("species_delim_subtab"), " > li.active > a:focus {",
+      "  background: none; font-weight: bold; white-space: nowrap;",
+      "  border-bottom: 2px solid #337ab7;"
+    ))),
     tabsetPanel(id = ns("visual_tab"),
-                tabPanel("Scatterplot",
-                         fluidRow(
-                           column(9,
-                                  uiOutput(ns("scatter_plot_ui"))
-                           ),
-                           column(3,
-                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
-                                  br(),
-                                  tags$div(
-                                    style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
-                                    checkboxInput(ns("scatter_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("scatter_interactive")),
-                                    tags$div(
-                                      style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
-                                      tags$p(style = "margin: 0;", "Hover over points to see specimen IDs. Outline points, individual labels, and theme selection are not available in interactive mode.")
-                                    )
-                                  ),
-                                  hr(),
-                                  numericInput(ns("plot_scatter_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("scatter_interactive")),
-                                    numericInput(ns("plot_scatter_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px')
-                                  ),
-                                  hr(),
-                                  uiOutput(ns("scatter_controls")),
-                                  hr(),
-                                  numericInput(ns("scatter_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("scatter_interactive")),
-                                    checkboxInput(ns("scatter_outline_points"), "Outline Points", value = FALSE),
-                                    conditionalPanel(
-                                      condition = sprintf("input['%s']", ns("scatter_outline_points")),
-                                      sliderInput(ns("scatter_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                    )
-                                  ),
-                                  hr(),
-                                  checkboxInput(ns("scatter_show_lm"), "Show Regression Line", value = TRUE),
-                                  checkboxInput(ns("scatter_show_lm_se"), "Show Confidence Interval (Shaded Area)", value = TRUE),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("scatter_interactive")),
-                                    checkboxInput(ns("scatter_show_labels"), "Show Individual Labels", value = FALSE)
-                                  ),
-                                  hr(),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("scatter_interactive")),
-                                    downloadButton(ns("download_scatter_pdf"), "Download PDF"),
-                                    br(),
-                                    downloadButton(ns("download_scatter_jpeg"), "Download JPEG")
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("scatter_interactive")),
-                                    p(em("Use the camera icon in the plot toolbar to download."))
-                                  ),
-                                  hr()
-                           )
+                tabPanel("Exploratory Plots",
+                         tabsetPanel(id = ns("visual_subtabs_exploratory"),
+                                     tabPanel("Scatterplot",
+                                              fluidRow(
+                                                column(9,
+                                                       uiOutput(ns("scatter_plot_ui"))
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       tags$div(
+                                                         style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+                                                         checkboxInput(ns("scatter_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("scatter_interactive")),
+                                                         tags$div(
+                                                           style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
+                                                           tags$p(style = "margin: 0;", "Hover over points to see specimen IDs. Outline points, individual labels, and theme selection are not available in interactive mode. Use the camera icon in the toolbar to save the plot.")
+                                                         )
+                                                       ),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                                         numericInput(ns("plot_scatter_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                                         numericInput(ns("plot_scatter_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       uiOutput(ns("scatter_controls")),
+                                                       hr(),
+                                                       numericInput(ns("scatter_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                                         checkboxInput(ns("scatter_outline_points"), "Outline Points", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("scatter_outline_points")),
+                                                           sliderInput(ns("scatter_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                         )
+                                                       ),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                                         checkboxInput(ns("scatter_show_labels"), "Show Individual Labels", value = FALSE)
+                                                       ),
+                                                       checkboxInput(ns("scatter_show_lm"), "Show Regression Line", value = TRUE),
+                                                       checkboxInput(ns("scatter_show_lm_se"), "Show Confidence Interval", value = TRUE),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("scatter_interactive")),
+                                                         downloadButton(ns("download_scatter_pdf"), "Download PDF"),
+                                                         br(),
+                                                         downloadButton(ns("download_scatter_jpeg"), "Download JPEG")
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("scatter_interactive")),
+                                                         p(em("Use the camera icon in the plot toolbar to download."))
+                                                       ),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     tabPanel("Boxplot",
+                                              fluidRow( 
+                                                column(9, 
+                                                       plotOutput(ns("plot_box"))
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       numericInput(ns("plot_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                                       numericInput(ns("plot_box_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                                       hr(),
+                                                       sliderInput(ns("box_outline_stroke"), "Boxplot Outline Width",
+                                                                   min = 0, max = 2, value = 0.5, step = 0.1, width = '150px'),
+                                                       hr(),
+                                                       uiOutput(ns("box_variable_selector")),
+                                                       uiOutput(ns("box_group_selector")),
+                                                       hr(),
+                                                       downloadButton(ns("download_box_pdf"), "Download PDF"),
+                                                       br(),
+                                                       downloadButton(ns("download_box_jpeg"), "Download JPEG"),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("Violin Plot",
+                                              fluidRow(
+                                                column(9,
+                                                       plotOutput(ns("plot_violin"))
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       numericInput(ns("plot_violin_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                                       numericInput(ns("plot_violin_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
+                                                       hr(),
+                                                       checkboxInput(ns("violin_outline"), "Outline Violin", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s'] == true", ns("violin_outline")),
+                                                         sliderInput(ns("violin_point_stroke"), "Point Outline Width",
+                                                                     min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                       ),
+                                                       uiOutput(ns("violin_variable_selector")),
+                                                       uiOutput(ns("violin_group_selector")),
+                                                       hr(),
+                                                       downloadButton(ns("download_violin_pdf"), "Download PDF"),
+                                                       br(),
+                                                       downloadButton(ns("download_violin_jpeg"), "Download JPEG"),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
                          )
                 ),
                 
-                tabPanel("Boxplot",
-                         fluidRow( 
-                           column(9, 
-                                  plotOutput(ns("plot_box"))
-                           ),
-                           column(3,
-                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
-                                  br(),
-                                  numericInput(ns("plot_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                  numericInput(ns("plot_box_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
-                                  hr(),
-                                  sliderInput(ns("box_outline_stroke"), "Boxplot Outline Width",
-                                              min = 0, max = 2, value = 0.5, step = 0.1, width = '150px'),
-                                  hr(),
-                                  uiOutput(ns("box_variable_selector")),
-                                  uiOutput(ns("box_group_selector")),
-                                  hr(),
-                                  downloadButton(ns("download_box_pdf"), "Download PDF"),
-                                  br(),
-                                  downloadButton(ns("download_box_jpeg"), "Download JPEG"),
-                                  hr()
-                           )
-                         )
-                ),
-                
-                tabPanel("Violin Plot",
-                         fluidRow(
-                           column(9,
-                                  plotOutput(ns("plot_violin"))
-                           ),
-                           column(3,
-                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
-                                  br(),
-                                  numericInput(ns("plot_violin_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                  numericInput(ns("plot_violin_width"), "Plot Width (px)", value = 700, min = 200, step = 50, width = '150px'),
-                                  hr(),
-                                  checkboxInput(ns("violin_outline"), "Outline Violin", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s'] == true", ns("violin_outline")),
-                                    sliderInput(ns("violin_point_stroke"), "Point Outline Width",
-                                                min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                  ),
-                                  uiOutput(ns("violin_variable_selector")),
-                                  uiOutput(ns("violin_group_selector")),
-                                  hr(),
-                                  downloadButton(ns("download_violin_pdf"), "Download PDF"),
-                                  br(),
-                                  downloadButton(ns("download_violin_jpeg"), "Download JPEG"),
-                                  hr()
-                           )
-                         )
-                ),
-                
-                tabPanel("PCA",
-                         fluidRow(
-                           column(9,
-                                  uiOutput(ns("pca_plot_ui"))
-                           ),
-                           column(3,
-                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
-                                  br(),
-                                  tags$div(
-                                    style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
-                                    checkboxInput(ns("pca_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("pca_interactive")),
-                                    tags$div(
-                                      style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
-                                      tags$p(style = "margin: 0;", "Hover over points to see specimen IDs. Outline points, biplot arrows, spider plot, MST, centroid distances, and theme selection are not available in interactive mode.")
-                                    )
-                                  ),
-                                  hr(),
-                                  numericInput(ns("plot_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("pca_interactive")),
-                                    numericInput(ns("plot_pca_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px')
-                                  ),
-                                  hr(),
-                                  h5("PC Axis Selection"),
-                                  uiOutput(ns("pca_x_axis_selector")),
-                                  uiOutput(ns("pca_y_axis_selector")),
-                                  hr(),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("pca_interactive")),
-                                    h5("Biplot Options"),
-                                    checkboxInput(ns("pca_biplot"), "Show Variable Loadings (Biplot)", value = FALSE),
-                                    conditionalPanel(
-                                      condition = sprintf("input['%s']", ns("pca_biplot")),
-                                      checkboxInput(ns("pca_biplot_labels"), "Show Variable Labels", value = TRUE),
-                                      colourInput(ns("pca_arrow_color"), "Arrow Color:", value = "#8B0000", showColour = "background"),
-                                      sliderInput(ns("pca_arrow_size"), "Arrow Width:", min = 0.5, max = 3, value = 1, step = 0.1, width = '150px'),
-                                      sliderInput(ns("pca_arrow_alpha"), "Arrow Transparency:", min = 0.1, max = 1, value = 0.7, step = 0.1, width = '150px'),
-                                      numericInput(ns("pca_label_size"), "Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
-                                    ),
-                                    hr(),
-                                  ),  # end biplot conditionalPanel
-                                  h5("Points & Groups"),
-                                  numericInput(ns("pca_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("pca_interactive")),
-                                    checkboxInput(ns("pca_outline_points"), "Outline Points", value = FALSE),
-                                    conditionalPanel(
-                                      condition = sprintf("input['%s']", ns("pca_outline_points")),
-                                      sliderInput(ns("pca_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                    )
-                                  ),
-                                  checkboxInput(ns("pca_centroids"), "Group Centroids", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("pca_centroids")),
-                                    numericInput(ns("pca_centroid_size"), "Centroid Size:", value = 4, min = 1, max = 15, width = '150px'),
-                                    colourInput(ns("pca_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background"),
-                                    
-                                    conditionalPanel(
-                                      condition = sprintf("!input['%s']", ns("pca_interactive")),
-                                      checkboxInput(ns("pca_spider"), "Show Spider Plot", value = FALSE),
-                                      conditionalPanel(
-                                        condition = sprintf("input['%s']", ns("pca_spider")),
-                                        sliderInput(ns("pca_spider_alpha"), "Spider Line Transparency:", min = 0.1, max = 1, value = 0.4, step = 0.1, width = '150px'),
-                                        sliderInput(ns("pca_spider_width"), "Spider Line Width:", min = 0.1, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                      ),
-                                      checkboxInput(ns("pca_centroid_distances"), "Show Centroid Distances", value = FALSE),
-                                      conditionalPanel(
-                                        condition = sprintf("input['%s']", ns("pca_centroid_distances")),
-                                        colourInput(ns("pca_centroid_dist_color"), "Distance Line Color:", value = "#444444", showColour = "background"),
-                                        sliderInput(ns("pca_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
-                                        sliderInput(ns("pca_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
-                                        numericInput(ns("pca_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
-                                        helpText("Distances shown are Euclidean distances between group centroids in the 2D PCA space. Not equivalent to PERMANOVA distances.")
-                                      ),
-                                      checkboxInput(ns("pca_mst"), "Show Minimum Spanning Tree", value = FALSE),
-                                      conditionalPanel(
-                                        condition = sprintf("input['%s']", ns("pca_mst")),
-                                        colourInput(ns("pca_mst_color"), "MST Line Color:", value = "#222222", showColour = "background"),
-                                        sliderInput(ns("pca_mst_alpha"), "MST Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
-                                        sliderInput(ns("pca_mst_width"), "MST Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
-                                        checkboxInput(ns("pca_mst_labels"), "Show MST Edge Distances", value = FALSE),
-                                        conditionalPanel(
-                                          condition = sprintf("input['%s']", ns("pca_mst_labels")),
-                                          numericInput(ns("pca_mst_label_size"), "MST Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
-                                        )
-                                      )
-                                    )
-                                  ),
-                                  checkboxInput(ns("pca_ellipse"), "95% Confidence Ellipses", value = FALSE),
-                                  checkboxInput(ns("pca_convex"), "Convex Hulls", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s'] || input['%s']", ns("pca_ellipse"), ns("pca_convex")),
-                                    checkboxInput(ns("pca_outline"), "Outline Ellipses/Hulls", value = FALSE)
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("pca_outline")),
-                                    sliderInput(ns("pca_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s'] || input['%s']", ns("pca_ellipse"), ns("pca_convex")),
-                                    sliderInput(ns("pca_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
-                                  ),                                  
-                                  hr(),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("pca_interactive")),
-                                    downloadButton(ns("download_pca_pdf"), "Download PDF"),
-                                    br(),
-                                    downloadButton(ns("download_pca_jpeg"), "Download JPEG"),
-                                    br()
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("pca_interactive")),
-                                    p(em("Use the camera icon in the plot toolbar to download the interactive plot."))
-                                  ),
-                                  hr()
-                           )
-                         )
-                ),
-                
-                tabPanel("PCA (3D)",
-                         fluidRow(
-                           column(9,
-                                  plotly::plotlyOutput(ns("plot_pca_3d"), height = "580px")
-                           ),
-                           column(3,
-                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
-                                  br(),
-                                  h5("Axis Selection"),
-                                  uiOutput(ns("pca_3d_x_selector")),
-                                  uiOutput(ns("pca_3d_y_selector")),
-                                  uiOutput(ns("pca_3d_z_selector")),
-                                  hr(),
-                                  numericInput(ns("pca_3d_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
-                                  sliderInput(ns("pca_3d_point_alpha"), "Point Opacity:", min = 0.1, max = 1, value = 0.8, step = 0.05, width = '150px'),
-                                  hr(),
-                                  h5("Centroids"),
-                                  checkboxInput(ns("pca_3d_centroids"), "Show Group Centroids", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("pca_3d_centroids")),
-                                    numericInput(ns("pca_3d_centroid_size"), "Centroid Size:", value = 4, min = 2, max = 20, width = '150px'),
-                                    colourInput(ns("pca_3d_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
-                                  ),
-                                  hr(),
-                                  h5("Convex Hulls"),
-                                  checkboxInput(ns("pca_3d_hull"), "Show Convex Hulls", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("pca_3d_hull")),
-                                    sliderInput(ns("pca_3d_hull_alpha"), "Hull Opacity:", min = 0.05, max = 0.5, value = 0.15, step = 0.05, width = '150px')
-                                  ),
-                                  hr(),
-                                  h5("Spider Plot"),
-                                  checkboxInput(ns("pca_3d_spider"), "Show Spider Lines", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("pca_3d_spider")),
-                                    sliderInput(ns("pca_3d_spider_alpha"), "Spider Line Opacity:", min = 0.1, max = 1, value = 0.4, step = 0.05, width = '150px'),
-                                    sliderInput(ns("pca_3d_spider_width"), "Spider Line Width:", min = 1, max = 6, value = 2, step = 1, width = '150px')
-                                  ),
-                                  hr(),
-                                  p(em("Use the camera icon in the plot toolbar to download."))
-                           )
-                         )
-                ),
-                
-                tabPanel("DAPC",
-                         fluidRow(
-                           column(9,
-                                  uiOutput(ns("dapc_plot_ui"))
-                           ),
-                           column(3,
-                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
-                                  br(),
-                                  tags$div(
-                                    style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
-                                    checkboxInput(ns("dapc_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("dapc_interactive")),
-                                    tags$div(
-                                      style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
-                                      tags$p(style = "margin: 0;", "Hover over points to see specimen IDs. Outline points, spider plot, MST, centroid distances, and theme selection are not available in interactive mode.")
-                                    )
-                                  ),
-                                  hr(),
-                                  numericInput(ns("plot_dapc_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("dapc_interactive")),
-                                    numericInput(ns("plot_dapc_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px')
-                                  ),
-                                  hr(),
-                                  uiOutput(ns("n_pca_dapc_ui")),
-                                  sliderInput(ns("n_da_dapc"), "Number of Discriminant Axes (n.da):", min = 1, max = 5, value = 2, step = 1),
-                                  numericInput(ns("dapc_point_size"), "Point Size:", value = 3, min = 1, max = 10,width = '150px'),
-                                  checkboxInput(ns("dapc_outline_points"), "Outline Points", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("dapc_outline_points")),
-                                    sliderInput(ns("dapc_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                  ),
-                                  checkboxInput(ns("dapc_centroids"), "Group Centroids", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("dapc_centroids")),
-                                    numericInput(ns("dapc_centroid_size"), "Centroid Size:", value = 4, min = 1, max = 15, width = '150px'),
-                                    colourInput(ns("dapc_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background"),
-                                    
-                                    conditionalPanel(
-                                      condition = sprintf("!input['%s']", ns("dapc_interactive")),
-                                      checkboxInput(ns("dapc_spider"), "Show Spider Plot", value = FALSE),
-                                      conditionalPanel(
-                                        condition = sprintf("input['%s']", ns("dapc_spider")),
-                                        sliderInput(ns("dapc_spider_alpha"), "Spider Line Transparency:", min = 0.1, max = 1, value = 0.4, step = 0.1, width = '150px'),
-                                        sliderInput(ns("dapc_spider_width"), "Spider Line Width:", min = 0.1, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                      ),
-                                      checkboxInput(ns("dapc_centroid_distances"), "Show Centroid Distances", value = FALSE),
-                                      conditionalPanel(
-                                        condition = sprintf("input['%s']", ns("dapc_centroid_distances")),
-                                        colourInput(ns("dapc_centroid_dist_color"), "Distance Line Color:", value = "#444444", showColour = "background"),
-                                        sliderInput(ns("dapc_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
-                                        sliderInput(ns("dapc_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
-                                        numericInput(ns("dapc_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
-                                        helpText("Distances shown are Euclidean distances in the 2D DAPC space. Not equivalent to PERMANOVA distances.")
-                                      ),
-                                      checkboxInput(ns("dapc_mst"), "Show Minimum Spanning Tree", value = FALSE),
-                                      conditionalPanel(
-                                        condition = sprintf("input['%s']", ns("dapc_mst")),
-                                        colourInput(ns("dapc_mst_color"), "MST Line Color:", value = "#222222", showColour = "background"),
-                                        sliderInput(ns("dapc_mst_alpha"), "MST Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
-                                        sliderInput(ns("dapc_mst_width"), "MST Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
-                                        checkboxInput(ns("dapc_mst_labels"), "Show MST Edge Distances", value = FALSE),
-                                        conditionalPanel(
-                                          condition = sprintf("input['%s']", ns("dapc_mst_labels")),
-                                          numericInput(ns("dapc_mst_label_size"), "MST Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
-                                        )
-                                      )
-                                    )
-                                  ),
-                                  checkboxInput(ns("dapc_ellipse"), "67% Confidence Ellipses (following adegenet)", value = FALSE),
-                                  checkboxInput(ns("dapc_convex"), "Convex Hulls", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s'] || input['%s']", ns("dapc_ellipse"), ns("dapc_convex")),
-                                    checkboxInput(ns("dapc_outline"), "Outline Ellipses/Hulls", value = FALSE)
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("dapc_outline")),
-                                    sliderInput(ns("dapc_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                  ),                                  
-                                  
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s'] || input['%s']", ns("dapc_ellipse"), ns("dapc_convex")),
-                                    sliderInput(ns("dapc_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
-                                  ),                                  
-                                  hr(),
-                                  conditionalPanel(
-                                    condition = sprintf("!input['%s']", ns("dapc_interactive")),
-                                    downloadButton(ns("download_dapc_pdf"), "Download PDF"),
-                                    br(),
-                                    downloadButton(ns("download_dapc_jpeg"), "Download JPEG")
-                                  ),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("dapc_interactive")),
-                                    p(em("Use the camera icon in the plot toolbar to download the interactive plot."))
-                                  ),
-                                  hr()
-                           )
+                tabPanel("Ordination",
+                         tabsetPanel(id = ns("visual_subtabs_ordination"),
+                                     tabPanel("PCA",
+                                              fluidRow(
+                                                column(9,
+                                                       uiOutput(ns("pca_plot_ui"))
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       tags$div(
+                                                         style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+                                                         checkboxInput(ns("pca_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("pca_interactive")),
+                                                         tags$div(
+                                                           style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
+                                                           tags$p(style = "margin: 0;", "Hover over points to see specimen IDs. Outline points, biplot arrows, spider plot, MST, centroid distances, and theme selection are not available in interactive mode.")
+                                                         )
+                                                       ),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("pca_interactive")),
+                                                         numericInput(ns("plot_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("pca_interactive")),
+                                                         numericInput(ns("plot_pca_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       h5("PC Axis Selection"),
+                                                       uiOutput(ns("pca_x_axis_selector")),
+                                                       uiOutput(ns("pca_y_axis_selector")),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("pca_interactive")),
+                                                         h5("Biplot Options"),
+                                                         checkboxInput(ns("pca_biplot"), "Show Variable Loadings (Biplot)", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("pca_biplot")),
+                                                           checkboxInput(ns("pca_biplot_labels"), "Show Variable Labels", value = TRUE),
+                                                           colourInput(ns("pca_arrow_color"), "Arrow Color:", value = "#8B0000", showColour = "background"),
+                                                           sliderInput(ns("pca_arrow_size"), "Arrow Width:", min = 0.5, max = 3, value = 1, step = 0.1, width = '150px'),
+                                                           sliderInput(ns("pca_arrow_alpha"), "Arrow Transparency:", min = 0.1, max = 1, value = 0.7, step = 0.1, width = '150px'),
+                                                           numericInput(ns("pca_label_size"), "Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                                         ),
+                                                         hr(),
+                                                       ),  # end biplot conditionalPanel
+                                                       h5("Points & Groups"),
+                                                       numericInput(ns("pca_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("pca_interactive")),
+                                                         checkboxInput(ns("pca_outline_points"), "Outline Points", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("pca_outline_points")),
+                                                           sliderInput(ns("pca_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                         )
+                                                       ),
+                                                       checkboxInput(ns("pca_centroids"), "Group Centroids", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("pca_centroids")),
+                                                         numericInput(ns("pca_centroid_size"), "Centroid Size:", value = 4, min = 1, max = 15, width = '150px'),
+                                                         colourInput(ns("pca_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("pca_interactive")),
+                                                         checkboxInput(ns("pca_spider"), "Show Spider Plot", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("pca_spider")),
+                                                           sliderInput(ns("pca_spider_alpha"), "Spider Line Transparency:", min = 0.1, max = 1, value = 0.4, step = 0.1, width = '150px'),
+                                                           sliderInput(ns("pca_spider_width"), "Spider Line Width:", min = 0.1, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                         ),
+                                                         checkboxInput(ns("pca_centroid_distances"), "Show Centroid Distances", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("pca_centroid_distances")),
+                                                           colourInput(ns("pca_centroid_dist_color"), "Distance Line Color:", value = "#444444", showColour = "background"),
+                                                           sliderInput(ns("pca_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
+                                                           sliderInput(ns("pca_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
+                                                           numericInput(ns("pca_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
+                                                           helpText("Distances shown are Euclidean distances between group centroids in the 2D PCA space. Not equivalent to PERMANOVA distances.")
+                                                         ),
+                                                         checkboxInput(ns("pca_mst"), "Show Minimum Spanning Tree", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("pca_mst")),
+                                                           colourInput(ns("pca_mst_color"), "MST Line Color:", value = "#222222", showColour = "background"),
+                                                           sliderInput(ns("pca_mst_alpha"), "MST Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
+                                                           sliderInput(ns("pca_mst_width"), "MST Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
+                                                           checkboxInput(ns("pca_mst_labels"), "Show MST Edge Distances", value = FALSE),
+                                                           conditionalPanel(
+                                                             condition = sprintf("input['%s']", ns("pca_mst_labels")),
+                                                             numericInput(ns("pca_mst_label_size"), "MST Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                                           )
+                                                         )
+                                                       ),
+                                                       checkboxInput(ns("pca_ellipse"), "95% Confidence Ellipses", value = FALSE),
+                                                       checkboxInput(ns("pca_convex"), "Convex Hulls", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s'] || input['%s']", ns("pca_ellipse"), ns("pca_convex")),
+                                                         checkboxInput(ns("pca_outline"), "Outline Ellipses/Hulls", value = FALSE)
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("pca_outline")),
+                                                         sliderInput(ns("pca_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s'] || input['%s']", ns("pca_ellipse"), ns("pca_convex")),
+                                                         sliderInput(ns("pca_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
+                                                       ),                                  
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("pca_interactive")),
+                                                         downloadButton(ns("download_pca_pdf"), "Download PDF"),
+                                                         br(),
+                                                         downloadButton(ns("download_pca_jpeg"), "Download JPEG"),
+                                                         br()
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("pca_interactive")),
+                                                         p(em("Use the camera icon in the plot toolbar to download the interactive plot."))
+                                                       ),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("PCA (3D)",
+                                              fluidRow(
+                                                column(9,
+                                                       plotly::plotlyOutput(ns("plot_pca_3d"), height = "580px")
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       h5("Axis Selection"),
+                                                       uiOutput(ns("pca_3d_x_selector")),
+                                                       uiOutput(ns("pca_3d_y_selector")),
+                                                       uiOutput(ns("pca_3d_z_selector")),
+                                                       hr(),
+                                                       numericInput(ns("pca_3d_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                                       sliderInput(ns("pca_3d_point_alpha"), "Point Opacity:", min = 0.1, max = 1, value = 0.8, step = 0.05, width = '150px'),
+                                                       hr(),
+                                                       h5("Centroids"),
+                                                       checkboxInput(ns("pca_3d_centroids"), "Show Group Centroids", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("pca_3d_centroids")),
+                                                         numericInput(ns("pca_3d_centroid_size"), "Centroid Size:", value = 4, min = 2, max = 20, width = '150px'),
+                                                         colourInput(ns("pca_3d_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
+                                                       ),
+                                                       hr(),
+                                                       h5("Convex Hulls"),
+                                                       checkboxInput(ns("pca_3d_hull"), "Show Convex Hulls", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("pca_3d_hull")),
+                                                         sliderInput(ns("pca_3d_hull_alpha"), "Hull Opacity:", min = 0.05, max = 0.5, value = 0.15, step = 0.05, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       h5("Spider Plot"),
+                                                       checkboxInput(ns("pca_3d_spider"), "Show Spider Lines", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("pca_3d_spider")),
+                                                         sliderInput(ns("pca_3d_spider_alpha"), "Spider Line Opacity:", min = 0.1, max = 1, value = 0.4, step = 0.05, width = '150px'),
+                                                         sliderInput(ns("pca_3d_spider_width"), "Spider Line Width:", min = 1, max = 6, value = 2, step = 1, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       p(em("Use the camera icon in the plot toolbar to download."))
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("DAPC",
+                                              fluidRow(
+                                                column(9,
+                                                       uiOutput(ns("dapc_plot_ui"))
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       tags$div(
+                                                         style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+                                                         checkboxInput(ns("dapc_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("dapc_interactive")),
+                                                         tags$div(
+                                                           style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
+                                                           tags$p(style = "margin: 0;", "Hover over points to see specimen IDs. Outline points, spider plot, MST, centroid distances, and theme selection are not available in interactive mode.")
+                                                         )
+                                                       ),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("dapc_interactive")),
+                                                         numericInput(ns("plot_dapc_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("dapc_interactive")),
+                                                         numericInput(ns("plot_dapc_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       uiOutput(ns("n_pca_dapc_ui")),
+                                                       numericInput(ns("dapc_point_size"), "Point Size:", value = 3, min = 1, max = 10,width = '150px'),
+                                                       checkboxInput(ns("dapc_outline_points"), "Outline Points", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("dapc_outline_points")),
+                                                         sliderInput(ns("dapc_point_stroke"), "Point Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                       ),
+                                                       checkboxInput(ns("dapc_centroids"), "Group Centroids", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("dapc_centroids")),
+                                                         numericInput(ns("dapc_centroid_size"), "Centroid Size:", value = 4, min = 1, max = 15, width = '150px'),
+                                                         colourInput(ns("dapc_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("dapc_interactive")),
+                                                         checkboxInput(ns("dapc_spider"), "Show Spider Plot", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("dapc_spider")),
+                                                           sliderInput(ns("dapc_spider_alpha"), "Spider Line Transparency:", min = 0.1, max = 1, value = 0.4, step = 0.1, width = '150px'),
+                                                           sliderInput(ns("dapc_spider_width"), "Spider Line Width:", min = 0.1, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                         ),
+                                                         checkboxInput(ns("dapc_centroid_distances"), "Show Centroid Distances", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("dapc_centroid_distances")),
+                                                           colourInput(ns("dapc_centroid_dist_color"), "Distance Line Color:", value = "#444444", showColour = "background"),
+                                                           sliderInput(ns("dapc_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
+                                                           sliderInput(ns("dapc_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
+                                                           numericInput(ns("dapc_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
+                                                           helpText("Distances shown are Euclidean distances in the 2D DAPC space. Not equivalent to PERMANOVA distances.")
+                                                         ),
+                                                         checkboxInput(ns("dapc_mst"), "Show Minimum Spanning Tree", value = FALSE),
+                                                         conditionalPanel(
+                                                           condition = sprintf("input['%s']", ns("dapc_mst")),
+                                                           colourInput(ns("dapc_mst_color"), "MST Line Color:", value = "#222222", showColour = "background"),
+                                                           sliderInput(ns("dapc_mst_alpha"), "MST Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
+                                                           sliderInput(ns("dapc_mst_width"), "MST Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
+                                                           checkboxInput(ns("dapc_mst_labels"), "Show MST Edge Distances", value = FALSE),
+                                                           conditionalPanel(
+                                                             condition = sprintf("input['%s']", ns("dapc_mst_labels")),
+                                                             numericInput(ns("dapc_mst_label_size"), "MST Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px')
+                                                           )
+                                                         )
+                                                       ),
+                                                       checkboxInput(ns("dapc_ellipse"), "67% Confidence Ellipses (following adegenet)", value = FALSE),
+                                                       checkboxInput(ns("dapc_convex"), "Convex Hulls", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s'] || input['%s']", ns("dapc_ellipse"), ns("dapc_convex")),
+                                                         checkboxInput(ns("dapc_outline"), "Outline Ellipses/Hulls", value = FALSE)
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("dapc_outline")),
+                                                         sliderInput(ns("dapc_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                       ),                                  
+                                                       
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s'] || input['%s']", ns("dapc_ellipse"), ns("dapc_convex")),
+                                                         sliderInput(ns("dapc_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
+                                                       ),                                  
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("dapc_interactive")),
+                                                         downloadButton(ns("download_dapc_pdf"), "Download PDF"),
+                                                         br(),
+                                                         downloadButton(ns("download_dapc_jpeg"), "Download JPEG")
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("dapc_interactive")),
+                                                         p(em("Use the camera icon in the plot toolbar to download the interactive plot."))
+                                                       ),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("DAPC (3D)",
+                                              fluidRow(
+                                                column(9,
+                                                       plotly::plotlyOutput(ns("plot_dapc_3d"), height = "580px")
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       uiOutput(ns("dapc_3d_status_ui")),
+                                                       hr(),
+                                                       numericInput(ns("dapc_3d_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
+                                                       sliderInput(ns("dapc_3d_point_alpha"), "Point Opacity:", min = 0.1, max = 1, value = 0.8, step = 0.05, width = '150px'),
+                                                       hr(),
+                                                       h5("Centroids"),
+                                                       checkboxInput(ns("dapc_3d_centroids"), "Show Group Centroids", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("dapc_3d_centroids")),
+                                                         numericInput(ns("dapc_3d_centroid_size"), "Centroid Size:", value = 4, min = 2, max = 20, width = '150px'),
+                                                         colourInput(ns("dapc_3d_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
+                                                       ),
+                                                       hr(),
+                                                       h5("Convex Hulls"),
+                                                       checkboxInput(ns("dapc_3d_hull"), "Show Convex Hulls", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("dapc_3d_hull")),
+                                                         sliderInput(ns("dapc_3d_hull_alpha"), "Hull Opacity:", min = 0.05, max = 0.5, value = 0.15, step = 0.05, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       h5("Spider Plot"),
+                                                       checkboxInput(ns("dapc_3d_spider"), "Show Spider Lines", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("dapc_3d_spider")),
+                                                         sliderInput(ns("dapc_3d_spider_alpha"), "Spider Line Opacity:", min = 0.1, max = 1, value = 0.4, step = 0.05, width = '150px'),
+                                                         sliderInput(ns("dapc_3d_spider_width"), "Spider Line Width:", min = 1, max = 6, value = 2, step = 1, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       p(em("Use the camera icon in the plot toolbar to download."))
+                                                )
+                                              )
+                                     ),
+                                     
                          )
                 ),
                 
                 tabPanel("Morphometric Delimitation",
-                         tabsetPanel(
-                           id = ns("species_delim_subtab"),
-                           
-                           tabPanel("Unsupervised Clustering (Model Comparison)",
-                                    fluidRow(
-                                      column(9,
-                                             plotOutput(ns("plot_species_bic"))
-                                      ),
-                                      column(3,
-                                             br(),
-                                             numericInput(ns("plot_species_bic_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                             numericInput(ns("plot_species_bic_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
-                                             hr(),
-                                             downloadButton(ns("download_species_bic_pdf"), "Download PDF"),
-                                             br(),
-                                             downloadButton(ns("download_species_bic_jpeg"), "Download JPEG"),
-                                             hr()
-                                      )
-                                    )
-                           ),
-                           
-                           tabPanel("Unsupervised Clustering (PCA Clusters)",
-                                    fluidRow(
-                                      column(9,
-                                             uiOutput(ns("species_pca_plot_ui"))
-                                      ),
-                                      column(3,
-                                             br(),
-                                             tags$div(
-                                               style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
-                                               checkboxInput(ns("species_pca_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
-                                             ),
-                                             conditionalPanel(
-                                               condition = sprintf("input['%s']", ns("species_pca_interactive")),
-                                               tags$div(
-                                                 style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
-                                                 tags$p(style = "margin: 0;", "Hover over points to see specimen IDs, species, and cluster assignment. Outline points and ellipse/hull outlines are not available in interactive mode.")
-                                               )
-                                             ),
-                                             hr(),
-                                             numericInput(ns("plot_species_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                             conditionalPanel(
-                                               condition = sprintf("!input['%s']", ns("species_pca_interactive")),
-                                               numericInput(ns("plot_species_pca_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px')
-                                             ),
-                                             hr(),
-                                             uiOutput(ns("species_model_selector")),
-                                             hr(),
-                                             numericInput(ns("species_pca_point_size"), "Point Size:", value = 4, min = 1, max = 10, width = '150px'),
-                                             checkboxInput(ns("species_pca_ellipse"), "95% Confidence Ellipses", value = FALSE),
-                                             checkboxInput(ns("species_pca_convex"), "Convex Hulls", value = FALSE),
-                                             conditionalPanel(
-                                               condition = sprintf("input['%s'] || input['%s']", ns("species_pca_ellipse"), ns("species_pca_convex")),
-                                               checkboxInput(ns("species_pca_outline"), "Outline Ellipses/Hulls", value = FALSE)
-                                             ),
-                                             conditionalPanel(
-                                               condition = sprintf("input['%s']", ns("species_pca_outline")),
-                                               sliderInput(ns("species_pca_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
-                                             ),
-                                             conditionalPanel(
-                                               condition = sprintf("input['%s'] || input['%s']", ns("species_pca_ellipse"), ns("species_pca_convex")),
-                                               sliderInput(ns("species_pca_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
-                                             ),
-                                             hr(),
-                                             conditionalPanel(
-                                               condition = sprintf("!input['%s']", ns("species_pca_interactive")),
-                                               downloadButton(ns("download_species_pca_pdf"), "Download PDF"),
-                                               br(),
-                                               downloadButton(ns("download_species_pca_jpeg"), "Download JPEG")
-                                             ),
-                                             conditionalPanel(
-                                               condition = sprintf("input['%s']", ns("species_pca_interactive")),
-                                               p(em("Use the camera icon in the plot toolbar to download."))
-                                             ),
-                                             hr()
-                                      )
-                                    )
-                           ),
-                           
-                           tabPanel("Diagnostic Characters (Ridge Plot)",
-                                    fluidRow(
-                                      column(9,
-                                             plotOutput(ns("plot_boruta_ridge"))
-                                      ),
-                                      column(3,
-                                             br(),
-                                             numericInput(ns("plot_boruta_ridge_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                             numericInput(ns("plot_boruta_ridge_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
-                                             hr(),
-                                             numericInput(ns("boruta_ridge_scale"), "Ridge Scale:", value = 4, min = 1, max = 10, step = 0.5, width = '150px'),
-                                             sliderInput(ns("boruta_ridge_alpha"), "Fill Transparency:", min = 0, max = 1, value = 0.5, step = 0.05, width = '150px'),
-                                             hr(),
-                                             downloadButton(ns("download_boruta_ridge_pdf"), "Download PDF"),
-                                             br(),
-                                             downloadButton(ns("download_boruta_ridge_jpeg"), "Download JPEG"),
-                                             hr()
-                                      )
-                                    )
-                           ),
-                           
-                           tabPanel("Diagnostic Characters (Box Plot)",
-                                    fluidRow(
-                                      column(9,
-                                             plotOutput(ns("plot_boruta_box"))
-                                      ),
-                                      column(3,
-                                             br(),
-                                             numericInput(ns("plot_boruta_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
-                                             numericInput(ns("plot_boruta_box_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
-                                             hr(),
-                                             downloadButton(ns("download_boruta_box_pdf"), "Download PDF"),
-                                             br(),
-                                             downloadButton(ns("download_boruta_box_jpeg"), "Download JPEG"),
-                                             hr()
-                                      )
-                                    )
-                           )
+                         tabsetPanel(id = ns("species_delim_subtab"),
+                                     
+                                     tabPanel("Unsupervised Clustering (Model Comparison)",
+                                              fluidRow(
+                                                column(9,
+                                                       plotOutput(ns("plot_species_bic"))
+                                                ),
+                                                column(3,
+                                                       br(),
+                                                       numericInput(ns("plot_species_bic_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                                       numericInput(ns("plot_species_bic_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
+                                                       hr(),
+                                                       downloadButton(ns("download_species_bic_pdf"), "Download PDF"),
+                                                       br(),
+                                                       downloadButton(ns("download_species_bic_jpeg"), "Download JPEG"),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("Unsupervised Clustering (PCA Clusters)",
+                                              fluidRow(
+                                                column(9,
+                                                       tags$div(
+                                                         style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 10px 0 5px 0; font-size: 0.9em;",
+                                                         tags$p(style = "margin: 0;",
+                                                                icon("info-circle"),
+                                                                strong(" Note:"),
+                                                                "GMM cluster assignments overlaid on a PCA plot.",
+                                                                "Colors represent clusters inferred from the data;",
+                                                                "shapes represent original OTU labels.")
+                                                       ),
+                                                       uiOutput(ns("species_pca_plot_ui"))
+                                                ),
+                                                column(3,
+                                                       br(),
+                                                       tags$div(
+                                                         style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+                                                         checkboxInput(ns("species_pca_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("species_pca_interactive")),
+                                                         tags$div(
+                                                           style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
+                                                           tags$p(style = "margin: 0;", "Hover over points to see specimen IDs, species, and cluster assignment. Outline points and ellipse/hull outlines are not available in interactive mode.")
+                                                         )
+                                                       ),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("species_pca_interactive")),
+                                                         numericInput(ns("plot_species_pca_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("species_pca_interactive")),
+                                                         numericInput(ns("plot_species_pca_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       uiOutput(ns("species_model_selector")),
+                                                       uiOutput(ns("species_pca_x_selector")),
+                                                       uiOutput(ns("species_pca_y_selector")),
+                                                       hr(),
+                                                       numericInput(ns("species_pca_point_size"), "Point Size:", value = 4, min = 1, max = 10, width = '150px'),
+                                                       checkboxInput(ns("species_pca_centroids"), "Cluster Centroids", value = FALSE),
+                                                       checkboxInput(ns("species_pca_ellipse"), "95% Confidence Ellipses", value = FALSE),
+                                                       checkboxInput(ns("species_pca_convex"), "Convex Hulls", value = FALSE),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s'] || input['%s']", ns("species_pca_ellipse"), ns("species_pca_convex")),
+                                                         checkboxInput(ns("species_pca_outline"), "Outline Ellipses/Hulls", value = FALSE)
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("species_pca_outline")),
+                                                         sliderInput(ns("species_pca_outline_stroke"), "Ellipse/Hull Outline Width", min = 0, max = 2, value = 0.5, step = 0.1, width = '150px')
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s'] || input['%s']", ns("species_pca_ellipse"), ns("species_pca_convex")),
+                                                         sliderInput(ns("species_pca_alpha_ellipse"), "Ellipse/Hull Fill Transparency", min = 0, max = 1, value = 0.3, step = 0.05, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("species_pca_interactive")),
+                                                         downloadButton(ns("download_species_pca_pdf"), "Download PDF"),
+                                                         br(),
+                                                         downloadButton(ns("download_species_pca_jpeg"), "Download JPEG")
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("species_pca_interactive")),
+                                                         p(em("Use the camera icon in the plot toolbar to download."))
+                                                       ),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("Unsupervised Clustering (OTU Correspondence)",
+                                              fluidRow(
+                                                column(9,
+                                                       tags$div(
+                                                         style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 10px 0 5px 0; font-size: 0.9em;",
+                                                         tags$p(style = "margin: 0;",
+                                                                icon("info-circle"),
+                                                                strong(" Note:"),
+                                                                "Proportion of each OTU\u2019s specimens assigned to each unsupervised cluster.",
+                                                                "Darker blue = higher proportion. Each row (OTU) sums to 1.")
+                                                       ),
+                                                       uiOutput(ns("species_post_heatmap_ui"))
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       numericInput(ns("plot_species_post_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                                       numericInput(ns("plot_species_post_width"),  "Plot Width (px)",  value = 600, min = 200, step = 50, width = '150px'),
+                                                       hr(),
+                                                       sliderInput(ns("species_post_text_size"), "Cell Label Size:", min = 2, max = 8, value = 4, step = 0.5, width = '150px'),
+                                                       checkboxInput(ns("species_post_show_zeros"), "Show 0.00 cells", value = FALSE),
+                                                       hr(),
+                                                       downloadButton(ns("download_species_post_pdf"),  "Download PDF"),
+                                                       br(),
+                                                       downloadButton(ns("download_species_post_jpeg"), "Download JPEG"),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("Topology-aware Hypothesis Testing",
+                                              fluidRow(
+                                                column(9,
+                                                       style = "padding-top: 0;",
+                                                       tags$div(
+                                                         style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 0 0 5px 0; font-size: 0.9em;",
+                                                         tags$p(style = "margin: 0;",
+                                                                icon("info-circle"),
+                                                                strong(" Note:"),
+                                                                "Reference tree with top-ranked hypotheses shown as colored rectangles.",
+                                                                "Each column = one hypothesis (BIC-ranked left to right).",
+                                                                "Grey = not lumped with any other taxon; colors = lumped clades.")
+                                                       ),
+                                                       uiOutput(ns("morpho_phylo_tree_plot_ui"))
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-top: 10px; padding-right: 15px;",
+                                                       numericInput(ns("plot_morpho_phylo_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                                       numericInput(ns("plot_morpho_phylo_width"),  "Plot Width (px)",  value = 600, min = 200, step = 50, width = '150px'),
+                                                       hr(),
+                                                       numericInput(ns("morpho_phylo_hyp_n_top"),
+                                                                    "Hypotheses to show:",
+                                                                    value = 3, min = 1, max = 20, step = 1, width = "150px"),
+                                                       sliderInput(ns("morpho_phylo_tip_label_size"), "Tip label size:", min = 1, max = 6, value = 3, step = 0.5, width = "150px"),
+                                                       sliderInput(ns("morpho_phylo_rect_alpha"), "Rectangle opacity:", min = 0.3, max = 1, value = 0.80, step = 0.05, width = "150px"),
+                                                       hr(),
+                                                       downloadButton(ns("download_morpho_phylo_tree_pdf"),  "Download PDF"),
+                                                       br(),
+                                                       downloadButton(ns("download_morpho_phylo_tree_jpeg"), "Download JPEG"),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("User-specified Hypothesis Testing",
+                                              fluidRow(
+                                                column(9,
+                                                       tags$div(
+                                                         style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 10px; margin: 10px 0 5px 0; font-size: 0.9em;",
+                                                         tags$p(style = "margin: 0;",
+                                                                icon("info-circle"),
+                                                                strong(" Note:"),
+                                                                "Specimens colored by their grouping under the selected user-specified hypothesis, overlaid on a PCA plot.")
+                                                       ),
+                                                       uiOutput(ns("species_hyp_plot_ui"))
+                                                ),
+                                                column(3,
+                                                       style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
+                                                       br(),
+                                                       tags$div(
+                                                         style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+                                                         checkboxInput(ns("species_hyp_interactive"), tags$strong("\U0001f5b1 Interactive Mode"), value = FALSE)
+                                                       ),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("species_hyp_interactive")),
+                                                         numericInput(ns("plot_species_hyp_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                                         numericInput(ns("plot_species_hyp_width"),  "Plot Width (px)",  value = 600, min = 200, step = 50, width = '150px')
+                                                       ),
+                                                       hr(),
+                                                       uiOutput(ns("species_hyp_selector")),
+                                                       uiOutput(ns("species_hyp_x_selector")),
+                                                       uiOutput(ns("species_hyp_y_selector")),
+                                                       hr(),
+                                                       numericInput(ns("species_hyp_point_size"), "Point Size:", value = 4, min = 1, max = 10, width = '150px'),
+                                                       checkboxInput(ns("species_hyp_centroids"), "Cluster Centroids", value = FALSE),
+                                                       checkboxInput(ns("species_hyp_ellipse"), "95% Confidence Ellipses", value = FALSE),
+                                                       checkboxInput(ns("species_hyp_convex"),  "Convex Hulls", value = FALSE),
+                                                       hr(),
+                                                       conditionalPanel(
+                                                         condition = sprintf("!input['%s']", ns("species_hyp_interactive")),
+                                                         downloadButton(ns("download_species_hyp_pdf"),  "Download PDF"),
+                                                         br(),
+                                                         downloadButton(ns("download_species_hyp_jpeg"), "Download JPEG")
+                                                       ),
+                                                       conditionalPanel(
+                                                         condition = sprintf("input['%s']", ns("species_hyp_interactive")),
+                                                         p(em("Use the camera icon in the plot toolbar to download."))
+                                                       ),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     tabPanel("Diagnostic Characters (Ridge Plot)",
+                                              fluidRow(
+                                                column(9,
+                                                       plotOutput(ns("plot_boruta_ridge"))
+                                                ),
+                                                column(3,
+                                                       br(),
+                                                       numericInput(ns("plot_boruta_ridge_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                                       numericInput(ns("plot_boruta_ridge_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
+                                                       hr(),
+                                                       numericInput(ns("boruta_ridge_scale"), "Ridge Scale:", value = 4, min = 1, max = 10, step = 0.5, width = '150px'),
+                                                       sliderInput(ns("boruta_ridge_alpha"), "Fill Transparency:", min = 0, max = 1, value = 0.5, step = 0.05, width = '150px'),
+                                                       hr(),
+                                                       downloadButton(ns("download_boruta_ridge_pdf"), "Download PDF"),
+                                                       br(),
+                                                       downloadButton(ns("download_boruta_ridge_jpeg"), "Download JPEG"),
+                                                       hr()
+                                                )
+                                              )
+                                     ),
+                                     
+                                     tabPanel("Diagnostic Characters (Box Plot)",
+                                              fluidRow(
+                                                column(9,
+                                                       plotOutput(ns("plot_boruta_box"))
+                                                ),
+                                                column(3,
+                                                       br(),
+                                                       numericInput(ns("plot_boruta_box_height"), "Plot Height (px)", value = 500, min = 200, step = 50, width = '150px'),
+                                                       numericInput(ns("plot_boruta_box_width"), "Plot Width (px)", value = 600, min = 200, step = 50, width = '150px'),
+                                                       hr(),
+                                                       downloadButton(ns("download_boruta_box_pdf"), "Download PDF"),
+                                                       br(),
+                                                       downloadButton(ns("download_boruta_box_jpeg"), "Download JPEG"),
+                                                       hr()
+                                                )
+                                              )
+                                     )
                          )
                 )
+                
     )
   )
 }
-
 
 mod_visual_server_morphometric <- function(id, dataset,
                                            plot_palette, plot_theme,
@@ -518,7 +728,11 @@ mod_visual_server_morphometric <- function(id, dataset,
                                            manual_colors_r,
                                            specimen_ids_r = NULL,
                                            species_delim_results_r = reactive(NULL),
-                                           boruta_results_r = reactive(NULL)) {
+                                           boruta_results_r = reactive(NULL),
+                                           bayesian_models_r = reactive(NULL),
+                                           morpho_phylo_results_r = reactive(NULL),
+                                           morpho_phylo_tree_r = reactive(NULL),
+                                           morpho_phylo_sup_r = reactive(NULL)) {
   
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
@@ -536,12 +750,160 @@ mod_visual_server_morphometric <- function(id, dataset,
       )
     })
     
-    output$n_pca_dapc_ui <- renderUI({
+    # =========================================================================
+    # DAPC: PC SELECTION SYSTEM
+    # =========================================================================
+    
+    # Shared data preparation for all DAPC reactives
+    dapc_input_data <- reactive({
       req(dataset())
-      n_traits <- ncol(dataset()) - 1
-      sliderInput(ns("n_pca_dapc"), "Number of PCA Components (n.pca). Download the PCA summary table from the PCA tab in Inferential Statistics and retain the number of PCs that explain 80-90% of total variance:",
-                  min = 1, max = n_traits, value = min(5, n_traits), step = 1)
+      df      <- dataset()
+      otu_col <- names(df)[1]
+      data_mat <- as.data.frame(lapply(df[, -1, drop = FALSE], as.numeric))
+      complete_rows  <- complete.cases(data_mat)
+      data_for_dapc  <- data_mat[complete_rows, , drop = FALSE]
+      group_for_dapc <- as.factor(df[[otu_col]][complete_rows])
+      n_groups  <- dplyr::n_distinct(group_for_dapc)
+      max_n_pca <- max(1L, min(ncol(data_for_dapc), nrow(data_for_dapc) - 1L))
+      list(df = df, otu_col = otu_col, data_mat = data_mat,
+           complete_rows = complete_rows, data_for_dapc = data_for_dapc,
+           group_for_dapc = group_for_dapc, n_groups = n_groups,
+           max_n_pca = max_n_pca)
     })
+    
+    # PCA cumulative variance (for variance threshold method)
+    dapc_pca_variance_r <- reactive({
+      x <- dapc_input_data()
+      if (nrow(x$data_for_dapc) < 2 || ncol(x$data_for_dapc) < 2) return(NULL)
+      pca <- stats::prcomp(x$data_for_dapc, center = TRUE, scale. = TRUE)
+      data.frame(pc         = seq_along(pca$sdev),
+                 cumulative = cumsum(pca$sdev^2 / sum(pca$sdev^2)))
+    })
+    
+    # Unified PC selector — only two deterministic methods
+    dapc_selected_n_pca <- reactive({
+      x      <- dapc_input_data()
+      method <- input$dapc_pc_method %||% "Variance threshold"
+      if (method == "Manual") {
+        return(max(1L, min(x$max_n_pca,
+                           as.integer(input$n_pca_dapc_manual %||% min(5L, x$max_n_pca)))))
+      }
+      # Variance threshold (default)
+      pca_var   <- dapc_pca_variance_r()
+      req(!is.null(pca_var))
+      threshold <- (input$dapc_var_threshold %||% 80) / 100
+      idx       <- which(pca_var$cumulative >= threshold)[1]
+      idx       <- if (is.na(idx) || is.null(idx)) nrow(pca_var) else idx
+      max(1L, min(x$max_n_pca, idx))
+    })
+    
+    # PC selection UI — reads ONLY dapc_input_data() to avoid circular dependency
+    output$n_pca_dapc_ui <- renderUI({
+      x <- dapc_input_data()
+      tagList(
+        tags$div(
+          style = "background-color: #d1ecf1; border-left: 4px solid #0c5460; padding: 8px; margin-bottom: 8px; border-radius: 3px; font-size: 0.85em;",
+          tags$p(style = "margin: 0;",
+                 strong("Number of discriminant axes (n.da) is set automatically"), " to G\u22121. ",
+                 "Only the number of PCA components retained before the DA step needs to be chosen.")
+        ),
+        tags$div(
+          style = "background-color: #f8f9fa; border-left: 4px solid #6c757d; padding: 8px; margin-bottom: 8px; border-radius: 3px; font-size: 0.82em;",
+          tags$p(style = "margin: 0 0 4px 0;", strong("Choosing the number of principal components to retain (n.pca):")),
+          tags$p(style = "margin: 0;",
+                 tags$b("Too few PCs"), " \u2014 discriminant signal is lost; groups appear artificially compressed.",
+                 tags$br(),
+                 tags$b("Too many PCs"), " \u2014 noise enters the analysis; groups appear artificially separated and results may not generalise.",
+                 tags$br(),
+                 tags$b("Recommendation:"), " start at 80% and check whether the plot changes meaningfully at 70% and 90%. If the grouping is stable across that range, the result is robust."
+          )
+        ),
+        selectInput(ns("dapc_pc_method"), "Retain PCs by:",
+                    choices  = c("Variance threshold", "Manual"),
+                    selected = "Variance threshold",
+                    width    = "200px"),
+        conditionalPanel(
+          condition = sprintf("input['%s'] == 'Variance threshold'", ns("dapc_pc_method")),
+          sliderInput(ns("dapc_var_threshold"), "Cumulative variance threshold (%)",
+                      min = 70, max = 100, value = 80, step = 5, width = "220px"),
+          textOutput(ns("dapc_threshold_status"))
+        ),
+        conditionalPanel(
+          condition = sprintf("input['%s'] == 'Manual'", ns("dapc_pc_method")),
+          sliderInput(ns("n_pca_dapc_manual"), "Number of PCA components (n.pca)",
+                      min = 1, max = x$max_n_pca, value = min(5, x$max_n_pca),
+                      step = 1, width = "220px")
+        ),
+        hr(),
+        htmlOutput(ns("dapc_retained_summary"))
+      )
+    })
+    
+    output$dapc_threshold_status <- renderText({
+      x       <- dapc_input_data()
+      pca_var <- dapc_pca_variance_r()
+      req(!is.null(pca_var))
+      threshold <- (input$dapc_var_threshold %||% 80) / 100
+      idx <- which(pca_var$cumulative >= threshold)[1]
+      idx <- if (is.na(idx) || is.null(idx)) nrow(pca_var) else idx
+      idx <- max(1L, min(x$max_n_pca, idx))
+      paste0(round(threshold * 100), "% cumulative variance retains ", idx, " PCs.")
+    })
+    
+    output$dapc_retained_summary <- renderUI({
+      x        <- dapc_input_data()
+      method   <- input$dapc_pc_method %||% "Variance threshold"
+      retained <- tryCatch(dapc_selected_n_pca(), error = function(e) NULL)
+      n_da_used <- min(x$n_groups - 1L, 2L)
+      HTML(paste0(
+        "<strong>Groups (G):</strong> ", x$n_groups, "<br>",
+        "<strong>n.pca retained:</strong> ", retained %||% "<em>unknown</em>", "<br>",
+        "<strong>n.da (auto):</strong> ", n_da_used, " (G\u22121, capped at 2)", "<br>",
+        "<strong>PC selection method:</strong> ", method
+      ))
+    })
+    
+    output$dapc_3d_status_ui <- renderUI({
+      x <- dapc_input_data()
+      available_ld <- max(0L, x$n_groups - 1L)
+      if (available_ld >= 3L) {
+        tags$div(
+          style = "background-color: #e8f4f8; border-left: 4px solid #17a2b8; padding: 10px; margin-bottom: 5px; border-radius: 3px;",
+          tags$p(style = "margin: 0;",
+                 paste0("3D DAPC is available. LD1\u2013LD3 will be shown (",
+                        available_ld, " discriminant axes available)."))
+        )
+      } else {
+        tags$div(
+          style = "background-color: #fff3cd; border-left: 3px solid #ffc107; padding: 8px; margin-bottom: 8px; font-size: 0.85em;",
+          tags$p(style = "margin: 0;",
+                 paste0("3D DAPC requires at least 3 discriminant axes (i.e. \u22654 groups). ",
+                        "Current data allow ", available_ld, "."))
+        )
+      }
+    })
+    
+    # Shared DAPC fitting function — avoids running adegenet::dapc() separately
+    # for the static plot, the plotly plot, and the 3D plot.
+    run_dapc_model <- function(n_da_target = 2L) {
+      x <- dapc_input_data()
+      if (nrow(x$data_for_dapc) < 2 || ncol(x$data_for_dapc) < 2 || x$n_groups < 2) return(NULL)
+      n_pca_use <- tryCatch(dapc_selected_n_pca(), error = function(e) NULL)
+      if (is.null(n_pca_use)) {
+        return(structure(list(message = "Adjust the variance threshold or select Manual to set n.pca."),
+                         class = "dapc_waiting"))
+      }
+      n_da_use <- min(n_da_target, x$n_groups - 1L)
+      if (n_da_use < 1L) return(NULL)
+      tryCatch(
+        adegenet::dapc(x$data_for_dapc, x$group_for_dapc,
+                       n.pca = n_pca_use, n.da = n_da_use),
+        error = function(e) structure(list(message = e$message), class = "dapc_error")
+      )
+    }
+    
+    dapc_results_2d_r <- reactive({ run_dapc_model(2L) })
+    dapc_results_3d_r <- reactive({ run_dapc_model(3L) })
     
     output$box_variable_selector <- renderUI({
       req(dataset())
@@ -1051,85 +1413,85 @@ mod_visual_server_morphometric <- function(id, dataset,
         }
       }
       
-      if (isTRUE(input$pca_centroids)) {
-        centroids <- pca_df %>%
-          dplyr::group_by(Group) %>%
-          dplyr::summarize(
-            x_cent = mean(.data[[pc_x]]),
-            y_cent = mean(.data[[pc_y]]),
-            .groups = "drop"
-          )
+      # Always compute centroids — needed by spider, MST, and centroid distances
+      centroids <- pca_df %>%
+        dplyr::group_by(Group) %>%
+        dplyr::summarize(
+          x_cent = mean(.data[[pc_x]]),
+          y_cent = mean(.data[[pc_y]]),
+          .groups = "drop"
+        )
+      
+      # Spider plot — draw first so lines sit beneath all other layers
+      if (isTRUE(input$pca_spider)) {
+        spider_df <- pca_df %>%
+          dplyr::left_join(centroids, by = "Group")
         
-        centroid_size <- if (!is.null(input$pca_centroid_size)) input$pca_centroid_size else 4
+        p <- p + ggplot2::geom_segment(
+          data = spider_df,
+          aes(
+            x     = .data[[pc_x]],
+            y     = .data[[pc_y]],
+            xend  = x_cent,
+            yend  = y_cent,
+            color = Group
+          ),
+          alpha       = input$pca_spider_alpha,
+          linewidth   = input$pca_spider_width,
+          inherit.aes = FALSE,
+          show.legend = FALSE
+        ) +
+          get_color_scale(plot_palette())
+      }
+      
+      # MST — draw above spider lines but beneath centroid points
+      if (isTRUE(input$pca_mst) && nrow(centroids) >= 2) {
+        cent_mat <- as.matrix(dist(centroids[, c("x_cent", "y_cent")]))
+        rownames(cent_mat) <- centroids$Group
+        colnames(cent_mat) <- centroids$Group
         
-        # Spider plot — draw first so lines sit beneath all other layers
-        if (isTRUE(input$pca_spider)) {
-          spider_df <- pca_df %>%
-            dplyr::left_join(centroids, by = "Group")
-          
-          p <- p + ggplot2::geom_segment(
-            data = spider_df,
-            aes(
-              x     = .data[[pc_x]],
-              y     = .data[[pc_y]],
-              xend  = x_cent,
-              yend  = y_cent,
-              color = Group
-            ),
-            alpha       = input$pca_spider_alpha,
-            linewidth   = input$pca_spider_width,
-            inherit.aes = FALSE,
-            show.legend = FALSE
-          ) +
-            get_color_scale(plot_palette())
-        }
+        mst_obj  <- ape::mst(cent_mat)
+        mst_idx  <- which(mst_obj == 1, arr.ind = TRUE)
+        mst_idx  <- mst_idx[mst_idx[, 1] < mst_idx[, 2], , drop = FALSE]
         
-        # MST — draw above spider lines but beneath centroid points
-        if (isTRUE(input$pca_mst) && nrow(centroids) >= 2) {
-          cent_mat <- as.matrix(dist(centroids[, c("x_cent", "y_cent")]))
-          rownames(cent_mat) <- centroids$Group
-          colnames(cent_mat) <- centroids$Group
-          
-          mst_obj  <- ape::mst(cent_mat)
-          mst_idx  <- which(mst_obj == 1, arr.ind = TRUE)
-          mst_idx  <- mst_idx[mst_idx[, 1] < mst_idx[, 2], , drop = FALSE]
-          
-          mst_df <- data.frame(
-            x_start  = centroids$x_cent[mst_idx[, 1]],
-            y_start  = centroids$y_cent[mst_idx[, 1]],
-            x_end    = centroids$x_cent[mst_idx[, 2]],
-            y_end    = centroids$y_cent[mst_idx[, 2]],
-            x_mid    = (centroids$x_cent[mst_idx[, 1]] + centroids$x_cent[mst_idx[, 2]]) / 2,
-            y_mid    = (centroids$y_cent[mst_idx[, 1]] + centroids$y_cent[mst_idx[, 2]]) / 2,
-            distance = round(sqrt(
-              (centroids$x_cent[mst_idx[, 2]] - centroids$x_cent[mst_idx[, 1]])^2 +
-                (centroids$y_cent[mst_idx[, 2]] - centroids$y_cent[mst_idx[, 1]])^2
-            ), 3)
-          )
-          
-          p <- p + ggplot2::geom_segment(
+        mst_df <- data.frame(
+          x_start  = centroids$x_cent[mst_idx[, 1]],
+          y_start  = centroids$y_cent[mst_idx[, 1]],
+          x_end    = centroids$x_cent[mst_idx[, 2]],
+          y_end    = centroids$y_cent[mst_idx[, 2]],
+          x_mid    = (centroids$x_cent[mst_idx[, 1]] + centroids$x_cent[mst_idx[, 2]]) / 2,
+          y_mid    = (centroids$y_cent[mst_idx[, 1]] + centroids$y_cent[mst_idx[, 2]]) / 2,
+          distance = round(sqrt(
+            (centroids$x_cent[mst_idx[, 2]] - centroids$x_cent[mst_idx[, 1]])^2 +
+              (centroids$y_cent[mst_idx[, 2]] - centroids$y_cent[mst_idx[, 1]])^2
+          ), 3)
+        )
+        
+        p <- p + ggplot2::geom_segment(
+          data = mst_df,
+          aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
+          color       = input$pca_mst_color,
+          alpha       = input$pca_mst_alpha,
+          linewidth   = input$pca_mst_width,
+          inherit.aes = FALSE
+        )
+        
+        if (isTRUE(input$pca_mst_labels)) {
+          p <- p + ggplot2::geom_label(
             data = mst_df,
-            aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
-            color       = input$pca_mst_color,
-            alpha       = input$pca_mst_alpha,
-            linewidth   = input$pca_mst_width,
-            inherit.aes = FALSE
+            aes(x = x_mid, y = y_mid, label = distance),
+            size          = input$pca_mst_label_size,
+            color         = "black",
+            fill          = "white",
+            label.padding = ggplot2::unit(0.15, "lines"),
+            inherit.aes   = FALSE
           )
-          
-          if (isTRUE(input$pca_mst_labels)) {
-            p <- p + ggplot2::geom_label(
-              data = mst_df,
-              aes(x = x_mid, y = y_mid, label = distance),
-              size          = input$pca_mst_label_size,
-              color         = "black",
-              fill          = "white",
-              label.padding = ggplot2::unit(0.15, "lines"),
-              inherit.aes   = FALSE
-            )
-          }
         }
-        
-        # Centroid points — drawn last so they sit on top of all lines
+      }
+      
+      # Centroid points — drawn last so they sit on top of all lines
+      if (isTRUE(input$pca_centroids)) {
+        centroid_size <- if (!is.null(input$pca_centroid_size)) input$pca_centroid_size else 4
         p <- p + ggplot2::geom_point(
           data = centroids,
           aes(x = x_cent, y = y_cent),
@@ -1138,42 +1500,42 @@ mod_visual_server_morphometric <- function(id, dataset,
           fill = "white", stroke = 1,
           inherit.aes = FALSE
         )
+      }
+      
+      # Pairwise centroid distances (all pairs, separate from MST)
+      if (isTRUE(input$pca_centroid_distances) && nrow(centroids) >= 2) {
+        pairs <- combn(nrow(centroids), 2)
+        dist_df <- data.frame(
+          x_start  = centroids$x_cent[pairs[1, ]],
+          y_start  = centroids$y_cent[pairs[1, ]],
+          x_end    = centroids$x_cent[pairs[2, ]],
+          y_end    = centroids$y_cent[pairs[2, ]],
+          x_mid    = (centroids$x_cent[pairs[1, ]] + centroids$x_cent[pairs[2, ]]) / 2,
+          y_mid    = (centroids$y_cent[pairs[1, ]] + centroids$y_cent[pairs[2, ]]) / 2,
+          distance = round(sqrt(
+            (centroids$x_cent[pairs[2, ]] - centroids$x_cent[pairs[1, ]])^2 +
+              (centroids$y_cent[pairs[2, ]] - centroids$y_cent[pairs[1, ]])^2
+          ), 3)
+        )
         
-        # Pairwise centroid distances (all pairs, separate from MST)
-        if (isTRUE(input$pca_centroid_distances) && nrow(centroids) >= 2) {
-          pairs <- combn(nrow(centroids), 2)
-          dist_df <- data.frame(
-            x_start  = centroids$x_cent[pairs[1, ]],
-            y_start  = centroids$y_cent[pairs[1, ]],
-            x_end    = centroids$x_cent[pairs[2, ]],
-            y_end    = centroids$y_cent[pairs[2, ]],
-            x_mid    = (centroids$x_cent[pairs[1, ]] + centroids$x_cent[pairs[2, ]]) / 2,
-            y_mid    = (centroids$y_cent[pairs[1, ]] + centroids$y_cent[pairs[2, ]]) / 2,
-            distance = round(sqrt(
-              (centroids$x_cent[pairs[2, ]] - centroids$x_cent[pairs[1, ]])^2 +
-                (centroids$y_cent[pairs[2, ]] - centroids$y_cent[pairs[1, ]])^2
-            ), 3)
+        p <- p +
+          ggplot2::geom_segment(
+            data = dist_df,
+            aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
+            color       = input$pca_centroid_dist_color,
+            linewidth   = input$pca_centroid_dist_width,
+            alpha       = input$pca_centroid_dist_alpha,
+            inherit.aes = FALSE
+          ) +
+          ggplot2::geom_label(
+            data = dist_df,
+            aes(x = x_mid, y = y_mid, label = distance),
+            size          = input$pca_centroid_dist_label_size,
+            color         = "black",
+            fill          = "white",
+            label.padding = ggplot2::unit(0.15, "lines"),
+            inherit.aes   = FALSE
           )
-          
-          p <- p +
-            ggplot2::geom_segment(
-              data = dist_df,
-              aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
-              color       = input$pca_centroid_dist_color,
-              linewidth   = input$pca_centroid_dist_width,
-              alpha       = input$pca_centroid_dist_alpha,
-              inherit.aes = FALSE
-            ) +
-            ggplot2::geom_label(
-              data = dist_df,
-              aes(x = x_mid, y = y_mid, label = distance),
-              size          = input$pca_centroid_dist_label_size,
-              color         = "black",
-              fill          = "white",
-              label.padding = ggplot2::unit(0.15, "lines"),
-              inherit.aes   = FALSE
-            )
-        }
       }
       
       if (isTRUE(input$pca_outline_points)) {
@@ -1190,47 +1552,32 @@ mod_visual_server_morphometric <- function(id, dataset,
     
     
     plot_dapc_obj <- reactive({
-      req(dataset())
-      req(input$n_pca_dapc, input$n_da_dapc, input$dapc_point_size,
-          common_plot_inputs_ready())
+      req(dataset(), input$dapc_point_size, common_plot_inputs_ready())
       
-      df <- dataset()
-      otu_col <- names(df)[1]
-      data_mat <- df[, -1]
+      x <- dapc_input_data()
       
-      data_mat_numeric <- as.data.frame(lapply(data_mat, as.numeric))
-      complete_rows <- complete.cases(data_mat_numeric)
-      
-      if (sum(complete_rows) < 2 || ncol(data_mat_numeric) < 2 || n_distinct(df[[otu_col]]) < 2) {
+      if (sum(x$complete_rows) < 2 || ncol(x$data_mat) < 2 || x$n_groups < 2) {
         return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
-                                                     label = "Not enough complete data or groups for DAPC. Need at least 2 complete rows, 2 numeric variables, and 2 groups."))
+                                                     label = "Not enough complete data or groups for DAPC."))
       }
       
-      data_for_dapc <- data_mat_numeric[complete_rows, ]
-      group_for_dapc <- as.factor(df[[otu_col]][complete_rows])
-      
-      dapc_res <- tryCatch({
-        adegenet::dapc(data_for_dapc, group_for_dapc,
-                       n.pca = input$n_pca_dapc, n.da = input$n_da_dapc)
-      }, error = function(e) {
-        warning("DAPC error: ", e$message)
-        NULL
-      })
-      
-      if (is.null(dapc_res) || !("ind.coord" %in% names(dapc_res))) {
+      dapc_res <- dapc_results_2d_r()
+      if (inherits(dapc_res, "dapc_waiting")) {
         return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
-                                                     label = "DAPC could not be performed or returned no coordinates. Check data and parameters."))
+                                                     label = dapc_res$message))
       }
-      
+      if (inherits(dapc_res, "dapc_error") || is.null(dapc_res)) {
+        return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
+                                                     label = "DAPC could not be performed. Check data and parameters."))
+      }
       if (ncol(dapc_res$ind.coord) < 2) {
         return(ggplot2::ggplot() + ggplot2::annotate("text", x = 0.5, y = 0.5,
-                                                     label = "DAPC did not produce enough discriminant axes (LD1, LD2). Try adjusting n.da."))
+                                                     label = "DAPC produced only 1 discriminant axis. More groups are needed for a 2D plot."))
       }
       
       dapc_df <- as.data.frame(dapc_res$ind.coord)
       dapc_df$Group <- dapc_res$grp
       
-      # Calculate % variance explained for LD1 and LD2
       eig <- dapc_res$eig
       eig_percent <- round(100 * eig / sum(eig), 1)
       ld1_label <- paste0("LD1 (", eig_percent[1], "%)")
@@ -1309,81 +1656,75 @@ mod_visual_server_morphometric <- function(id, dataset,
         }
       }
       
-      if (isTRUE(input$dapc_centroids)) {
-        centroids <- dapc_df %>%
-          dplyr::group_by(Group) %>%
-          dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
+      # Always compute centroids — needed by spider, MST, and centroid distances
+      centroids <- dapc_df %>%
+        dplyr::group_by(Group) %>%
+        dplyr::summarize(LD1 = mean(LD1), LD2 = mean(LD2), .groups = "drop")
+      
+      # Spider plot
+      if (isTRUE(input$dapc_spider)) {
+        spider_df <- dapc_df %>%
+          dplyr::left_join(centroids, by = "Group", suffix = c("", "_cent"))
         
-        centroid_size <- if (!is.null(input$dapc_centroid_size)) input$dapc_centroid_size else 4
+        p <- p + ggplot2::geom_segment(
+          data = spider_df,
+          aes(x = LD1, y = LD2, xend = LD1_cent, yend = LD2_cent, color = Group),
+          alpha       = input$dapc_spider_alpha,
+          linewidth   = input$dapc_spider_width,
+          inherit.aes = FALSE,
+          show.legend = FALSE
+        ) +
+          get_color_scale(plot_palette())
+      }
+      
+      # MST
+      if (isTRUE(input$dapc_mst) && nrow(centroids) >= 2) {
+        cent_mat <- as.matrix(dist(centroids[, c("LD1", "LD2")]))
+        rownames(cent_mat) <- centroids$Group
+        colnames(cent_mat) <- centroids$Group
         
-        # Spider plot
-        if (isTRUE(input$dapc_spider)) {
-          spider_df <- dapc_df %>%
-            dplyr::left_join(centroids, by = "Group", suffix = c("", "_cent"))
-          
-          p <- p + ggplot2::geom_segment(
-            data = spider_df,
-            aes(
-              x     = LD1,
-              y     = LD2,
-              xend  = LD1_cent,
-              yend  = LD2_cent,
-              color = Group
-            ),
-            alpha       = input$dapc_spider_alpha,
-            linewidth   = input$dapc_spider_width,
-            inherit.aes = FALSE,
-            show.legend = FALSE
-          ) +
-            get_color_scale(plot_palette())
-        }
+        mst_obj <- ape::mst(cent_mat)
+        mst_idx <- which(mst_obj == 1, arr.ind = TRUE)
+        mst_idx <- mst_idx[mst_idx[, 1] < mst_idx[, 2], , drop = FALSE]
         
-        # MST
-        if (isTRUE(input$dapc_mst) && nrow(centroids) >= 2) {
-          cent_mat <- as.matrix(dist(centroids[, c("LD1", "LD2")]))
-          rownames(cent_mat) <- centroids$Group
-          colnames(cent_mat) <- centroids$Group
-          
-          mst_obj <- ape::mst(cent_mat)
-          mst_idx <- which(mst_obj == 1, arr.ind = TRUE)
-          mst_idx <- mst_idx[mst_idx[, 1] < mst_idx[, 2], , drop = FALSE]
-          
-          mst_df <- data.frame(
-            x_start  = centroids$LD1[mst_idx[, 1]],
-            y_start  = centroids$LD2[mst_idx[, 1]],
-            x_end    = centroids$LD1[mst_idx[, 2]],
-            y_end    = centroids$LD2[mst_idx[, 2]],
-            x_mid    = (centroids$LD1[mst_idx[, 1]] + centroids$LD1[mst_idx[, 2]]) / 2,
-            y_mid    = (centroids$LD2[mst_idx[, 1]] + centroids$LD2[mst_idx[, 2]]) / 2,
-            distance = round(sqrt(
-              (centroids$LD1[mst_idx[, 2]] - centroids$LD1[mst_idx[, 1]])^2 +
-                (centroids$LD2[mst_idx[, 2]] - centroids$LD2[mst_idx[, 1]])^2
-            ), 3)
-          )
-          
-          p <- p + ggplot2::geom_segment(
+        mst_df <- data.frame(
+          x_start  = centroids$LD1[mst_idx[, 1]],
+          y_start  = centroids$LD2[mst_idx[, 1]],
+          x_end    = centroids$LD1[mst_idx[, 2]],
+          y_end    = centroids$LD2[mst_idx[, 2]],
+          x_mid    = (centroids$LD1[mst_idx[, 1]] + centroids$LD1[mst_idx[, 2]]) / 2,
+          y_mid    = (centroids$LD2[mst_idx[, 1]] + centroids$LD2[mst_idx[, 2]]) / 2,
+          distance = round(sqrt(
+            (centroids$LD1[mst_idx[, 2]] - centroids$LD1[mst_idx[, 1]])^2 +
+              (centroids$LD2[mst_idx[, 2]] - centroids$LD2[mst_idx[, 1]])^2
+          ), 3)
+        )
+        
+        p <- p + ggplot2::geom_segment(
+          data = mst_df,
+          aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
+          color       = input$dapc_mst_color,
+          alpha       = input$dapc_mst_alpha,
+          linewidth   = input$dapc_mst_width,
+          inherit.aes = FALSE
+        )
+        
+        if (isTRUE(input$dapc_mst_labels)) {
+          p <- p + ggplot2::geom_label(
             data = mst_df,
-            aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
-            color       = input$dapc_mst_color,
-            alpha       = input$dapc_mst_alpha,
-            linewidth   = input$dapc_mst_width,
-            inherit.aes = FALSE
+            aes(x = x_mid, y = y_mid, label = distance),
+            size          = input$dapc_mst_label_size,
+            color         = "black",
+            fill          = "white",
+            label.padding = ggplot2::unit(0.15, "lines"),
+            inherit.aes   = FALSE
           )
-          
-          if (isTRUE(input$dapc_mst_labels)) {
-            p <- p + ggplot2::geom_label(
-              data = mst_df,
-              aes(x = x_mid, y = y_mid, label = distance),
-              size          = input$dapc_mst_label_size,
-              color         = "black",
-              fill          = "white",
-              label.padding = ggplot2::unit(0.15, "lines"),
-              inherit.aes   = FALSE
-            )
-          }
         }
-        
-        # Centroid points — on top of all lines
+      }
+      
+      # Centroid points — only shown when checkbox is on
+      if (isTRUE(input$dapc_centroids)) {
+        centroid_size <- if (!is.null(input$dapc_centroid_size)) input$dapc_centroid_size else 4
         p <- p + ggplot2::geom_point(
           data = centroids,
           aes(x = LD1, y = LD2),
@@ -1392,42 +1733,42 @@ mod_visual_server_morphometric <- function(id, dataset,
           fill = "white", stroke = 1,
           inherit.aes = FALSE
         )
+      }
+      
+      # Pairwise centroid distances
+      if (isTRUE(input$dapc_centroid_distances) && nrow(centroids) >= 2) {
+        pairs <- combn(nrow(centroids), 2)
+        dist_df <- data.frame(
+          x_start  = centroids$LD1[pairs[1, ]],
+          y_start  = centroids$LD2[pairs[1, ]],
+          x_end    = centroids$LD1[pairs[2, ]],
+          y_end    = centroids$LD2[pairs[2, ]],
+          x_mid    = (centroids$LD1[pairs[1, ]] + centroids$LD1[pairs[2, ]]) / 2,
+          y_mid    = (centroids$LD2[pairs[1, ]] + centroids$LD2[pairs[2, ]]) / 2,
+          distance = round(sqrt(
+            (centroids$LD1[pairs[2, ]] - centroids$LD1[pairs[1, ]])^2 +
+              (centroids$LD2[pairs[2, ]] - centroids$LD2[pairs[1, ]])^2
+          ), 3)
+        )
         
-        # Pairwise centroid distances
-        if (isTRUE(input$dapc_centroid_distances) && nrow(centroids) >= 2) {
-          pairs <- combn(nrow(centroids), 2)
-          dist_df <- data.frame(
-            x_start  = centroids$LD1[pairs[1, ]],
-            y_start  = centroids$LD2[pairs[1, ]],
-            x_end    = centroids$LD1[pairs[2, ]],
-            y_end    = centroids$LD2[pairs[2, ]],
-            x_mid    = (centroids$LD1[pairs[1, ]] + centroids$LD1[pairs[2, ]]) / 2,
-            y_mid    = (centroids$LD2[pairs[1, ]] + centroids$LD2[pairs[2, ]]) / 2,
-            distance = round(sqrt(
-              (centroids$LD1[pairs[2, ]] - centroids$LD1[pairs[1, ]])^2 +
-                (centroids$LD2[pairs[2, ]] - centroids$LD2[pairs[1, ]])^2
-            ), 3)
+        p <- p +
+          ggplot2::geom_segment(
+            data = dist_df,
+            aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
+            color       = input$dapc_centroid_dist_color,
+            linewidth   = input$dapc_centroid_dist_width,
+            alpha       = input$dapc_centroid_dist_alpha,
+            inherit.aes = FALSE
+          ) +
+          ggplot2::geom_label(
+            data = dist_df,
+            aes(x = x_mid, y = y_mid, label = distance),
+            size          = input$dapc_centroid_dist_label_size,
+            color         = "black",
+            fill          = "white",
+            label.padding = ggplot2::unit(0.15, "lines"),
+            inherit.aes   = FALSE
           )
-          
-          p <- p +
-            ggplot2::geom_segment(
-              data = dist_df,
-              aes(x = x_start, y = y_start, xend = x_end, yend = y_end),
-              color       = input$dapc_centroid_dist_color,
-              linewidth   = input$dapc_centroid_dist_width,
-              alpha       = input$dapc_centroid_dist_alpha,
-              inherit.aes = FALSE
-            ) +
-            ggplot2::geom_label(
-              data = dist_df,
-              aes(x = x_mid, y = y_mid, label = distance),
-              size          = input$dapc_centroid_dist_label_size,
-              color         = "black",
-              fill          = "white",
-              label.padding = ggplot2::unit(0.15, "lines"),
-              inherit.aes   = FALSE
-            )
-        }
       }
       
       p +
@@ -1504,6 +1845,42 @@ mod_visual_server_morphometric <- function(id, dataset,
       )
     })
     
+    # PC axis selectors for unsupervised PCA clusters plot
+    output$species_pca_x_selector <- renderUI({
+      res <- species_delim_results_r()
+      req(res, res$unsupervised, res$unsupervised$morpho_data)
+      n_pcs <- min(ncol(res$unsupervised$morpho_data), 10)
+      selectInput(ns("species_pca_x_axis"), "X-axis:",
+                  choices = paste0("PC", seq_len(n_pcs)),
+                  selected = "PC1", width = "150px")
+    })
+    output$species_pca_y_selector <- renderUI({
+      res <- species_delim_results_r()
+      req(res, res$unsupervised, res$unsupervised$morpho_data)
+      n_pcs <- min(ncol(res$unsupervised$morpho_data), 10)
+      selectInput(ns("species_pca_y_axis"), "Y-axis:",
+                  choices = paste0("PC", seq_len(n_pcs)),
+                  selected = "PC2", width = "150px")
+    })
+    
+    # PC axis selectors for user-specified hypothesis plot
+    output$species_hyp_x_selector <- renderUI({
+      bm <- bayesian_models_r()
+      req(bm, bm$morpho_data)
+      n_pcs <- min(ncol(bm$morpho_data), 10)
+      selectInput(ns("species_hyp_x_axis"), "X-axis:",
+                  choices = paste0("PC", seq_len(n_pcs)),
+                  selected = "PC1", width = "150px")
+    })
+    output$species_hyp_y_selector <- renderUI({
+      bm <- bayesian_models_r()
+      req(bm, bm$morpho_data)
+      n_pcs <- min(ncol(bm$morpho_data), 10)
+      selectInput(ns("species_hyp_y_axis"), "Y-axis:",
+                  choices = paste0("PC", seq_len(n_pcs)),
+                  selected = "PC2", width = "150px")
+    })
+    
     plot_species_pca_obj <- reactive({
       req(species_delim_results_r(), input$species_pca_point_size)
       
@@ -1541,19 +1918,28 @@ mod_visual_server_morphometric <- function(id, dataset,
       
       # Get PCA coordinates
       pca <- prcomp(morpho_data, scale = TRUE)
+      var_explained <- round(100 * (pca$sdev^2 / sum(pca$sdev^2)), 1)
+      n_pcs <- ncol(pca$x)
+      
+      pc_x <- input$species_pca_x_axis %||% "PC1"
+      pc_y <- input$species_pca_y_axis %||% "PC2"
+      pc_x_num <- as.integer(gsub("PC", "", pc_x))
+      pc_y_num <- as.integer(gsub("PC", "", pc_y))
+      pc_x_num <- max(1L, min(pc_x_num, n_pcs))
+      pc_y_num <- max(1L, min(pc_y_num, n_pcs))
+      
       pca_df <- data.frame(
-        PC1 = pca$x[,1],
-        PC2 = pca$x[,2],
+        pca$x[, pc_x_num],
+        pca$x[, pc_y_num],
         Species = species_col,
         Cluster = as.factor(data_mod$classification)
       )
+      names(pca_df)[1:2] <- c("xval", "yval")
       
-      # Calculate % variance explained
-      var_explained <- round(100 * (pca$sdev^2 / sum(pca$sdev^2)), 1)
-      pc1_label <- paste0("PC1 (", var_explained[1], "%)")
-      pc2_label <- paste0("PC2 (", var_explained[2], "%)")
+      pc1_label <- paste0(pc_x, " (", var_explained[pc_x_num], "%)")
+      pc2_label <- paste0(pc_y, " (", var_explained[pc_y_num], "%)")
       
-      p <- ggplot(pca_df, aes(x = PC1, y = PC2)) +
+      p <- ggplot(pca_df, aes(x = xval, y = yval)) +
         xlab(pc1_label) +
         ylab(pc2_label)
       
@@ -1583,13 +1969,13 @@ mod_visual_server_morphometric <- function(id, dataset,
       # Add cluster convex hulls
       if (isTRUE(input$species_pca_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Cluster), function(df) {
-          df[chull(df$PC1, df$PC2), ]
+          df[chull(df$xval, df$yval), ]
         }), .id = "Cluster")
         
         if (isTRUE(input$species_pca_outline)) {
           p <- p + geom_polygon(
             data = hull_df,
-            aes(x = PC1, y = PC2, group = Cluster, fill = Cluster, color = Cluster),
+            aes(x = xval, y = yval, group = Cluster, fill = Cluster, color = Cluster),
             alpha = input$species_pca_alpha_ellipse,
             linewidth = input$species_pca_outline_stroke,
             inherit.aes = FALSE,
@@ -1598,7 +1984,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         } else {
           p <- p + geom_polygon(
             data = hull_df,
-            aes(x = PC1, y = PC2, group = Cluster, fill = Cluster),
+            aes(x = xval, y = yval, group = Cluster, fill = Cluster),
             color = NA,
             alpha = input$species_pca_alpha_ellipse,
             inherit.aes = FALSE,
@@ -1626,17 +2012,12 @@ mod_visual_server_morphometric <- function(id, dataset,
       if (isTRUE(input$species_pca_centroids)) {
         centroids <- pca_df %>%
           dplyr::group_by(Cluster) %>%
-          dplyr::summarize(PC1 = mean(PC1), PC2 = mean(PC2), .groups = "drop")
-        
+          dplyr::summarize(xval = mean(xval), yval = mean(yval), .groups = "drop")
         p <- p + geom_point(
           data = centroids,
-          aes(x = PC1, y = PC2),
-          shape = 8,
-          size = 4,
-          color = "black",
-          fill = "white",
-          stroke = 1,
-          inherit.aes = FALSE
+          aes(x = xval, y = yval),
+          shape = 8, size = 4, color = "black", fill = "white", stroke = 1,
+          inherit.aes = FALSE, show.legend = FALSE
         )
       }
       
@@ -2010,6 +2391,7 @@ mod_visual_server_morphometric <- function(id, dataset,
       
       plt %>%
         plotly::layout(scene = list(
+          aspectmode = "cube",
           xaxis = list(title = list(text = paste0(pc_x, " (", var_exp[pc_x_num], "%)"), font = list(size = plot_axis_label_size() %||% 12)),
                        tickfont = list(size = plot_axis_text_size() %||% 10)),
           yaxis = list(title = list(text = paste0(pc_y, " (", var_exp[pc_y_num], "%)"), font = list(size = plot_axis_label_size() %||% 12)),
@@ -2047,22 +2429,18 @@ mod_visual_server_morphometric <- function(id, dataset,
     })
     
     plot_dapc_plotly <- reactive({
-      req(dataset(), input$n_pca_dapc, input$n_da_dapc, input$dapc_point_size)
-      df <- dataset(); otu_col <- names(df)[1]
-      data_mat <- as.data.frame(lapply(df[, -1], as.numeric))
-      complete_rows <- complete.cases(data_mat)
-      req(sum(complete_rows) >= 2, ncol(data_mat) >= 2, dplyr::n_distinct(df[[otu_col]]) >= 2)
-      dapc_res <- tryCatch(
-        adegenet::dapc(as.data.frame(data_mat[complete_rows, ]),
-                       as.factor(df[[otu_col]][complete_rows]),
-                       n.pca = input$n_pca_dapc, n.da = input$n_da_dapc),
-        error = function(e) NULL)
-      req(!is.null(dapc_res), ncol(dapc_res$ind.coord) >= 2)
+      req(dataset(), input$dapc_point_size)
+      x <- dapc_input_data()
+      req(sum(x$complete_rows) >= 2, ncol(x$data_mat) >= 2, x$n_groups >= 2)
+      dapc_res <- dapc_results_2d_r()
+      req(!inherits(dapc_res, "dapc_waiting"), !inherits(dapc_res, "dapc_error"),
+          !is.null(dapc_res), ncol(dapc_res$ind.coord) >= 2)
+      
       dapc_df <- as.data.frame(dapc_res$ind.coord)
       dapc_df$Group <- dapc_res$grp
       dapc_df$SpecimenID <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
-        specimen_ids_r()[complete_rows]
-      } else { as.character(seq_len(sum(complete_rows))) }
+        specimen_ids_r()[x$complete_rows]
+      } else { as.character(seq_len(sum(x$complete_rows))) }
       eig <- dapc_res$eig; eig_pct <- round(100 * eig / sum(eig), 1)
       ld1_label <- paste0("LD1 (", eig_pct[1], "%)"); ld2_label <- paste0("LD2 (", eig_pct[2], "%)")
       hover_txt <- paste0("ID: ", dapc_df$SpecimenID, "<br>Group: ", dapc_df$Group,
@@ -2101,6 +2479,157 @@ mod_visual_server_morphometric <- function(id, dataset,
     output$plot_dapc_plotly <- plotly::renderPlotly({
       tryCatch(plot_dapc_plotly(), error = function(e) plotly::plot_ly() %>%
                  plotly::add_annotations(text = paste("Error:", e$message), showarrow = FALSE))
+    })
+    
+    plot_dapc_3d <- reactive({
+      x <- dapc_input_data()
+      if (x$n_groups < 4L) {
+        return(plotly::plot_ly() %>%
+                 plotly::add_annotations(text = "3D DAPC requires at least 4 groups so that LD1\u2013LD3 are available.",
+                                         showarrow = FALSE))
+      }
+      dapc_res <- dapc_results_3d_r()
+      if (inherits(dapc_res, "dapc_waiting")) {
+        return(plotly::plot_ly() %>% plotly::add_annotations(text = dapc_res$message, showarrow = FALSE))
+      }
+      if (inherits(dapc_res, "dapc_error") || is.null(dapc_res) || ncol(dapc_res$ind.coord) < 3L) {
+        return(plotly::plot_ly() %>%
+                 plotly::add_annotations(text = "DAPC did not produce enough discriminant axes for a 3D plot.",
+                                         showarrow = FALSE))
+      }
+      
+      dapc_df <- as.data.frame(dapc_res$ind.coord)
+      dapc_df$Group <- dapc_res$grp
+      dapc_df$SpecimenID <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
+        specimen_ids_r()[x$complete_rows]
+      } else {
+        as.character(seq_len(sum(x$complete_rows)))
+      }
+      eig         <- dapc_res$eig
+      eig_percent <- round(100 * eig / sum(eig), 1)
+      groups      <- levels(factor(dapc_df$Group))
+      n_groups    <- length(groups)
+      
+      color_map <- if (!is.null(plot_palette()) && plot_palette() == "manual" && !is.null(manual_colors_r())) {
+        cols <- manual_colors_r(); cols[as.character(groups)]
+      } else if (!is.null(plot_palette()) && startsWith(plot_palette(), "viridis:")) {
+        opt <- sub("viridis:", "", plot_palette())
+        setNames(viridis::viridis(n_groups, option = opt), groups)
+      } else if (!is.null(plot_palette()) && startsWith(plot_palette(), "brewer:")) {
+        pal_name <- sub("brewer:", "", plot_palette())
+        max_n    <- RColorBrewer::brewer.pal.info[pal_name, "maxcolors"]
+        setNames(RColorBrewer::brewer.pal(max(3L, min(n_groups, max_n)), pal_name)[seq_len(n_groups)], groups)
+      } else if (!is.null(plot_palette()) && startsWith(plot_palette(), "colorblind:")) {
+        pal_name <- sub("colorblind:", "", plot_palette())
+        setNames(RColorBrewer::brewer.pal(max(3L, min(n_groups, 8L)), pal_name)[seq_len(n_groups)], groups)
+      } else {
+        setNames(scales::hue_pal()(n_groups), groups)
+      }
+      
+      hover_txt <- paste0("ID: ", dapc_df$SpecimenID,
+                          "<br>Group: ", dapc_df$Group,
+                          "<br>LD1: ", round(dapc_df$LD1, 3),
+                          "<br>LD2: ", round(dapc_df$LD2, 3),
+                          "<br>LD3: ", round(dapc_df$LD3, 3))
+      
+      plt <- plotly::plot_ly(
+        data      = dapc_df, x = ~LD1, y = ~LD2, z = ~LD3,
+        color     = ~Group, colors = color_map,
+        type      = "scatter3d", mode = "markers",
+        marker    = list(size    = (input$dapc_3d_point_size %||% 3) * 2,
+                         opacity = input$dapc_3d_point_alpha %||% 0.8),
+        text      = hover_txt, hoverinfo = "text"
+      )
+      
+      if (isTRUE(input$dapc_3d_centroids)) {
+        centroids_3d <- dapc_df %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(cx = mean(LD1), cy = mean(LD2), cz = mean(LD3), .groups = "drop")
+        for (grp in centroids_3d$Group) {
+          row <- centroids_3d[centroids_3d$Group == grp, ]
+          col <- color_map[as.character(grp)]
+          plt <- plt %>% plotly::add_trace(
+            x = row$cx, y = row$cy, z = row$cz,
+            type = "scatter3d", mode = "markers",
+            marker    = list(symbol = "diamond",
+                             size   = (input$dapc_3d_centroid_size %||% 8) * 2,
+                             color  = input$dapc_3d_centroid_color %||% "#000000",
+                             line   = list(color = col, width = 2)),
+            name      = paste0(grp, " (centroid)"),
+            hoverinfo = "text",
+            text      = paste0("Centroid<br>Group: ", grp),
+            showlegend = FALSE, inherit = FALSE
+          )
+        }
+      }
+      
+      if (isTRUE(input$dapc_3d_hull)) {
+        for (grp in groups) {
+          sub <- dapc_df[dapc_df$Group == grp, c("LD1", "LD2", "LD3")]
+          if (nrow(sub) >= 4L) {
+            col <- color_map[as.character(grp)]
+            plt <- plt %>% plotly::add_mesh(
+              x = sub$LD1, y = sub$LD2, z = sub$LD3,
+              alphahull  = 0,
+              opacity    = input$dapc_3d_hull_alpha %||% 0.15,
+              colorscale = list(c(0, col), c(1, col)),
+              intensity  = rep(0, nrow(sub)),
+              showscale  = FALSE,
+              name       = paste0(grp, " (hull)"),
+              showlegend = FALSE, hoverinfo = "skip", inherit = FALSE
+            )
+          }
+        }
+      }
+      
+      if (isTRUE(input$dapc_3d_spider)) {
+        centroids_sp <- dapc_df %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarize(cx = mean(LD1), cy = mean(LD2), cz = mean(LD3), .groups = "drop")
+        for (grp in groups) {
+          pts <- dapc_df[dapc_df$Group == grp, ]
+          cen <- centroids_sp[centroids_sp$Group == grp, ]
+          col <- color_map[as.character(grp)]
+          for (i in seq_len(nrow(pts))) {
+            plt <- plt %>% plotly::add_trace(
+              x = c(pts$LD1[i], cen$cx), y = c(pts$LD2[i], cen$cy), z = c(pts$LD3[i], cen$cz),
+              type = "scatter3d", mode = "lines",
+              line = list(color = col, width = input$dapc_3d_spider_width %||% 2),
+              opacity    = input$dapc_3d_spider_alpha %||% 0.4,
+              showlegend = FALSE, hoverinfo = "skip", inherit = FALSE
+            )
+          }
+        }
+      }
+      
+      plt %>% plotly::layout(
+        scene = list(
+          aspectmode = "cube",
+          xaxis = list(title = list(text = paste0("LD1 (", eig_percent[1], "%)"),
+                                    font = list(size = plot_axis_label_size() %||% 12)),
+                       tickfont = list(size = plot_axis_text_size() %||% 10)),
+          yaxis = list(title = list(text = paste0("LD2 (", eig_percent[2], "%)"),
+                                    font = list(size = plot_axis_label_size() %||% 12)),
+                       tickfont = list(size = plot_axis_text_size() %||% 10)),
+          zaxis = list(title = list(text = paste0("LD3 (", eig_percent[3], "%)"),
+                                    font = list(size = plot_axis_label_size() %||% 12)),
+                       tickfont = list(size = plot_axis_text_size() %||% 10))
+        ),
+        legend = list(
+          title = list(text = "Group", font = list(size = legend_title_size() %||% 12)),
+          font  = list(size = legend_text_size() %||% 10)
+        )
+      )
+    })
+    
+    output$plot_dapc_3d <- plotly::renderPlotly({
+      tryCatch(
+        plot_dapc_3d() %>% plotly::config(
+          toImageButtonOptions = list(format = "png", filename = "dapc_3d_morphometric",
+                                      width = 1600, height = 1200, scale = 3)),
+        error = function(e) plotly::plot_ly() %>%
+          plotly::add_annotations(text = paste("Error:", e$message), showarrow = FALSE)
+      )
     })
     
     # Render plots with dynamic height and width
@@ -2175,9 +2704,16 @@ mod_visual_server_morphometric <- function(id, dataset,
       }
       
       pca    <- prcomp(morpho_data, scale = TRUE)
+      var_exp  <- round(100 * (pca$sdev^2 / sum(pca$sdev^2)), 1)
+      n_pcs    <- ncol(pca$x)
+      pc_x     <- input$species_pca_x_axis %||% "PC1"
+      pc_y     <- input$species_pca_y_axis %||% "PC2"
+      pc_x_num <- max(1L, min(as.integer(gsub("PC","",pc_x)), n_pcs))
+      pc_y_num <- max(1L, min(as.integer(gsub("PC","",pc_y)), n_pcs))
+      
       pca_df <- data.frame(
-        PC1     = pca$x[, 1],
-        PC2     = pca$x[, 2],
+        xval    = pca$x[, pc_x_num],
+        yval    = pca$x[, pc_y_num],
         Species = as.character(species_col),
         Cluster = as.factor(data_mod$classification)
       )
@@ -2189,20 +2725,19 @@ mod_visual_server_morphometric <- function(id, dataset,
         as.character(seq_len(nrow(pca_df)))
       }
       
-      var_exp  <- round(100 * (pca$sdev^2 / sum(pca$sdev^2)), 1)
-      pc1_label <- paste0("PC1 (", var_exp[1], "%)")
-      pc2_label <- paste0("PC2 (", var_exp[2], "%)")
+      pc1_label <- paste0(pc_x, " (", var_exp[pc_x_num], "%)")
+      pc2_label <- paste0(pc_y, " (", var_exp[pc_y_num], "%)")
       
       hover_txt <- paste0(
-        "ID: ",      pca_df$SpecimenID,
+        "ID: ",         pca_df$SpecimenID,
         "<br>Species: ", pca_df$Species,
         "<br>Cluster: ", pca_df$Cluster,
-        "<br>PC1: ",  round(pca_df$PC1, 3),
-        "<br>PC2: ",  round(pca_df$PC2, 3)
+        "<br>", pc_x, ": ", round(pca_df$xval, 3),
+        "<br>", pc_y, ": ", round(pca_df$yval, 3)
       )
       
       p <- ggplot2::ggplot(pca_df, ggplot2::aes(
-        x = PC1, y = PC2, color = Cluster, fill = Cluster,
+        x = xval, y = yval, color = Cluster, fill = Cluster,
         shape = Species, text = hover_txt)) +
         ggplot2::geom_point(size = input$species_pca_point_size %||% 4, alpha = 0.85) +
         ggplot2::xlab(pc1_label) + ggplot2::ylab(pc2_label) +
@@ -2219,9 +2754,9 @@ mod_visual_server_morphometric <- function(id, dataset,
           alpha = input$species_pca_alpha_ellipse %||% 0.3, show.legend = FALSE)
       
       if (isTRUE(input$species_pca_convex)) {
-        hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Cluster), function(d) d[chull(d$PC1, d$PC2), ]))
+        hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Cluster), function(d) d[chull(d$xval, d$yval), ]))
         p <- p + ggplot2::geom_polygon(data = hull_df,
-                                       ggplot2::aes(x = PC1, y = PC2, group = Cluster, fill = Cluster),
+                                       ggplot2::aes(x = xval, y = yval, group = Cluster, fill = Cluster),
                                        color = NA, alpha = input$species_pca_alpha_ellipse %||% 0.3,
                                        inherit.aes = FALSE, show.legend = FALSE)
       }
@@ -2331,6 +2866,362 @@ mod_visual_server_morphometric <- function(id, dataset,
     
     output$download_boruta_box_pdf <- create_download_handler(plot_boruta_box_obj, "boruta_box", "pdf", "plot_boruta_box_height", "plot_boruta_box_width")
     output$download_boruta_box_jpeg <- create_download_handler(plot_boruta_box_obj, "boruta_box", "jpeg", "plot_boruta_box_height", "plot_boruta_box_width")
+    
+    ## ---- Morphometric Posterior Probabilities ----
+    
+    output$morph_post_hypothesis_selector <- renderUI({
+      bm <- bayesian_models_r()
+      if (is.null(bm)) return(p(em("Run Bayesian Hypothesis Testing first.")))
+      choices <- colnames(bm$hyp_df)
+      selectInput(ns("morph_post_hyp_choice"), "Select Hypothesis:",
+                  choices = choices, selected = choices[1])
+    })
+    
+    morph_posteriors_df <- reactive({
+      req(bayesian_models_r(), input$morph_post_hyp_choice)
+      bm          <- bayesian_models_r()
+      hyp_name    <- input$morph_post_hyp_choice
+      hyp_labels  <- as.character(bm$hyp_df[[hyp_name]])
+      morpho_data <- bm$morpho_data
+      species_col <- bm$species_col
+      
+      model <- tryCatch(
+        mclust::MclustDA(morpho_data, class = factor(hyp_labels),
+                         modelType = "EDDA", verbose = FALSE),
+        error = function(e) NULL
+      )
+      req(!is.null(model))
+      
+      pred     <- predict(model, newdata = morpho_data)
+      max_prob <- apply(pred$z, 1, max)
+      
+      data.frame(
+        Specimen    = seq_len(nrow(morpho_data)),
+        OTU         = as.character(species_col),
+        Group       = hyp_labels,
+        Assigned    = as.character(pred$classification),
+        MaxPostProb = round(max_prob, 4),
+        stringsAsFactors = FALSE
+      ) %>% dplyr::arrange(Group, Specimen)
+    })
+    
+    plot_morph_post_obj <- reactive({
+      req(morph_posteriors_df())
+      df         <- morph_posteriors_df()
+      x_angle    <- plot_x_angle()
+      facet_sz   <- plot_facet_size()
+      n_otu      <- length(unique(df$OTU))
+      all_shapes <- c(16, 17, 15, 18, 8, 7, 1, 2, 0, 5, 4, 3, 6, 9, 10, 11, 12, 13, 14, 19, 20)
+      hjust_val  <- if (x_angle == 0) 0.5 else if (x_angle == 90) 1 else 0.5
+      vjust_val  <- if (x_angle == 0) 1   else if (x_angle == 90) 0.5 else 0.5
+      
+      df$SpecLabel <- factor(df$Specimen, levels = df$Specimen)
+      
+      ggplot2::ggplot(df, ggplot2::aes(x = SpecLabel, y = MaxPostProb,
+                                       color = Group, shape = OTU)) +
+        ggplot2::geom_point(size = 3) +
+        ggplot2::scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+        ggplot2::scale_shape_manual(values = all_shapes[seq_len(n_otu)]) +
+        ggplot2::labs(x = "Specimen", y = "Posterior Probability",
+                      color = "Hypothesis Group", shape = "OTU") +
+        ggplot2::facet_grid(. ~ Group, scales = "free_x", space = "free_x") +
+        get_color_scale_otu(plot_palette()) +
+        get_custom_theme() +
+        ggplot2::theme(
+          axis.text.x   = ggplot2::element_text(angle = x_angle, hjust = hjust_val, vjust = vjust_val),
+          strip.text     = ggplot2::element_text(size = facet_sz),
+          panel.spacing  = ggplot2::unit(0.3, "lines")
+        )
+    })
+    
+    output$morph_post_plot_ui <- renderUI({
+      if (isTRUE(input$morph_post_interactive)) {
+        plotly::plotlyOutput(ns("plot_morph_post_interactive"),
+                             height = "500px")
+      } else {
+        plotOutput(ns("plot_morph_post_static"),
+                   height = paste0(input$plot_morph_post_height %||% 500, "px"),
+                   width  = paste0(input$plot_morph_post_width  %||% 700, "px"))
+      }
+    })
+    
+    output$plot_morph_post_static <- renderPlot({
+      validate(need(!is.null(bayesian_models_r()),
+                    "Run Bayesian Hypothesis Testing in the Morphometric Delimitation tab first."))
+      plot_morph_post_obj()
+    }, height = function() input$plot_morph_post_height %||% 500,
+    width  = function() input$plot_morph_post_width  %||% 700)
+    
+    output$plot_morph_post_interactive <- plotly::renderPlotly({
+      validate(need(!is.null(bayesian_models_r()),
+                    "Run Bayesian Hypothesis Testing in the Morphometric Delimitation tab first."))
+      df <- morph_posteriors_df()
+      df$SpecimenID <- if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) {
+        specimen_ids_r()
+      } else { df$Specimen }
+      df$Group <- as.factor(df$Group)
+      
+      hover_txt <- paste0("ID: ",    df$SpecimenID,
+                          "<br>OTU: ",   df$OTU,
+                          "<br>Group: ", df$Group,
+                          "<br>Prob: ",  df$MaxPostProb)
+      
+      p <- ggplot2::ggplot(df, ggplot2::aes(x = Specimen, y = MaxPostProb,
+                                            color = Group, text = hover_txt)) +
+        ggplot2::geom_point(size = 3, alpha = 0.8) +
+        ggplot2::scale_y_continuous(limits = c(0, 1), breaks = seq(0, 1, 0.1)) +
+        ggplot2::labs(x = "Specimen index", y = "Posterior Probability", color = "Group") +
+        get_color_scale_otu(plot_palette())
+      
+      tl      <- get_plotly_theme_layout(plot_theme() %||% "theme_classic")
+      ax_tick <- plot_axis_text_size()  %||% 10
+      ax_lbl  <- plot_axis_label_size() %||% 12
+      leg_txt <- legend_text_size()     %||% 10
+      leg_ttl <- legend_title_size()    %||% 12
+      
+      plotly::ggplotly(p, tooltip = "text") %>%
+        plotly::layout(
+          hoverlabel    = list(bgcolor = "white", font = list(size = 12)),
+          paper_bgcolor = tl$paper_bgcolor, plot_bgcolor = tl$plot_bgcolor, font = tl$font,
+          xaxis  = modifyList(tl$xaxis, list(title = list(text = "Specimen index", font = list(size = ax_lbl)), tickfont = list(size = ax_tick))),
+          yaxis  = modifyList(tl$yaxis, list(title = list(text = "Posterior Probability", font = list(size = ax_lbl)), tickfont = list(size = ax_tick), range = list(0, 1))),
+          legend = list(font = list(size = leg_txt), title = list(font = list(size = leg_ttl)))
+        )
+    })
+    
+    output$download_morph_post_pdf  <- create_download_handler(plot_morph_post_obj, "morph_posteriors", "pdf",  "plot_morph_post_height", "plot_morph_post_width")
+    output$download_morph_post_jpeg <- create_download_handler(plot_morph_post_obj, "morph_posteriors", "jpeg", "plot_morph_post_height", "plot_morph_post_width")
+    
+    output$download_morph_post_csv <- downloadHandler(
+      filename = function() paste0("morphometric_posterior_probabilities_", Sys.Date(), ".csv"),
+      content  = function(file) {
+        req(morph_posteriors_df())
+        write.csv(morph_posteriors_df(), file, row.names = FALSE)
+      }
+    )
+    
+    # ── Unsupervised Clustering (OTU Correspondence) heatmap ─────────────────
+    
+    morpho_cluster_corr_df <- reactive({
+      res <- species_delim_results_r()
+      req(res, res$unsupervised)
+      model     <- res$unsupervised
+      sp_col    <- as.character(model$species_col)
+      clust_vec <- as.character(model$model$classification)
+      all_otus  <- sort(unique(sp_col))
+      all_clust <- sort(unique(clust_vec))
+      tbl <- table(OTU = sp_col, Cluster = clust_vec)
+      ct  <- as.data.frame(tbl, stringsAsFactors = FALSE)
+      names(ct) <- c("OTU", "Cluster", "n")
+      ct %>%
+        dplyr::group_by(OTU) %>%
+        dplyr::mutate(Prop = n / sum(n)) %>%
+        dplyr::ungroup() %>%
+        dplyr::mutate(
+          OTU     = factor(OTU,     levels = rev(all_otus)),
+          Cluster = factor(Cluster, levels = all_clust)
+        )
+    })
+    
+    plot_species_post_obj <- reactive({
+      req(morpho_cluster_corr_df())
+      prop_df   <- morpho_cluster_corr_df()
+      text_size <- input$species_post_text_size %||% 4
+      show_zero <- isTRUE(input$species_post_show_zeros)
+      label_df  <- dplyr::mutate(prop_df,
+                                 label = if (show_zero) sprintf("%.2f", Prop)
+                                 else           ifelse(Prop == 0, "", sprintf("%.2f", Prop)))
+      ggplot2::ggplot(label_df, ggplot2::aes(x = Cluster, y = OTU, fill = Prop)) +
+        ggplot2::geom_tile(color = "white", linewidth = 0.5) +
+        ggplot2::geom_text(ggplot2::aes(label = label), size = text_size, color = "black") +
+        ggplot2::scale_fill_gradient(low = "#ffffcc", high = "#1a5276",
+                                     limits = c(0, 1), name = "Proportion") +
+        ggplot2::labs(x = "Cluster", y = "OTU") +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                         legend_text_size(), legend_title_size(), theme_choice = plot_theme()) +
+        ggplot2::theme(
+          axis.text.x     = ggplot2::element_text(angle = 0, hjust = 0.5),
+          panel.grid      = ggplot2::element_blank(),
+          panel.border    = ggplot2::element_blank(),
+          axis.ticks      = ggplot2::element_blank(),
+          legend.position = "right"
+        )
+    })
+    
+    output$species_post_heatmap_ui <- renderUI({
+      res <- species_delim_results_r()
+      if (is.null(res) || is.null(res$unsupervised))
+        return(p(em("Run Unsupervised Clustering in the Morphometric Delimitation tab first.")))
+      plotOutput(ns("plot_species_post_heatmap"),
+                 height = paste0(input$plot_species_post_height %||% 500, "px"),
+                 width  = paste0(input$plot_species_post_width  %||% 700, "px"))
+    })
+    
+    output$plot_species_post_heatmap <- renderPlot({
+      validate(need(!is.null(species_delim_results_r()) &&
+                      !is.null(species_delim_results_r()$unsupervised),
+                    "Run Unsupervised Clustering first."))
+      plot_species_post_obj()
+    }, height = function() input$plot_species_post_height %||% 500,
+    width  = function() input$plot_species_post_width  %||% 700)
+    
+    output$download_species_post_pdf  <- create_download_handler(
+      plot_species_post_obj, "morpho_cluster_otu_correspondence", "pdf",
+      "plot_species_post_height", "plot_species_post_width")
+    output$download_species_post_jpeg <- create_download_handler(
+      plot_species_post_obj, "morpho_cluster_otu_correspondence", "jpeg",
+      "plot_species_post_height", "plot_species_post_width")
+    output$download_species_post_csv <- downloadHandler(
+      filename = function() paste0("morpho_cluster_otu_correspondence_", Sys.Date(), ".csv"),
+      content  = function(file) { write.csv(morpho_cluster_corr_df(), file, row.names = FALSE) }
+    )
+    
+    # ── Topology-aware Hypothesis Testing tree plot ───────────────────────────
+    
+    morpho_phylo_sup_data <- reactive({
+      req(morpho_phylo_sup_r())
+      morpho_phylo_sup_r()
+    })
+    
+    plot_morpho_phylo_tree_obj <- reactive({
+      sup_data <- morpho_phylo_sup_data()
+      build_phylo_hyp_plot(
+        sup_data   = sup_data,
+        n_top      = input$morpho_phylo_hyp_n_top      %||% 5L,
+        tree_type  = input$morpho_phylo_tree_type       %||% "cladogram",
+        tip_sz     = input$morpho_phylo_tip_label_size  %||% 3,
+        rect_alpha = input$morpho_phylo_rect_alpha      %||% 0.80
+      )
+    })
+    
+    output$morpho_phylo_tree_plot_ui <- renderUI({
+      if (is.null(morpho_phylo_sup_r()))
+        return(p(em("Run Topology-aware Hypothesis Testing in the Morphometric Delimitation tab first.")))
+      plotOutput(ns("plot_morpho_phylo_tree"),
+                 height = paste0(input$plot_morpho_phylo_height %||% 500, "px"),
+                 width  = paste0(input$plot_morpho_phylo_width  %||% 600, "px"))
+    })
+    
+    output$plot_morpho_phylo_tree <- renderPlot({
+      validate(need(!is.null(morpho_phylo_sup_r()),
+                    "Run Topology-aware Hypothesis Testing first."))
+      plot_morpho_phylo_tree_obj()
+    }, height = function() input$plot_morpho_phylo_height %||% 500,
+    width  = function() input$plot_morpho_phylo_width  %||% 600)
+    
+    output$download_morpho_phylo_tree_pdf  <- create_download_handler(
+      plot_morpho_phylo_tree_obj, "morpho_topology_tree", "pdf",
+      "plot_morpho_phylo_height", "plot_morpho_phylo_width")
+    output$download_morpho_phylo_tree_jpeg <- create_download_handler(
+      plot_morpho_phylo_tree_obj, "morpho_topology_tree", "jpeg",
+      "plot_morpho_phylo_height", "plot_morpho_phylo_width")
+    
+    # ── User-specified Hypothesis Testing scatter plot ────────────────────────
+    
+    output$species_hyp_selector <- renderUI({
+      bm <- bayesian_models_r()
+      if (is.null(bm) || is.null(bm$models))
+        return(p(em("Run User-specified Hypothesis Testing in the Morphometric Delimitation tab first.")))
+      selectInput(ns("species_hyp_choice"), "Select Hypothesis:",
+                  choices = names(bm$models), selected = names(bm$models)[1], width = "100%")
+    })
+    
+    plot_species_hyp_obj <- reactive({
+      bm <- bayesian_models_r()
+      req(bm, bm$models, input$species_hyp_choice)
+      model  <- bm$models[[input$species_hyp_choice]]
+      df     <- dataset()
+      traits <- as.matrix(df[, -1, drop = FALSE])
+      pca    <- prcomp(traits, scale. = TRUE)
+      n_pcs  <- ncol(pca$x)
+      var_exp <- summary(pca)$importance[2, ] * 100
+      
+      pc_x     <- input$species_hyp_x_axis %||% "PC1"
+      pc_y     <- input$species_hyp_y_axis %||% "PC2"
+      pc_x_num <- max(1L, min(as.integer(gsub("PC","",pc_x)), n_pcs))
+      pc_y_num <- max(1L, min(as.integer(gsub("PC","",pc_y)), n_pcs))
+      
+      scores <- data.frame(
+        xval   = pca$x[, pc_x_num],
+        yval   = pca$x[, pc_y_num],
+        Group  = as.character(model$class),
+        OTU    = as.factor(df[[1]]),
+        SpecID = specimen_ids_r() %||% as.character(seq_len(nrow(df)))
+      )
+      
+      n_otu      <- length(unique(scores$OTU))
+      all_shapes <- c(16, 17, 15, 18, 8, 7, 1, 2, 0, 5, 4, 3, 6, 9, 10, 11, 12, 13, 14, 19, 20)
+      
+      p <- ggplot2::ggplot(scores, ggplot2::aes(
+        x = xval, y = yval, color = Group, shape = OTU,
+        text = paste0("ID: ", SpecID, "\nOTU: ", OTU, "\nGroup: ", Group))) +
+        ggplot2::geom_point(size = input$species_hyp_point_size %||% 4) +
+        ggplot2::scale_shape_manual(values = all_shapes[seq_len(n_otu)]) +
+        get_color_scale(plot_palette()) +
+        get_fill_scale(plot_palette()) +
+        ggplot2::labs(
+          title = paste("User-specified Hypothesis:", input$species_hyp_choice),
+          x = paste0(pc_x, " (", round(var_exp[pc_x_num], 1), "%)"),
+          y = paste0(pc_y, " (", round(var_exp[pc_y_num], 1), "%)"),
+          color = "Group", shape = "OTU") +
+        get_custom_theme(plot_axis_text_size(), plot_axis_label_size(), 0, plot_facet_size(),
+                         legend_text_size(), legend_title_size(), theme_choice = plot_theme())
+      if (isTRUE(input$species_hyp_centroids)) {
+        centroids <- scores %>% dplyr::group_by(Group) %>%
+          dplyr::summarize(xval = mean(xval), yval = mean(yval), .groups = "drop")
+        p <- p + ggplot2::geom_point(data = centroids, ggplot2::aes(x = xval, y = yval),
+                                     shape = 8, size = 4, color = "black", fill = "white",
+                                     stroke = 1, inherit.aes = FALSE, show.legend = FALSE)
+      }
+      if (isTRUE(input$species_hyp_ellipse))
+        p <- p + ggplot2::stat_ellipse(
+          ggplot2::aes(group = Group, fill = Group),
+          color = NA, type = "norm", geom = "polygon",
+          alpha = 0.15, show.legend = FALSE)
+      if (isTRUE(input$species_hyp_convex)) {
+        hull_df <- dplyr::bind_rows(lapply(split(scores, scores$Group), function(d)
+          d[chull(d$xval, d$yval), ]))
+        p <- p + ggplot2::geom_polygon(
+          data = hull_df,
+          ggplot2::aes(x = xval, y = yval, group = Group, fill = Group),
+          color = NA, alpha = 0.15, inherit.aes = FALSE, show.legend = FALSE)
+      }
+      p
+    })
+    
+    output$species_hyp_plot_ui <- renderUI({
+      bm <- bayesian_models_r()
+      if (is.null(bm) || is.null(bm$models))
+        return(p(em("Run User-specified Hypothesis Testing in the Morphometric Delimitation tab first.")))
+      if (isTRUE(input$species_hyp_interactive))
+        plotly::plotlyOutput(ns("species_hyp_plot_interactive"), height = "500px")
+      else
+        plotOutput(ns("species_hyp_plot"),
+                   height = paste0(input$plot_species_hyp_height %||% 500, "px"),
+                   width  = paste0(input$plot_species_hyp_width  %||% 700, "px"))
+    })
+    
+    output$species_hyp_plot <- renderPlot({
+      validate(need(!is.null(bayesian_models_r()) && !is.null(bayesian_models_r()$models),
+                    "Run User-specified Hypothesis Testing first."))
+      plot_species_hyp_obj()
+    }, height = function() input$plot_species_hyp_height %||% 500,
+    width  = function() input$plot_species_hyp_width  %||% 700)
+    
+    output$species_hyp_plot_interactive <- plotly::renderPlotly({
+      p <- plot_species_hyp_obj()
+      plotly::ggplotly(p, tooltip = "text") %>%
+        plotly::layout(legend = list(orientation = "v"))
+    })
+    
+    output$download_species_hyp_pdf  <- create_download_handler(
+      plot_species_hyp_obj, "user_hypothesis", "pdf",
+      "plot_species_hyp_height", "plot_species_hyp_width")
+    output$download_species_hyp_jpeg <- create_download_handler(
+      plot_species_hyp_obj, "user_hypothesis", "jpeg",
+      "plot_species_hyp_height", "plot_species_hyp_width")
+    
+    
     
   })
 }

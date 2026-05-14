@@ -1,7 +1,7 @@
 Package: GroupStruct2
 Type: Package
 Title: Interactive, User-Friendly Shiny Application for Statistical Analysis and Data Visualization in Species Diagnosis
-Version: 1.1.0
+Version: 1.3.0
 Authors@R: 
   person(
     given = "Kin Onn",
@@ -13,11 +13,7 @@ Author: Kin Onn Chan
 Maintainer: Kin Onn Chan <chankinonn@users.noreply.github.com>
 Description: >
   GroupStruct2 is an interactive Shiny application designed for 
-  analyzing morphological, meristic, and mixed species data. 
-  It provides modules for data input, summary statistics, 
-  allometric corrections, multivariate analyses (e.g., PCA, DAPC, MFA), 
-  and rich data visualizations to assist in species delimitation 
-  and comparative morphology studies.
+  analyzing morphological, meristic, and mixed species data optimized for elucidating group structure.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

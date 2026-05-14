@@ -1,0 +1,1 @@
+(albofasciolatus,(smithii,(albomaculatus, hulk)));
