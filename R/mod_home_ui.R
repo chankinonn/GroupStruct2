@@ -76,7 +76,7 @@ landing_page_ui <- function() {
                h4("What's New"),
                p("GroupStruct2 is actively developed and updated. Run the command below to install the latest version and access new features and bug fixes:"),
                tags$code(style = "display: block; background: #e9ecef; padding: 8px 12px; border-radius: 4px; margin-bottom: 15px; font-size: 13px;",
-                         'devtools::install_github("chankinonn/GroupStruct2")'),
+                         'pak::pak("chankinonn/GroupStruct2")'),
                tags$div(
                  style = "background-color: #f8f9fa; border-left: 4px solid #6c757d; padding: 15px; margin: 15px 0;",
                  p(style = "margin: 0; margin-bottom: 8px;",
