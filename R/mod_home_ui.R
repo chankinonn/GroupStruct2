@@ -253,7 +253,7 @@ landing_page_ui <- function() {
                         "Grismer, L. L., del Pinto, L., Quah, E. S. H. H., Anuar, S., Cota, M. M., McGuire, J. A., Iskandar, D. T., Wood Jr, P. L., & Grismer, J. L. (2022). Phylogenetic and multivariate analyses of",
                         em("Gekko smithii"), "Gray, 1842 recover a new species from Peninsular Malaysia and support the resurrection of",
                         em("G. albomaculatus"), "(Giebel, 1861) from Sumatra.",
-                        em("Vertebrate Zoology,"), "72, 47–80.",
+                        em("Vertebrate Zoology,"), "72, 47\u201380.",
                         tags$a("https://doi.org/10.3897/vz.72.e77702",
                                href = "https://doi.org/10.3897/vz.72.e77702", target = "_blank"))
                ),
@@ -273,7 +273,7 @@ landing_page_ui <- function() {
                  tags$p(style = "margin: 0 0 8px 0; font-size: 0.95em;",
                         "Edwards, D. L., & Hutchinson, M. N. (2023). Sand Dragons: Species of the",
                         em("Ctenophorus maculatus"), "Complex (Squamata: Agamidae) of Australia's Southern and Western Interior.",
-                        em("Journal of Herpetology,"), "57(2), 176–196.",
+                        em("Journal of Herpetology,"), "57(2), 176\u2013196.",
                         tags$a("https://doi.org/10.1670/22-021",
                                href = "https://doi.org/10.1670/22-021", target = "_blank")),
                  tags$p(style = "margin: 0 0 8px 0; font-size: 0.95em;",
@@ -283,7 +283,7 @@ landing_page_ui <- function() {
                                href = "https://doi.org/10.1098/rspb.2013.2765", target = "_blank")),
                  tags$p(style = "margin: 0 0 8px 0; font-size: 0.95em;",
                         "Edwards, D. L., Melville, J., Joseph, L., & Keogh, J. S. (2015). Ecological divergence, adaptive diversification, and the evolution of social signaling traits: An empirical study in arid Australian lizards.",
-                        em("American Naturalist,"), "186(6), E144–E161.",
+                        em("American Naturalist,"), "186(6), E144\u2013E161.",
                         tags$a("https://doi.org/10.1086/683658",
                                href = "https://doi.org/10.1086/683658", target = "_blank"))
                ),
@@ -413,7 +413,7 @@ mod_home_ui_combined <- function(id) {
   tagList(
     h3("Mixed Data"),
     hr(),
-    p("This module handles mixed data — any combination of meristic, morphometric, environmental, categorical, or other numeric data."),
+    p("This module handles mixed data \u2014 any combination of meristic, morphometric, environmental, categorical, or other numeric data."),
     p("The Allometric Correction module allows body-size correction to be performed on morphometric data."),
     p("If morphometric data is included, the body-size measurement can be in any trait column and is selected in the Allometric Correction module."),
     br(),
