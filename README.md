@@ -8,7 +8,8 @@ See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag
 
 To update:
 ```r
-devtools::install_github("chankinonn/GroupStruct2")
+install.packages("pak")
+pak::pak("chankinonn/GroupStruct2")
 ```
 
 ---

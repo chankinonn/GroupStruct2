@@ -26,7 +26,7 @@ mod_data_unified_ui <- function(id) {
     tags$div(
       style = "background-color: #e9ecef; border-left: 5px solid #6c757d;
                padding: 15px; margin-bottom: 20px;",
-      h4(style = "margin-top: 0;", "Upload File"),
+      h4(style = "margin-top: 0;", "Step 1: Upload File"),
       fileInput(ns("file_upload"),
                 "Choose file (.csv, .tsv, or .txt):",
                 accept = c(".csv", ".tsv", ".txt")),
@@ -319,7 +319,7 @@ mod_data_unified_server <- function(id) {
         hr(),
         
         # ── Step 1 ───────────────────────────────────────────────────────────
-        h4("Step 1: Select Data Type"),
+        h4("Step 2: Select Data Type"),
         tags$div(
           style = "display: flex; gap: 10px; margin-bottom: 14px;",
           lapply(
@@ -372,7 +372,7 @@ mod_data_unified_server <- function(id) {
         hr(),
         
         # ── Step 2 ───────────────────────────────────────────────────────────
-        h4("Step 2: Identify Key Columns"),
+        h4("Step 3: Identify Key Columns"),
         p("If no Specimen ID column is present, sequential integers will be",
           "assigned automatically for outlier reporting and plot labels."),
         fluidRow(
