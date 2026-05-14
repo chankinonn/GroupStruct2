@@ -7,7 +7,7 @@
 landing_page_ui()
 }
 \value{
-Shiny UI for the landing page
+Shiny UI for the landing page (main content area)
 }
 \description{
 Landing UI
