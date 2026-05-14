@@ -2,13 +2,19 @@
 
 ## Latest Release
 
-**v1.2.0** (April 2026) — Specimen ID tracking, interactive visualizations, and 3D plots.
-See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag/v1.2.0) for details.
+**v1.2.1** (16 April 2026) — Improved DAPC plots
+See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag/v1.2.1) for details.
 
 To update:
 ```r
 devtools::install_github("chankinonn/GroupStruct2")
 ```
+
+---
+
+**v1.2.0** (April 2026) — Specimen ID tracking, interactive visualizations, and 3D plots.
+See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag/v1.2.0) for details.
+
 
 ---
 
