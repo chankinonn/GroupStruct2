@@ -259,7 +259,10 @@ mod_data_unified_server <- function(id) {
               tags$li(strong("Morphometric:"), "SVL, AG, ArmL, FingerL, LegL, ToeL, TailLength"),
               tags$li(strong("Meristic:"), "Lamel4thF, Lamel4thT, Pores"),
               tags$li(strong("Categorical:"), "CPE, CPPatt, TM, BGCol, PVL, PVSpots, FPVis, PoreArr"),
-              tags$li(strong("Environmental:"), "19 WorldClim bioclimatic layers (BIO_1-19), digital elevation (RESAMPELEV), soil (Aclay, Athick, AKs, A_AWHC), vegetation (mNDVI, sdNDVI, TREE, mLAI, sdLAI)")
+              tags$li(strong("Bioclim:"), "BIO_1–BIO_19"),
+              tags$li(strong("Elevation:"), "RESAMPELEV"),
+              tags$li(strong("Soil:"), "Aclay, Athick, AKs, A_AWHC"),
+              tags$li(strong("Vegetation:"), "mNDVI, sdNDVI, TREE, mLAI, sdLAI")
             ),
             tags$div(
               style = "font-size: 0.85em; color: #555; margin-top: 6px;",
