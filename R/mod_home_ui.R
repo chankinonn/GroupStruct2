@@ -18,7 +18,7 @@ sidebar_welcome_ui <- function() {
       tags$a("Report Issue", href = "https://github.com/chankinonn/GroupStruct2/issues", target = "_blank",
              style = "color: #337ab7; text-decoration: none;"),
       tags$span(" \u00b7 ", style = "color: #adb5bd;"),
-      tags$span("v1.2.0", style = "color: #adb5bd;")
+      tags$span("v1.3.0", style = "color: #337ab7;")
     )
   )
 }
@@ -80,11 +80,9 @@ landing_page_ui <- function() {
                tags$div(
                  style = "background-color: #f8f9fa; border-left: 4px solid #6c757d; padding: 15px; margin: 15px 0;",
                  p(style = "margin: 0; margin-bottom: 8px;",
-                   strong("v1.2.0"), "(April 2026)"),
+                   strong("v1.3.0"), "(May 2026)"),
                  tags$ul(style = "margin: 0;",
-                         tags$li("Specimen ID tracking: optional specimen ID column (e.g., museum catalog numbers) now supported \u2014 select it from a dropdown after uploading your file, or leave unset for automatic sequential assignment"),
-                         tags$li("Interactive visualizations: scatter, PCA, and DAPC plots now have an Interactive Mode toggle with hover tooltips showing specimen ID, species/group, and axis values"),
-                         tags$li("3D plots: 3D PCA added to meristic and morphometric modules; 3D MFA Individuals added to the mixed data module")
+                         tags$li("Additional MFA-based analyses; a centralized data input module that accommodates more flexible data formatting; improved visualizations")
                  ),
                  p(style = "margin-top: 10px; margin-bottom: 0;",
                    "Full changelog:",

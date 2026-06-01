@@ -419,12 +419,13 @@ app_server <- function(input, output, session) {
     
     mod_summary_server_combined("summary_ui_1_combined", combined_data_list_r)
     
-    #mod_inferential_server_combined("inferential_ui_1_combined", combined_data_list_r)
-    
     if (is.null(allometry_combined_output())) {
       allometry_combined_output(mod_allometry_server_combined(
         "allometry_ui_1_combined", combined_data_list_r, combined_specimen_ids_r))
     }
+    
+    mod_inferential_server_combined("stats_ui_1_combined", 
+                                    reactive(allometry_combined_output()$data()))
     
     if (is.null(mfa_combined_module_output())) {
       mfa_combined_module_output(
@@ -508,7 +509,7 @@ app_server <- function(input, output, session) {
       if (dt %in% c("morphometric", "combined"))
         actionButton("go_allometry", "Allometric Correction", width = "100%"),
       
-      if (dt %in% c("meristic", "morphometric"))
+      if (dt %in% c("meristic", "morphometric", "combined"))
         actionButton("go_stats",   "Inferential Statistics", width = "100%"),
       
       if (dt == "morphometric")
