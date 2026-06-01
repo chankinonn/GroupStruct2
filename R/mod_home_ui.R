@@ -18,7 +18,7 @@ sidebar_welcome_ui <- function() {
       tags$a("Report Issue", href = "https://github.com/chankinonn/GroupStruct2/issues", target = "_blank",
              style = "color: #337ab7; text-decoration: none;"),
       tags$span(" \u00b7 ", style = "color: #adb5bd;"),
-      tags$span("v1.3.0", style = "color: #337ab7;")
+      tags$span("v1.3.1", style = "color: #337ab7;")
     )
   )
 }
@@ -80,9 +80,10 @@ landing_page_ui <- function() {
                tags$div(
                  style = "background-color: #f8f9fa; border-left: 4px solid #6c757d; padding: 15px; margin: 15px 0;",
                  p(style = "margin: 0; margin-bottom: 8px;",
-                   strong("v1.3.0"), "(May 2026)"),
+                   strong("v1.3.1"), "(June 2026)"),
                  tags$ul(style = "margin: 0;",
-                         tags$li("Additional MFA-based analyses; a centralized data input module that accommodates more flexible data formatting; improved visualizations")
+                         tags$li("Additional MFA-based analyses; a centralized data input module that accommodates more flexible data formatting; improved visualizations"),
+                         tags$li("Added an Inferential Statistics submodule for Mixed Data")
                  ),
                  p(style = "margin-top: 10px; margin-bottom: 0;",
                    "Full changelog:",

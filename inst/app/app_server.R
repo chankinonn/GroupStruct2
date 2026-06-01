@@ -425,7 +425,8 @@ app_server <- function(input, output, session) {
     }
     
     mod_inferential_server_combined("stats_ui_1_combined", 
-                                    reactive(allometry_combined_output()$data()))
+                                    reactive(allometry_combined_output()$data()),
+                                    reactive(allometry_combined_output()$corrected_traits()))
     
     if (is.null(mfa_combined_module_output())) {
       mfa_combined_module_output(

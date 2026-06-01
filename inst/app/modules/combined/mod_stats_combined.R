@@ -178,7 +178,7 @@ mod_inferential_ui_combined <- function(id) {
 }
 
 
-mod_inferential_server_combined <- function(id, data_r) {
+mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
     pairwise_result_r <- reactiveVal(NULL)
@@ -351,6 +351,14 @@ mod_inferential_server_combined <- function(id, data_r) {
           traits <- names(df)[sapply(df, is.numeric)]
           traits <- setdiff(traits, names(df)[1])
           
+          # If corrected_traits_r is provided, filter to only those traits
+          if (!is.null(corrected_traits_r)) {
+            corrected <- if (is.reactive(corrected_traits_r)) corrected_traits_r() else corrected_traits_r()
+            if (!is.null(corrected) && length(corrected) > 0) {
+              traits <- intersect(traits, corrected)
+            }
+          }
+          
           if (length(traits) == 0) return(p("No numeric traits found in the adjusted data."))
           
           btns <- lapply(traits, function(trait) {
@@ -375,6 +383,14 @@ mod_inferential_server_combined <- function(id, data_r) {
           if (!is.null(df) && nrow(df) > 0) {
             traits <- names(df)[sapply(df, is.numeric)]
             traits <- setdiff(traits, names(df)[1])
+            
+            # If corrected_traits_r is provided, filter to only those traits
+            if (!is.null(corrected_traits_r)) {
+              corrected <- if (is.reactive(corrected_traits_r)) corrected_traits_r() else corrected_traits_r()
+              if (!is.null(corrected) && length(corrected) > 0) {
+                traits <- intersect(traits, corrected)
+              }
+            }
             
             if (length(traits) > 0) {
               selected_trait(traits[1])
@@ -625,6 +641,14 @@ mod_inferential_server_combined <- function(id, data_r) {
           group_col <- names(df)[1]
           traits <- names(df)[sapply(df, is.numeric)]
           traits <- setdiff(traits, group_col)
+          
+          # If corrected_traits_r is provided, filter to only those traits
+          if (!is.null(corrected_traits_r)) {
+            corrected <- if (is.reactive(corrected_traits_r)) corrected_traits_r() else corrected_traits_r()
+            if (!is.null(corrected) && length(corrected) > 0) {
+              traits <- intersect(traits, corrected)
+            }
+          }
           
           results_list <- list()
           

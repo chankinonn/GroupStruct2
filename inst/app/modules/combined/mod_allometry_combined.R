@@ -62,6 +62,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r, specimen_ids_
     
     adjusted_data_output_r   <- reactiveVal(NULL)
     specimen_ids_adjusted_r  <- reactiveVal(NULL)
+    corrected_traits_r       <- reactiveVal(NULL)
     
     # UI for body size column
     output$body_size_selector_ui <- renderUI({
@@ -210,6 +211,7 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r, specimen_ids_
             if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) specimen_ids_r() else
               as.character(seq_len(nrow(df_raw_full)))
           )
+          corrected_traits_r(NULL)
           showNotification("No correction applied. Raw data returned.", type = "message")
           return()
         }
@@ -264,6 +266,8 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r, specimen_ids_
           if (!is.null(specimen_ids_r) && !is.null(specimen_ids_r())) specimen_ids_r() else
             as.character(seq_len(nrow(df_raw_full)))
         )
+        # Store which traits were corrected so stats module can filter to just those
+        corrected_traits_r(selected_morph_traits)
         
         if (!is.null(df_raw_full)) {
           showNotification("Allometric correction completed successfully!", type = "message")
@@ -306,6 +310,6 @@ mod_allometry_server_combined <- function(id, raw_combined_data_r, specimen_ids_
       }
     )
     
-    return(list(data = adjusted_data_output_r, specimen_ids = specimen_ids_adjusted_r))
+    return(list(data = adjusted_data_output_r, specimen_ids = specimen_ids_adjusted_r, corrected_traits = corrected_traits_r))
   })
 }

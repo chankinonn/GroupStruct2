@@ -2,7 +2,7 @@
 
 ## Latest Release
 
-**v1.3.0** (May 2026) — Additional MFA-based analyses; a centralized data input module that accommodates more flexible data formatting; improved visualizations
+**v1.3.1** (May 2026) — Additional MFA-based analyses; a centralized data input module that accommodates more flexible data formatting; improved visualizations; added inferential statistics submodule for Mixed Data.
 
 See the [full changelog](https://github.com/chankinonn/GroupStruct2/releases/tag/v1.3.0) for details.
 
