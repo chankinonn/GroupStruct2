@@ -22,14 +22,14 @@ pak::pak("chankinonn/GroupStruct2")
 
 GroupStruct2 is compatible with MacOS and Windows 10 but has not been tested on Windows 11.
 
-You can install the stable version of this package directly from GitHub using the `remotes` package:
+You can install the stable version of this package directly from GitHub using the `pak` package:
 
 ```r
 # Install remotes if needed
-install.packages("remotes")
+install.packages("pak")
 
 # Install GroupStruct2 from GitHub
-remotes::install_github("chankinonn/GroupStruct2")
+pak::pak("chankinonn/GroupStruct2")
 
 # Load and launch GroupStruct2
 library(GroupStruct2)
@@ -49,6 +49,10 @@ required_packages <- c("shiny", "DT", "dplyr", "ggplot2", "tidyr", "vegan", "vir
 ---
 
 ## 📋 Changelog
+
+### v1.3.1 (June 2026)
+
+**Added Inferential Statistics to the Mix Data module**
 
 ### v1.3.0 (May 2026)
 
