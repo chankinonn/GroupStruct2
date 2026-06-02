@@ -2,7 +2,7 @@
 
 cat("\n")
 cat("  +==========================+\n")
-cat("  |   GroupStruct2  v1.3.0  |\n")
+cat("  |   GroupStruct2  v1.3.1  |\n")
 cat("  +==========================+\n")
 cat("\n  Check for the latest version at:\n")
 cat("  https://github.com/chankinonn/GroupStruct2\n")
