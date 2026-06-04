@@ -105,6 +105,13 @@ app_server <- function(input, output, session) {
     unified_data_output$morpho_ids_r()
   })
   
+  # When a new morphometric dataset is loaded, clear downstream cached outputs.
+  observeEvent(unified_data_output$morpho_data_r(), {
+    allometry_module_output(NULL)
+    species_delim_output(NULL)
+    manual_colors_r(NULL)
+  }, ignoreInit = TRUE)
+  
   combined_data_list_r <- reactive({
     req(unified_data_output$detected_type_r() == "combined")
     unified_data_output$combined_data_r()
@@ -114,6 +121,16 @@ app_server <- function(input, output, session) {
     req(unified_data_output$detected_type_r() == "combined")
     unified_data_output$combined_ids_r()
   })
+  
+  # When a new combined dataset is loaded, clear downstream combined-module
+  # outputs so allometry/MFA/inferential statistics do not use stale results.
+  observeEvent(unified_data_output$combined_data_r(), {
+    allometry_combined_output(NULL)
+    mfa_combined_module_output(NULL)
+    mfa_delim_module_output(NULL)
+    manual_colors_r(NULL)
+    mfa_type_colors_r(NULL)
+  }, ignoreInit = TRUE)
   
   combined_data_df_r        <- reactive({ req(combined_data_list_r()$data) })
   combined_data_group_col_r <- reactive({ req(combined_data_list_r()$group_col) })
@@ -278,8 +295,24 @@ app_server <- function(input, output, session) {
   
   # Home landing page
   observeEvent(input$reset_data_type, {
+    # Return to the landing page and clear app-level module state so a new
+    # dataset can be loaded without restarting R.
     updateSelectInput(session, "data_type", selected = "")
     current_module("home")
+    
+    # Clear outputs cached from downstream modules. These are intentionally
+    # reset here because several modules are only initialized when their output
+    # reactiveVal is NULL.
+    allometry_module_output(NULL)
+    allometry_combined_output(NULL)
+    species_delim_output(NULL)
+    mfa_combined_module_output(NULL)
+    mfa_delim_module_output(NULL)
+    
+    # Clear user-customized colors so OTU/MFA color maps are regenerated from
+    # the next dataset rather than carrying over stale group names.
+    manual_colors_r(NULL)
+    mfa_type_colors_r(NULL)
   })
   
   # Initialize data module servers based on data_type
@@ -424,9 +457,18 @@ app_server <- function(input, output, session) {
         "allometry_ui_1_combined", combined_data_list_r, combined_specimen_ids_r))
     }
     
-    mod_inferential_server_combined("stats_ui_1_combined", 
-                                    reactive(allometry_combined_output()$data()),
-                                    reactive(allometry_combined_output()$corrected_traits()))
+    mod_inferential_server_combined(
+      "stats_ui_1_combined",
+      data_r = reactive({
+        req(allometry_combined_output())
+        allometry_combined_output()$data()
+      }),
+      corrected_traits_r = reactive({
+        req(allometry_combined_output())
+        allometry_combined_output()$corrected_traits()
+      }),
+      raw_data_r = combined_data_df_r
+    )
     
     if (is.null(mfa_combined_module_output())) {
       mfa_combined_module_output(

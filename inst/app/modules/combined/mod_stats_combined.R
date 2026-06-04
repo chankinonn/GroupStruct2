@@ -31,6 +31,9 @@ mod_inferential_ui_combined <- function(id) {
                                               textOutput(ns("trait_name")),
                                               verbatimTextOutput(ns("test_results")),
                                               br(),
+                                              h5("Summary for all morphometric traits:"),
+                                              DTOutput(ns("all_summary_table")),
+                                              br(),
                                               uiOutput(ns("select_trait_download")),
                                               br(),
                                               downloadButton(ns("download_all_summary"), "Download Summary of All Traits"),
@@ -203,6 +206,9 @@ mod_inferential_ui_combined <- function(id) {
                                               textOutput(ns("meristic_trait_name")),
                                               verbatimTextOutput(ns("meristic_test_results")),
                                               br(),
+                                              h5("Summary for selected meristic traits:"),
+                                              DTOutput(ns("meristic_all_summary_table")),
+                                              br(),
                                               uiOutput(ns("meristic_select_trait_download")),
                                               br(),
                                               downloadButton(ns("download_meristic_all_summary"), "Download Summary of Selected Meristic Traits"),
@@ -252,9 +258,160 @@ mod_inferential_ui_combined <- function(id) {
 }
 
 
-mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NULL) {
+mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NULL, raw_data_r = NULL) {
   moduleServer(id, function(input, output, session) {
     ns <- session$ns
+    
+    get_reactive_value <- function(x) {
+      if (is.null(x)) return(NULL)
+      if (shiny::is.reactive(x)) return(x())
+      if (inherits(x, "reactiveVal")) return(x())
+      x
+    }
+    
+    meristic_data_source_r <- reactive({
+      raw_df <- get_reactive_value(raw_data_r)
+      if (!is.null(raw_df) && nrow(raw_df) > 0) return(raw_df)
+      get_reactive_value(data_r)
+    })
+    
+    assess_univariate_assumptions <- function(df_filtered) {
+      if (is.null(df_filtered) || nrow(df_filtered) == 0) {
+        return(list(shapiro = NULL, levene = NULL, shapiro_ok = FALSE,
+                    levene_ok = FALSE, zero_variance = TRUE, levene_p = NA_real_))
+      }
+      
+      shapiro_df <- df_filtered %>%
+        dplyr::group_by(temp_group) %>%
+        dplyr::summarise(
+          n = dplyr::n(),
+          statistic = ifelse(n >= 3 && length(unique(temp_trait)) > 1,
+                             tryCatch(unname(stats::shapiro.test(temp_trait)$statistic), error = function(e) NA_real_),
+                             NA_real_),
+          p = ifelse(n >= 3 && length(unique(temp_trait)) > 1,
+                     tryCatch(stats::shapiro.test(temp_trait)$p.value, error = function(e) NA_real_),
+                     NA_real_),
+          message = dplyr::case_when(
+            n < 3 ~ "Not enough data points (<3) for Shapiro-Wilk test",
+            length(unique(temp_trait)) <= 1 ~ "Constant values in group, Shapiro-Wilk test not applicable",
+            TRUE ~ NA_character_
+          ),
+          .groups = "drop"
+        )
+      
+      valid_shapiro_p <- shapiro_df$p[!is.na(shapiro_df$p)]
+      shapiro_ok <- length(valid_shapiro_p) > 0 && all(valid_shapiro_p > 0.05)
+      
+      levene <- tryCatch(car::leveneTest(temp_trait ~ temp_group, data = df_filtered), error = function(e) NULL)
+      levene_p <- if (!is.null(levene)) as.numeric(levene[["Pr(>F)"]][1]) else NA_real_
+      levene_ok <- !is.na(levene_p) && levene_p > 0.05
+      
+      zero_variance <- df_filtered %>%
+        dplyr::group_by(temp_group) %>%
+        dplyr::summarise(sd_val = stats::sd(temp_trait, na.rm = TRUE), .groups = "drop") %>%
+        dplyr::filter(is.na(sd_val) | sd_val == 0) %>%
+        nrow() > 0
+      
+      list(shapiro = shapiro_df, levene = levene, shapiro_ok = shapiro_ok,
+           levene_ok = levene_ok, zero_variance = zero_variance, levene_p = levene_p)
+    }
+    
+    pairwise_univariate_for_trait <- function(df_trait, force_parametric = FALSE) {
+      ngroups <- dplyr::n_distinct(df_trait$temp_group)
+      if (ngroups < 2 || length(unique(df_trait$temp_trait)) <= 1) return(NULL)
+      
+      assumptions <- assess_univariate_assumptions(df_trait)
+      use_parametric <- isTRUE(force_parametric) ||
+        (assumptions$shapiro_ok && assumptions$levene_ok && !assumptions$zero_variance)
+      
+      if (ngroups == 2) {
+        groups <- levels(droplevels(df_trait$temp_group))
+        comp <- paste(sort(groups), collapse = " vs ")
+        if (use_parametric) {
+          pval <- tryCatch(stats::t.test(temp_trait ~ temp_group, data = df_trait)$p.value, error = function(e) NA_real_)
+          method <- "t-test"
+        } else {
+          pval <- tryCatch(stats::wilcox.test(temp_trait ~ temp_group, data = df_trait, exact = FALSE)$p.value, error = function(e) NA_real_)
+          method <- "Wilcoxon"
+        }
+        result <- data.frame(Comparison = comp, p_value = signif(pval, 4), Method = method, stringsAsFactors = FALSE)
+      } else {
+        if (use_parametric) {
+          result <- tryCatch({
+            fit <- stats::aov(temp_trait ~ temp_group, data = df_trait)
+            stats::TukeyHSD(fit)[[1]] %>%
+              as.data.frame() %>%
+              tibble::rownames_to_column("Comparison") %>%
+              dplyr::mutate(Method = "ANOVA (Tukey)") %>%
+              dplyr::select(Comparison, p_value = `p adj`, Method)
+          }, error = function(e) {
+            data.frame(Comparison = paste0("Error: ", conditionMessage(e)), p_value = NA_real_, Method = "Error")
+          })
+        } else {
+          result <- tryCatch({
+            df_trait %>%
+              rstatix::dunn_test(temp_trait ~ temp_group, p.adjust.method = "bonferroni") %>%
+              dplyr::mutate(Comparison = paste(pmin(group1, group2), "vs", pmax(group1, group2)),
+                            Method = "Kruskal (Dunn)") %>%
+              dplyr::select(Comparison, p_value = p.adj, Method)
+          }, error = function(e) {
+            data.frame(Comparison = paste0("Error: ", conditionMessage(e)), p_value = NA_real_, Method = "Error")
+          })
+        }
+      }
+      
+      result %>%
+        dplyr::mutate(Comparison = sapply(strsplit(as.character(Comparison), "[-]|[ ]vs[ ]", perl = TRUE),
+                                          function(x) paste(sort(trimws(x)), collapse = " vs "))) %>%
+        dplyr::group_by(Comparison) %>%
+        dplyr::slice(1) %>%
+        dplyr::ungroup()
+    }
+    
+    univariate_summary_for_traits <- function(df, traits, group_col, force_parametric = FALSE) {
+      if (is.null(df) || length(traits) == 0) return(NULL)
+      out <- lapply(traits, function(trait) {
+        df_trait <- df %>%
+          dplyr::mutate(temp_trait = as.numeric(.data[[trait]]),
+                        temp_group = factor(.data[[group_col]])) %>%
+          dplyr::filter(!is.na(temp_trait), !is.na(temp_group))
+        
+        ngroups <- dplyr::n_distinct(df_trait$temp_group)
+        if (ngroups < 2 || length(unique(df_trait$temp_trait)) <= 1) {
+          return(data.frame(Trait = trait, N = nrow(df_trait), Groups = ngroups,
+                            Normality = "Not tested", Shapiro_min_p = NA_real_,
+                            Homogeneity = "Not tested", Levene_p = NA_real_,
+                            Test = NA_character_, Post_hoc = NA_character_,
+                            Message = "Not enough valid data", stringsAsFactors = FALSE))
+        }
+        
+        assumptions <- assess_univariate_assumptions(df_trait)
+        use_parametric <- isTRUE(force_parametric) ||
+          (assumptions$shapiro_ok && assumptions$levene_ok && !assumptions$zero_variance)
+        valid_shapiro_p <- assumptions$shapiro$p[!is.na(assumptions$shapiro$p)]
+        shapiro_min_p <- if (length(valid_shapiro_p) > 0) min(valid_shapiro_p) else NA_real_
+        
+        if (ngroups == 2) {
+          test <- if (use_parametric) "t-test" else "Wilcoxon/Mann-Whitney"
+          post_hoc <- NA_character_
+        } else {
+          test <- if (use_parametric) "ANOVA" else "Kruskal-Wallis"
+          post_hoc <- if (use_parametric) "Tukey HSD" else "Dunn"
+        }
+        
+        data.frame(Trait = trait, N = nrow(df_trait), Groups = ngroups,
+                   Normality = ifelse(assumptions$shapiro_ok, "Met", "Not met / not testable"),
+                   Shapiro_min_p = shapiro_min_p,
+                   Homogeneity = ifelse(assumptions$levene_ok, "Met", "Not met / not testable"),
+                   Levene_p = assumptions$levene_p,
+                   Test = test, Post_hoc = post_hoc,
+                   Message = ifelse(isTRUE(force_parametric), "Parametric test forced by user", NA_character_),
+                   stringsAsFactors = FALSE)
+      })
+      dplyr::bind_rows(out) %>%
+        dplyr::mutate(dplyr::across(where(is.numeric), ~ round(.x, 5)))
+    }
+    
     pairwise_result_r <- reactiveVal(NULL)
     selected_trait <- reactiveVal(NULL)
     permanova_main_results_r <- reactiveVal(NULL)
@@ -724,95 +881,54 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
           paste(sort(c(a, b)), collapse = " vs ")
         }
         
-        # Compute all pairwise p-value summaries for all traits
+        # Compute all pairwise p-value summaries for all corrected morphometric traits
         all_pairwise_results <- reactive({
-          df_source <- data_r()
-          df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+          df <- get_reactive_value(data_r)
           req(df)
           
           group_col <- names(df)[1]
           traits <- names(df)[sapply(df, is.numeric)]
           traits <- setdiff(traits, group_col)
           
-          # If corrected_traits_r is provided, filter to only those traits
           if (!is.null(corrected_traits_r)) {
-            corrected <- if (is.reactive(corrected_traits_r)) corrected_traits_r() else corrected_traits_r()
+            corrected <- get_reactive_value(corrected_traits_r)
             if (!is.null(corrected) && length(corrected) > 0) {
               traits <- intersect(traits, corrected)
             }
           }
           
           results_list <- list()
-          
           for (trait in traits) {
             df_trait <- df %>%
-              mutate(temp_trait = as.numeric(.data[[trait]]),
-                     temp_group = factor(.data[[group_col]])) %>%
-              filter(!is.na(temp_trait))
-            
-            ngroups <- n_distinct(df_trait$temp_group)
-            if (ngroups < 2) next
-            
-            # Assumption checks
-            shapiro <- tryCatch(df_trait %>%
-                                  group_by(temp_group) %>%
-                                  rstatix::shapiro_test(temp_trait), error = function(e) NULL)
-            levene <- tryCatch(car::leveneTest(temp_trait ~ temp_group, data = df_trait), error = function(e) NULL)
-            
-            normality_met <- !is.null(shapiro) && all(shapiro$p > 0.05)
-            variance_met <- !is.null(levene) && levene[["Pr(>F)"]][1] > 0.05
-            force_parametric <- isTRUE(input$force_parametric)
-            
-            if (ngroups == 2) {
-              groups <- levels(df_trait$temp_group)
-              comp <- paste(sort(groups), collapse = " vs ")
-              
-              if (normality_met && variance_met || force_parametric) {
-                pval <- tryCatch(t.test(temp_trait ~ temp_group, data = df_trait)$p.value, error = function(e) NA)
-                method <- "t-test"
-              } else {
-                pval <- tryCatch(wilcox.test(temp_trait ~ temp_group, data = df_trait)$p.value, error = function(e) NA)
-                method <- "Wilcoxon"
-              }
-              
-              result <- data.frame(
-                Comparison = comp,
-                p_value = signif(pval, 4),
-                Method = method,
-                stringsAsFactors = FALSE
-              )
-              
-            } else {
-              if (normality_met && variance_met || force_parametric) {
-                fit <- aov(temp_trait ~ temp_group, data = df_trait)
-                tukey <- TukeyHSD(fit)[[1]] %>%
-                  as.data.frame() %>%
-                  rownames_to_column("Comparison") %>%
-                  mutate(Method = "ANOVA (Tukey)") %>%
-                  dplyr::select(Comparison, p_value = `p adj`, Method)
-                result <- tukey
-              } else {
-                dunn <- df_trait %>%
-                  rstatix::dunn_test(temp_trait ~ temp_group, p.adjust.method = "bonferroni") %>%
-                  mutate(Comparison = paste(pmin(group1, group2), "vs", pmax(group1, group2)),
-                         Method = "Kruskal (Dunn)") %>%
-                  dplyr::select(Comparison, p_value = p.adj, Method)
-                result <- dunn
-              }
-            }
-            
-            # Normalize all comparisons
-            result <- result %>%
-              mutate(Comparison = sapply(strsplit(Comparison, "[-]|[ ]vs[ ]", perl = TRUE),
-                                         function(x) paste(sort(trimws(x)), collapse = " vs "))) %>%
-              group_by(Comparison) %>%
-              slice(1) %>%
-              ungroup()
-            
-            results_list[[trait]] <- result
+              dplyr::mutate(temp_trait = as.numeric(.data[[trait]]),
+                            temp_group = factor(.data[[group_col]])) %>%
+              dplyr::filter(!is.na(temp_trait), !is.na(temp_group))
+            result <- pairwise_univariate_for_trait(df_trait, isTRUE(input$force_parametric))
+            if (!is.null(result)) results_list[[trait]] <- result
           }
           
-          return(results_list)
+          results_list
+        })
+        
+        morphometric_all_summary_r <- reactive({
+          df <- get_reactive_value(data_r)
+          req(df)
+          group_col <- names(df)[1]
+          traits <- names(df)[sapply(df, is.numeric)]
+          traits <- setdiff(traits, group_col)
+          if (!is.null(corrected_traits_r)) {
+            corrected <- get_reactive_value(corrected_traits_r)
+            if (!is.null(corrected) && length(corrected) > 0) {
+              traits <- intersect(traits, corrected)
+            }
+          }
+          univariate_summary_for_traits(df, traits, group_col, isTRUE(input$force_parametric))
+        })
+        
+        output$all_summary_table <- DT::renderDT({
+          summary_df <- morphometric_all_summary_r()
+          req(summary_df)
+          DT::datatable(summary_df, rownames = FALSE, options = list(pageLength = 10, scrollX = TRUE))
         })
         
         significant_trait_summary <- reactive({
@@ -940,27 +1056,15 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
         
         output$download_all_summary <- downloadHandler(
           filename = function() {
-            paste0("summary_all_traits_", Sys.Date(), ".csv")
+            paste0("summary_all_morphometric_traits_", Sys.Date(), ".csv")
           },
           content = function(file) {
-            # Reuse existing reactive
-            pairwise_list <- all_pairwise_results()
-            if (is.null(pairwise_list)) {
-              writeLines("No valid results to export.", file)
+            summary_df <- morphometric_all_summary_r()
+            if (is.null(summary_df)) {
+              writeLines("No valid morphometric summary to export.", file)
               return()
             }
-            
-            all_comparisons <- sort(unique(unlist(lapply(pairwise_list, function(df) df$Comparison))))
-            combined_df <- data.frame(Comparison = all_comparisons, stringsAsFactors = FALSE)
-            
-            for (trait in names(pairwise_list)) {
-              df <- pairwise_list[[trait]]
-              df <- df[, c("Comparison", "p_value", "Method")]
-              colnames(df)[2:3] <- c(paste0(trait, "_p_adj"), paste0(trait, "_method"))
-              combined_df <- merge(combined_df, df, by = "Comparison", all.x = TRUE)
-            }
-            
-            write.csv(combined_df, file, row.names = FALSE)
+            write.csv(summary_df, file, row.names = FALSE)
           },
           contentType = "text/csv"
         )
@@ -995,12 +1099,9 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
               writeLines("Not enough valid data to perform test.", file)
               return()
             }
-            
-            shapiro <- tryCatch(df_filtered %>% group_by(temp_group) %>% rstatix::shapiro_test(temp_trait), error = function(e) NULL)
-            levene <- tryCatch(car::leveneTest(temp_trait ~ temp_group, data = df_filtered), error = function(e) NULL)
-            
-            normality_met <- !is.null(shapiro) && all(shapiro$p > 0.05)
-            variance_met <- !is.null(levene) && levene[["Pr(>F)"]][1] > 0.05
+            assumptions <- assess_univariate_assumptions(df_filtered)
+            normality_met <- assumptions$shapiro_ok
+            variance_met <- assumptions$levene_ok && !assumptions$zero_variance
             force_parametric <- isTRUE(input$force_parametric)
             
             result <- tryCatch({
@@ -1445,8 +1546,7 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
     })
     
     meristic_numeric_traits_r <- reactive({
-      df_source <- data_r()
-      df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+      df <- meristic_data_source_r()
       if (is.null(df) || nrow(df) == 0) return(character(0))
       setdiff(names(df)[sapply(df, is.numeric)], names(df)[1])
     })
@@ -1493,8 +1593,7 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
     
     meristic_trait_data_r <- reactive({
       trait <- input$meristic_selected_trait
-      df_source <- data_r()
-      df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+      df <- meristic_data_source_r()
       if (is.null(df) || nrow(df) == 0 || is.null(trait) || !(trait %in% names(df))) return(NULL)
       group <- names(df)[1]
       df %>%
@@ -1510,25 +1609,11 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
       }
       ngroups <- dplyr::n_distinct(df_filtered$temp_group)
       if (ngroups < 2) return(list(message = "Not enough groups to perform statistical test."))
+      if (length(unique(df_filtered$temp_trait)) <= 1) return(list(message = "Trait has constant values; statistical test cannot be performed."))
       
-      shapiro_ok <- TRUE
-      shapiro_df <- df_filtered %>%
-        dplyr::group_by(temp_group) %>%
-        dplyr::summarise(
-          n = dplyr::n(),
-          p = ifelse(n >= 3 && length(unique(temp_trait)) > 1,
-                     tryCatch(stats::shapiro.test(temp_trait)$p.value, error = function(e) NA_real_),
-                     NA_real_),
-          .groups = "drop"
-        )
-      if (any(!is.na(shapiro_df$p) & shapiro_df$p < 0.05)) shapiro_ok <- FALSE
-      
-      levene_p <- tryCatch({
-        lv <- car::leveneTest(temp_trait ~ temp_group, data = df_filtered)
-        as.numeric(lv$`Pr(>F)`[1])
-      }, error = function(e) NA_real_)
-      levene_ok <- is.na(levene_p) || levene_p >= 0.05
-      use_parametric <- force_parametric || (shapiro_ok && levene_ok)
+      assumptions <- assess_univariate_assumptions(df_filtered)
+      use_parametric <- isTRUE(force_parametric) ||
+        (assumptions$shapiro_ok && assumptions$levene_ok && !assumptions$zero_variance)
       
       if (ngroups == 2) {
         if (use_parametric) {
@@ -1548,8 +1633,12 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
           test_name <- "Kruskal-Wallis test"
         }
       }
-      list(test_name = test_name, test = test, shapiro = shapiro_df, levene_p = levene_p,
-           shapiro_ok = shapiro_ok, levene_ok = levene_ok, parametric = use_parametric)
+      
+      list(test_name = test_name, test = test,
+           shapiro = assumptions$shapiro, levene = assumptions$levene,
+           levene_p = assumptions$levene_p,
+           shapiro_ok = assumptions$shapiro_ok, levene_ok = assumptions$levene_ok,
+           parametric = use_parametric)
     }
     
     output$meristic_test_results <- renderPrint({
@@ -1574,191 +1663,32 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
     meristic_all_summary_r <- reactive({
       traits <- selected_meristic_traits_r()
       if (length(traits) == 0) return(NULL)
-      df_source <- data_r()
-      df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+      df <- meristic_data_source_r()
       if (is.null(df) || nrow(df) == 0) return(NULL)
       group <- names(df)[1]
-      out <- lapply(traits, function(trait) {
-        df_filtered <- df %>%
-          dplyr::mutate(temp_trait = as.numeric(.data[[trait]]), temp_group = factor(.data[[group]])) %>%
-          dplyr::filter(!is.na(temp_trait), !is.na(temp_group))
-        res <- run_meristic_univariate(df_filtered, trait, isTRUE(input$meristic_force_parametric))
-        if (!is.null(res$message)) {
-          return(data.frame(Trait = trait, Test = NA_character_, P_value = NA_real_, Message = res$message))
-        }
-        pval <- NA_real_
-        if (inherits(res$test, "htest")) pval <- res$test$p.value
-        if (res$test_name == "ANOVA" && !inherits(res$test, "error")) pval <- res$test[[1]][["Pr(>F)"]][1]
-        data.frame(Trait = trait, Test = res$test_name, P_value = pval,
-                   Shapiro_OK = res$shapiro_ok, Levene_OK = res$levene_ok,
-                   Parametric = res$parametric, Message = NA_character_)
-      })
-      dplyr::bind_rows(out)
+      univariate_summary_for_traits(df, traits, group, isTRUE(input$meristic_force_parametric))
+    })
+    
+    output$meristic_all_summary_table <- DT::renderDT({
+      summary_df <- meristic_all_summary_r()
+      req(summary_df)
+      DT::datatable(summary_df, rownames = FALSE, options = list(pageLength = 10, scrollX = TRUE))
     })
     
     output$download_meristic_all_summary <- downloadHandler(
       filename = function() {
-        paste0("summary_all_traits_", Sys.Date(), ".csv")
+        paste0("summary_all_selected_meristic_traits_", Sys.Date(), ".csv")
       },
       content = function(file) {
-        df_source <- data_r()
-        df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
-        req(df)
-        
-        group <- names(df)[1]
-        traits <- selected_meristic_traits_r()
-        if (length(traits) == 0) {
+        summary_df <- meristic_all_summary_r()
+        if (is.null(summary_df)) {
           writeLines("No meristic traits selected.", file)
           return()
         }
-        
-        results_list <- list()
-        
-        for (trait in traits) {
-          df_trait <- df %>%
-            mutate(temp_trait = as.numeric(.data[[trait]]),
-                   temp_group = factor(.data[[group]])) %>%
-            filter(!is.na(temp_trait))
-          
-          ngroups <- n_distinct(df_trait$temp_group)
-          if (ngroups < 2) next
-          
-          # Assumption checks
-          shapiro <- tryCatch(df_trait %>% group_by(temp_group) %>% rstatix::shapiro_test(temp_trait), error = function(e) NULL)
-          levene <- tryCatch(car::leveneTest(temp_trait ~ temp_group, data = df_trait), error = function(e) NULL)
-          
-          normality_met <- !is.null(shapiro) && all(shapiro$p > 0.05)
-          variance_met <- !is.null(levene) && levene[["Pr(>F)"]][1] > 0.05
-          force_parametric <- isTRUE(input$meristic_force_parametric)
-          
-          if (ngroups == 2) {
-            # 2-group test: t-test or Wilcoxon
-            levels_vec <- levels(df_trait$temp_group)
-            comp <- paste(sort(levels_vec), collapse = " vs ")
-            
-            if (normality_met && variance_met || force_parametric) {
-              pval <- tryCatch(t.test(temp_trait ~ temp_group, data = df_trait)$p.value, error = function(e) NA)
-              method <- "t-test"
-            } else {
-              pval <- tryCatch(wilcox.test(temp_trait ~ temp_group, data = df_trait)$p.value, error = function(e) NA)
-              method <- "Wilcoxon"
-            }
-            
-            out <- data.frame(
-              Comparison = comp,
-              p.adj = signif(pval, 4),
-              Method = method,
-              stringsAsFactors = FALSE
-            )
-          } else {
-            # 3+ groups: Tukey or Dunn
-            if (normality_met && variance_met || force_parametric) {
-              fit <- aov(temp_trait ~ temp_group, data = df_trait)
-              out <- TukeyHSD(fit)[[1]] %>%
-                as.data.frame() %>%
-                rownames_to_column("Comparison") %>%
-                dplyr::select(Comparison, p.adj = `p adj`) %>%
-                mutate(Method = "ANOVA (Tukey)")
-            } else {
-              out <- df_trait %>%
-                rstatix::dunn_test(temp_trait ~ temp_group, p.adjust.method = "bonferroni") %>%
-                mutate(Comparison = paste(pmin(group1, group2), "vs", pmax(group1, group2)),
-                       Method = "Kruskal (Dunn)") %>%
-                dplyr::select(Comparison, p.adj = p.adj, Method)
-            }
-          }
-          
-          # Normalize and de-duplicate comparisons (e.g., B vs A → A vs B)
-          out <- out %>%
-            mutate(Comparison = sapply(strsplit(as.character(Comparison), "[-]|[ ]vs[ ]", perl = TRUE),
-                                       function(x) paste(sort(trimws(x)), collapse = " vs "))) %>%
-            group_by(Comparison) %>%
-            slice(1) %>%
-            ungroup()
-          
-          
-          names(out)[names(out) == "p.adj"] <- paste0(trait, "_p_adj")
-          names(out)[names(out) == "Method"] <- paste0(trait, "_method")
-          
-          results_list[[trait]] <- out
-        }
-        
-        if (length(results_list) == 0) {
-          writeLines("No valid traits for summary.", file)
-        } else {
-          combined <- Reduce(function(x, y) full_join(x, y, by = "Comparison"), results_list)
-          write.csv(combined, file, row.names = FALSE)
-        }
-      }
-      
+        write.csv(summary_df, file, row.names = FALSE)
+      },
+      contentType = "text/csv"
     )
-    
-    meristic_pairwise_results_for_trait <- function(df_filtered, trait, force_parametric = FALSE) {
-      if (is.null(df_filtered) || nrow(df_filtered) == 0) {
-        return(data.frame(Trait = trait, Comparison = NA_character_, Method = NA_character_, p_adj = NA_real_, Message = "No data available"))
-      }
-      ngroups <- dplyr::n_distinct(df_filtered$temp_group)
-      if (ngroups < 2) {
-        return(data.frame(Trait = trait, Comparison = NA_character_, Method = NA_character_, p_adj = NA_real_, Message = "Not enough groups"))
-      }
-      
-      res <- run_meristic_univariate(df_filtered, trait, force_parametric)
-      if (!is.null(res$message)) {
-        return(data.frame(Trait = trait, Comparison = NA_character_, Method = NA_character_, p_adj = NA_real_, Message = res$message))
-      }
-      
-      if (ngroups == 2) {
-        groups <- levels(droplevels(df_filtered$temp_group))
-        pval <- if (inherits(res$test, "htest")) res$test$p.value else NA_real_
-        return(data.frame(Trait = trait,
-                          Comparison = paste(groups[1], "vs", groups[2]),
-                          Method = res$test_name,
-                          p_adj = pval,
-                          Message = NA_character_))
-      }
-      
-      if (isTRUE(res$parametric)) {
-        out <- tryCatch({
-          fit <- stats::aov(temp_trait ~ temp_group, data = df_filtered)
-          as.data.frame(TukeyHSD(fit)[[1]]) %>%
-            tibble::rownames_to_column("Comparison") %>%
-            dplyr::transmute(Trait = trait,
-                             Comparison = Comparison,
-                             Method = "ANOVA (Tukey HSD)",
-                             p_adj = `p adj`,
-                             Message = NA_character_)
-        }, error = function(e) {
-          data.frame(Trait = trait, Comparison = NA_character_, Method = "ANOVA (Tukey HSD)",
-                     p_adj = NA_real_, Message = paste("Error:", conditionMessage(e)))
-        })
-        return(out)
-      }
-      
-      out <- tryCatch({
-        if (requireNamespace("rstatix", quietly = TRUE)) {
-          rstatix::dunn_test(df_filtered, temp_trait ~ temp_group, p.adjust.method = "bonferroni") %>%
-            dplyr::mutate(Comparison = paste(group1, "vs", group2),
-                          Trait = trait,
-                          Method = "Kruskal (Dunn)",
-                          Message = NA_character_) %>%
-            dplyr::select(Trait, Comparison, Method, p_adj = p.adj, Message)
-        } else {
-          pw <- stats::pairwise.wilcox.test(df_filtered$temp_trait, df_filtered$temp_group,
-                                            p.adjust.method = "bonferroni", exact = FALSE)
-          pmat <- as.data.frame(as.table(pw$p.value))
-          pmat <- pmat[!is.na(pmat$Freq), , drop = FALSE]
-          data.frame(Trait = trait,
-                     Comparison = paste(pmat$Var1, "vs", pmat$Var2),
-                     Method = "Kruskal (pairwise Wilcoxon)",
-                     p_adj = pmat$Freq,
-                     Message = NA_character_)
-        }
-      }, error = function(e) {
-        data.frame(Trait = trait, Comparison = NA_character_, Method = "Kruskal pairwise",
-                   p_adj = NA_real_, Message = paste("Error:", conditionMessage(e)))
-      })
-      out
-    }
     
     output$download_meristic_summary <- downloadHandler(
       filename = function() {
@@ -1773,8 +1703,7 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
           return()
         }
         
-        df_source <- data_r()
-        df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+        df <- meristic_data_source_r()
         req(df)
         
         group <- names(df)[1]
@@ -1789,13 +1718,9 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
           writeLines("Not enough groups to perform test.", file)
           return()
         }
-        
-        # Assumption checks
-        shapiro <- tryCatch(df_filtered %>% group_by(temp_group) %>% rstatix::shapiro_test(temp_trait), error = function(e) NULL)
-        levene <- tryCatch(car::leveneTest(temp_trait ~ temp_group, data = df_filtered), error = function(e) NULL)
-        
-        normality_met <- !is.null(shapiro) && all(shapiro$p > 0.05)
-        variance_met <- !is.null(levene) && levene[["Pr(>F)"]][1] > 0.05
+        assumptions <- assess_univariate_assumptions(df_filtered)
+        normality_met <- assumptions$shapiro_ok
+        variance_met <- assumptions$levene_ok && !assumptions$zero_variance
         force_parametric <- isTRUE(input$meristic_force_parametric)
         
         result <- tryCatch({
@@ -1839,11 +1764,8 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
     })
     
     meristic_all_pairwise_results <- reactive({
-      # Mirror the standalone meristic module, but limit the analysis to selected meristic traits
       force_parametric <- isTRUE(input$meristic_force_parametric)
-      
-      df_source <- data_r()
-      df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+      df <- meristic_data_source_r()
       req(df)
       
       group <- names(df)[1]
@@ -1856,91 +1778,24 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
         pairwise_list <- lapply(seq_along(traits), function(i) {
           trait <- traits[i]
           incProgress(1 / length(traits), detail = paste("Processing", trait))
-          
           df_trait_filtered <- df %>%
             dplyr::mutate(temp_trait = as.numeric(.data[[trait]]),
                           temp_group = factor(.data[[group]])) %>%
             dplyr::filter(!is.na(temp_trait), !is.na(temp_group))
           
-          ngroups <- dplyr::n_distinct(df_trait_filtered$temp_group)
-          if (ngroups < 2) return(NULL)
-          
-          shapiro <- tryCatch({
-            df_trait_filtered %>%
-              dplyr::group_by(temp_group) %>%
-              rstatix::shapiro_test(temp_trait)
-          }, error = function(e) NULL)
-          
-          levene <- tryCatch({
-            car::leveneTest(temp_trait ~ temp_group, data = df_trait_filtered)
-          }, error = function(e) NULL)
-          
-          normality_met <- !is.null(shapiro) && all(shapiro$p > 0.05)
-          variance_met <- !is.null(levene) && levene[["Pr(>F)"]][1] > 0.05
-          
-          result <- tryCatch({
-            if (ngroups == 2) {
-              if ((normality_met && variance_met) || force_parametric) {
-                tt <- t.test(temp_trait ~ temp_group, data = df_trait_filtered)
-                data.frame(
-                  Comparison = paste(levels(df_trait_filtered$temp_group), collapse = " vs "),
-                  p_value = signif(tt$p.value, 3),
-                  Method = "t-test",
-                  stringsAsFactors = FALSE
-                )
-              } else {
-                wt <- wilcox.test(temp_trait ~ temp_group, data = df_trait_filtered)
-                data.frame(
-                  Comparison = paste(levels(df_trait_filtered$temp_group), collapse = " vs "),
-                  p_value = signif(wt$p.value, 3),
-                  Method = "Wilcoxon",
-                  stringsAsFactors = FALSE
-                )
-              }
-            } else {
-              if ((normality_met && variance_met) || force_parametric) {
-                aov_mod <- aov(temp_trait ~ temp_group, data = df_trait_filtered)
-                TukeyHSD(aov_mod)[[1]] %>%
-                  as.data.frame() %>%
-                  tibble::rownames_to_column("Comparison") %>%
-                  dplyr::select(Comparison, `p adj`) %>%
-                  dplyr::rename(p_value = `p adj`) %>%
-                  dplyr::mutate(Method = "ANOVA (Tukey)")
-              } else {
-                df_trait_filtered %>%
-                  rstatix::kruskal_test(temp_trait ~ temp_group)
-                
-                df_trait_filtered %>%
-                  rstatix::dunn_test(temp_trait ~ temp_group, p.adjust.method = "bonferroni") %>%
-                  dplyr::mutate(Comparison = paste(group1, "vs", group2),
-                                Method = "Kruskal (Dunn)") %>%
-                  dplyr::select(Comparison, p_value = p.adj, Method)
-              }
-            }
-          }, error = function(e) {
-            data.frame(
-              Comparison = paste0(trait, " - Error: ", conditionMessage(e)),
-              p_value = NA,
-              Method = "Error",
-              stringsAsFactors = FALSE
-            )
-          })
-          
-          if (!is.null(result)) {
-            names(result)[names(result) == "p_value"] <- paste0(trait, "_p-value")
-          }
-          return(result)
+          result <- pairwise_univariate_for_trait(df_trait_filtered, force_parametric)
+          if (is.null(result)) return(NULL)
+          names(result)[names(result) == "p_value"] <- paste0(trait, "_p-value")
+          result
         })
         
         pairwise_list <- pairwise_list[!sapply(pairwise_list, is.null)]
         if (length(pairwise_list) == 0) return(NULL)
         
         if (length(pairwise_list) == 1) {
-          return(pairwise_list[[1]])
+          pairwise_list[[1]]
         } else {
-          Reduce(function(x, y) {
-            dplyr::full_join(x, y, by = c("Comparison", "Method"))
-          }, pairwise_list)
+          Reduce(function(x, y) dplyr::full_join(x, y, by = c("Comparison", "Method")), pairwise_list)
         }
       })
     })
@@ -2056,8 +1911,7 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
     
     meristic_matrix_r <- reactive({
       traits <- selected_meristic_traits_r()
-      df_source <- data_r()
-      df <- if (is.reactive(df_source)) df_source() else if (inherits(df_source, "reactiveVal")) df_source() else df_source
+      df <- meristic_data_source_r()
       if (is.null(df) || nrow(df) == 0 || length(traits) < 1) return(NULL)
       group <- names(df)[1]
       mat <- as.data.frame(lapply(df[, traits, drop = FALSE], as.numeric))
