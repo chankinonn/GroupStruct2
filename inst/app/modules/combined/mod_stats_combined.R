@@ -548,8 +548,13 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
                 NULL
               })
               if (!is.null(test_result)) {
-                shapiro_list[[g]] <- data.frame(temp_group = g, variable = trait,
-                                                statistic = test_result$statistic, p = test_result$p.value)
+                shapiro_list[[g]] <- data.frame(
+                  temp_group = g,
+                  variable = trait,
+                  statistic = unname(test_result$statistic),
+                  p = test_result$p.value,
+                  message = NA_character_
+                )
               } else {
                 shapiro_list[[g]] <- data.frame(temp_group = g, variable = trait, statistic = NA, p = NA,
                                                 message = "Shapiro-Wilk test failed")
@@ -558,7 +563,7 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
           }
           
           if (length(shapiro_list) > 0) {
-            return(do.call(rbind, shapiro_list) %>% as_tibble())
+            return(dplyr::bind_rows(shapiro_list) %>% as_tibble())
           } else {
             return(NULL)
           }
