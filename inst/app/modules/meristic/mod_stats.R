@@ -674,7 +674,7 @@ mod_inferential_server_meristic <- function(id, data_r) {
               stringsAsFactors = FALSE
             ))
           } else {
-            return(do.call(rbind, sig_list))
+            return(dplyr::bind_rows(sig_list))
           }
         })
         

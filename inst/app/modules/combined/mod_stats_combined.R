@@ -933,7 +933,7 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
               stringsAsFactors = FALSE
             ))
           } else {
-            return(do.call(rbind, sig_list))
+            return(dplyr::bind_rows(sig_list))
           }
         })
         
@@ -2029,7 +2029,7 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
           stringsAsFactors = FALSE
         ))
       } else {
-        return(do.call(rbind, sig_list))
+        return(dplyr::bind_rows(sig_list))
       }
     })
     

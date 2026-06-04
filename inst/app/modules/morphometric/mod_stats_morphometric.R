@@ -437,7 +437,8 @@ mod_inferential_server_morphometric <- function(id, data_r) {
               })
               if (!is.null(test_result)) {
                 shapiro_list[[g]] <- data.frame(temp_group = g, variable = trait,
-                                                statistic = test_result$statistic, p = test_result$p.value)
+                                                statistic = unname(test_result$statistic), p = test_result$p.value,
+                                                message = NA_character_)
               } else {
                 shapiro_list[[g]] <- data.frame(temp_group = g, variable = trait, statistic = NA, p = NA,
                                                 message = "Shapiro-Wilk test failed")
@@ -446,7 +447,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           }
           
           if (length(shapiro_list) > 0) {
-            return(do.call(rbind, shapiro_list) %>% as_tibble())
+            return(dplyr::bind_rows(shapiro_list) %>% as_tibble())
           } else {
             return(NULL)
           }
@@ -808,7 +809,7 @@ mod_inferential_server_morphometric <- function(id, data_r) {
               stringsAsFactors = FALSE
             ))
           } else {
-            return(do.call(rbind, sig_list))
+            return(dplyr::bind_rows(sig_list))
           }
         })
         
