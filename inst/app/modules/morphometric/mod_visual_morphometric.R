@@ -467,49 +467,7 @@ mod_visual_ui_morphometric <- function(id) {
                                      
                          )
                 ),
-                
-                tabPanel("DAPC (3D)",
-                         fluidRow(
-                           column(9,
-                                  plotly::plotlyOutput(ns("plot_dapc_3d"), height = "580px")
-                           ),
-                           column(3,
-                                  style = "height: calc(100vh - 120px); overflow-y: auto; padding-right: 15px;",
-                                  br(),
-                                  uiOutput(ns("dapc_3d_status_ui")),
-                                  hr(),
-                                  numericInput(ns("dapc_3d_point_size"), "Point Size:", value = 3, min = 1, max = 10, width = '150px'),
-                                  sliderInput(ns("dapc_3d_point_alpha"), "Point Opacity:", min = 0.1, max = 1, value = 0.8, step = 0.05, width = '150px'),
-                                  hr(),
-                                  h5("Centroids"),
-                                  checkboxInput(ns("dapc_3d_centroids"), "Show Group Centroids", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("dapc_3d_centroids")),
-                                    numericInput(ns("dapc_3d_centroid_size"), "Centroid Size:", value = 4, min = 2, max = 20, width = '150px'),
-                                    colourInput(ns("dapc_3d_centroid_color"), "Centroid Color:", value = "#000000", showColour = "background")
-                                  ),
-                                  hr(),
-                                  h5("Convex Hulls"),
-                                  checkboxInput(ns("dapc_3d_hull"), "Show Convex Hulls", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("dapc_3d_hull")),
-                                    sliderInput(ns("dapc_3d_hull_alpha"), "Hull Opacity:", min = 0.05, max = 0.5, value = 0.15, step = 0.05, width = '150px')
-                                  ),
-                                  hr(),
-                                  h5("Spider Plot"),
-                                  checkboxInput(ns("dapc_3d_spider"), "Show Spider Lines", value = FALSE),
-                                  conditionalPanel(
-                                    condition = sprintf("input['%s']", ns("dapc_3d_spider")),
-                                    sliderInput(ns("dapc_3d_spider_alpha"), "Spider Line Opacity:", min = 0.1, max = 1, value = 0.4, step = 0.05, width = '150px'),
-                                    sliderInput(ns("dapc_3d_spider_width"), "Spider Line Width:", min = 1, max = 6, value = 2, step = 1, width = '150px')
-                                  ),
-                                  hr(),
-                                  p(em("Use the camera icon in the plot toolbar to download."))
-                           )
-                         )
-                ),
-                
-                tabPanel("Morphometric Delimitation",
+                 tabPanel("Morphometric Delimitation",
                          tabsetPanel(id = ns("species_delim_subtab"),
                                      
                                      tabPanel("Unsupervised Clustering (Model Comparison)",
