@@ -1653,7 +1653,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         if (isTRUE(input$mfa_outline_shapes)) {
           p <- p + stat_ellipse(
             aes(group = Group, fill = Group, color = Group),
-            type = "norm", level = 0.95, geom = "polygon",
+            level = 0.95, geom = "polygon",
             alpha = input$mfa_ellipse_alpha, 
             linewidth = input$mfa_outline_stroke,
             show.legend = FALSE
@@ -1661,7 +1661,7 @@ mod_visual_server_combined <- function(id, dataset_r,
         } else {
           p <- p + stat_ellipse(
             aes(group = Group, fill = Group),
-            type = "norm", level = 0.95, geom = "polygon",
+            level = 0.95, geom = "polygon",
             alpha = input$mfa_ellipse_alpha, color = NA,
             show.legend = FALSE
           )
@@ -1968,7 +1968,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       if (isTRUE(input$mfa_ellipse))
         p <- p + ggplot2::stat_ellipse(
           ggplot2::aes(group = Group, fill = Group, text = NULL),
-          color = NA, type = "norm", level = 0.95, geom = "polygon",
+          color = NA, level = 0.95, geom = "polygon",
           alpha = input$mfa_ellipse_alpha %||% 0.4, show.legend = FALSE)
       
       if (isTRUE(input$mfa_convex_hull)) {
@@ -2469,12 +2469,12 @@ mod_visual_server_combined <- function(id, dataset_r,
       if (isTRUE(input$damfa_ellipse)) {
         if (isTRUE(input$damfa_outline_shapes)) {
           p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Group, fill = Group, color = Group),
-                                         type = "norm", level = 0.67, geom = "polygon",
+                                         level = 0.67, geom = "polygon",
                                          alpha = input$damfa_alpha_ellipse,
                                          linewidth = input$damfa_outline_stroke, show.legend = FALSE)
         } else {
           p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Group, fill = Group), color = NA,
-                                         type = "norm", level = 0.67, geom = "polygon",
+                                         level = 0.67, geom = "polygon",
                                          alpha = input$damfa_alpha_ellipse, show.legend = FALSE)
         }
       }
@@ -2600,7 +2600,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       
       if (isTRUE(input$damfa_ellipse))
         p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Group, fill = Group, text = NULL),
-                                       color = NA, type = "norm", level = 0.67, geom = "polygon",
+                                       color = NA, level = 0.67, geom = "polygon",
                                        alpha = input$damfa_alpha_ellipse %||% 0.3, show.legend = FALSE)
       if (isTRUE(input$damfa_centroids)) {
         centroids <- dapc_df %>% dplyr::group_by(Group) %>%
@@ -2963,12 +2963,12 @@ mod_visual_server_combined <- function(id, dataset_r,
       if (isTRUE(input$mfa_clusters_ellipse)) {
         if (isTRUE(input$mfa_clusters_outline_shapes)) {
           p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Cluster, fill = Cluster, color = Cluster),
-                                         type = "norm", geom = "polygon",
+                                         geom = "polygon",
                                          alpha = input$mfa_clusters_alpha_ellipse,
                                          linewidth = input$mfa_clusters_outline_stroke, show.legend = FALSE)
         } else {
           p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Cluster, fill = Cluster), color = NA,
-                                         type = "norm", geom = "polygon",
+                                         geom = "polygon",
                                          alpha = input$mfa_clusters_alpha_ellipse, show.legend = FALSE)
         }
       }
@@ -3054,7 +3054,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       
       if (isTRUE(input$mfa_clusters_ellipse))
         p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Cluster, fill = Cluster, text = NULL),
-                                       color = NA, type = "norm", geom = "polygon",
+                                       color = NA, geom = "polygon",
                                        alpha = input$mfa_clusters_alpha_ellipse %||% 0.3, show.legend = FALSE)
       
       tl <- get_plotly_theme_layout(plot_theme() %||% "theme_classic")
@@ -3499,7 +3499,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       if (isTRUE(input$mfa_hyp_ellipse)) {
         p <- p + ggplot2::stat_ellipse(
           ggplot2::aes(group = Group, fill = Group), color = NA,
-          type = "norm", geom = "polygon",
+          geom = "polygon",
           alpha = input$mfa_hyp_alpha_shape %||% 0.3, show.legend = FALSE
         )
       }
@@ -3597,7 +3597,7 @@ mod_visual_server_combined <- function(id, dataset_r,
       
       if (isTRUE(input$mfa_hyp_ellipse))
         p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Group, fill = Group, text = NULL),
-                                       color = NA, type = "norm", geom = "polygon",
+                                       color = NA, geom = "polygon",
                                        alpha = input$mfa_hyp_alpha_shape %||% 0.3,
                                        show.legend = FALSE)
       

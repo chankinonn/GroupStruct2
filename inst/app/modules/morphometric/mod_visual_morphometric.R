@@ -1368,7 +1368,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         if (isTRUE(input$pca_outline)) {
           p <- p + ggplot2::stat_ellipse(
             aes(group = Group, fill = Group, color = Group),
-            type = "norm",
+            #type = "norm",
             geom = "polygon",
             alpha = input$pca_alpha_ellipse,
             linewidth = input$pca_outline_stroke,
@@ -1378,7 +1378,7 @@ mod_visual_server_morphometric <- function(id, dataset,
           p <- p + ggplot2::stat_ellipse(
             aes(group = Group, fill = Group),
             color = NA,
-            type = "norm",
+            #type = "norm",
             geom = "polygon",
             alpha = input$pca_alpha_ellipse,
             show.legend = FALSE
@@ -1609,7 +1609,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         if (isTRUE(input$dapc_outline)) {
           p <- p + ggplot2::stat_ellipse(
             aes(group = Group, fill = Group, color = Group),
-            type = "norm",
+            #type = "norm",
             level = 0.67,
             geom = "polygon",
             alpha = input$dapc_alpha_ellipse,
@@ -1620,7 +1620,7 @@ mod_visual_server_morphometric <- function(id, dataset,
           p <- p + ggplot2::stat_ellipse(
             aes(group = Group, fill = Group),
             color = NA,
-            type = "norm",
+            #type = "norm",
             level = 0.67,
             geom = "polygon",
             alpha = input$dapc_alpha_ellipse,
@@ -1947,7 +1947,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         if (isTRUE(input$species_pca_outline)) {
           p <- p + stat_ellipse(
             aes(group = Cluster, fill = Cluster, color = Cluster),
-            type = "norm",
+            #type = "norm",
             geom = "polygon",
             alpha = input$species_pca_alpha_ellipse,
             linewidth = input$species_pca_outline_stroke,
@@ -2240,7 +2240,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         get_color_scale(plot_palette()) + get_fill_scale(plot_palette()) + ggplot2::guides(fill = "none")
       if (isTRUE(input$pca_ellipse))
         p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Group, fill = Group, text = NULL),
-                                       color = NA, type = "norm", geom = "polygon", alpha = input$pca_alpha_ellipse %||% 0.3, show.legend = FALSE)
+                                       color = NA, geom = "polygon", alpha = input$pca_alpha_ellipse %||% 0.3, show.legend = FALSE)
       if (isTRUE(input$pca_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(pca_df, pca_df$Group), function(d) d[chull(d[[pc_x]], d[[pc_y]]), ]))
         p <- p + ggplot2::geom_polygon(data = hull_df,
@@ -2450,7 +2450,7 @@ mod_visual_server_morphometric <- function(id, dataset,
         get_color_scale(plot_palette()) + get_fill_scale(plot_palette()) + ggplot2::guides(fill = "none")
       if (isTRUE(input$dapc_ellipse))
         p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Group, fill = Group, text = NULL),
-                                       color = NA, type = "norm", level = 0.67, geom = "polygon",
+                                       color = NA, level = 0.67, geom = "polygon",
                                        alpha = input$dapc_alpha_ellipse %||% 0.3, show.legend = FALSE)
       if (isTRUE(input$dapc_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(dapc_df, dapc_df$Group), function(d) d[chull(d$LD1, d$LD2), ]))
@@ -2749,7 +2749,7 @@ mod_visual_server_morphometric <- function(id, dataset,
       if (isTRUE(input$species_pca_ellipse))
         p <- p + ggplot2::stat_ellipse(
           ggplot2::aes(group = Cluster, fill = Cluster, text = NULL),
-          color = NA, type = "norm", geom = "polygon",
+          color = NA, geom = "polygon",
           alpha = input$species_pca_alpha_ellipse %||% 0.3, show.legend = FALSE)
       
       if (isTRUE(input$species_pca_convex)) {
@@ -3175,7 +3175,7 @@ mod_visual_server_morphometric <- function(id, dataset,
       if (isTRUE(input$species_hyp_ellipse))
         p <- p + ggplot2::stat_ellipse(
           ggplot2::aes(group = Group, fill = Group),
-          color = NA, type = "norm", geom = "polygon",
+          color = NA, geom = "polygon",
           alpha = 0.15, show.legend = FALSE)
       if (isTRUE(input$species_hyp_convex)) {
         hull_df <- dplyr::bind_rows(lapply(split(scores, scores$Group), function(d)

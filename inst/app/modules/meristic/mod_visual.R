@@ -1230,7 +1230,7 @@ mod_visual_server_meristic <- function(id, dataset,
         if (isTRUE(input$pca_outline)) {
           p <- p + ggplot2::stat_ellipse(
             aes(group = Group, fill = Group, color = Group),
-            type = "norm",
+            #type = "norm",
             geom = "polygon",
             alpha = input$pca_alpha_ellipse,
             linewidth = input$pca_outline_stroke,
@@ -1240,7 +1240,7 @@ mod_visual_server_meristic <- function(id, dataset,
           p <- p + ggplot2::stat_ellipse(
             aes(group = Group, fill = Group),
             color = NA,
-            type = "norm",
+            #type = "norm",
             geom = "polygon",
             alpha = input$pca_alpha_ellipse,
             show.legend = FALSE
@@ -1472,7 +1472,7 @@ mod_visual_server_meristic <- function(id, dataset,
       if (isTRUE(input$pca_ellipse)) {
         p <- p + ggplot2::stat_ellipse(
           ggplot2::aes(group = Group, fill = Group, text = NULL),
-          color = NA, type = "norm", geom = "polygon",
+          color = NA, geom = "polygon",
           alpha = input$pca_alpha_ellipse %||% 0.3, show.legend = FALSE
         )
       }
@@ -1802,7 +1802,7 @@ mod_visual_server_meristic <- function(id, dataset,
         if (isTRUE(input$dapc_outline)) {
           p <- p + ggplot2::stat_ellipse(
             aes(group = Group, fill = Group, color = Group),
-            type = "norm",
+            #type = "norm",
             level = 0.67,
             geom = "polygon",
             alpha = input$dapc_alpha_ellipse,
@@ -1813,7 +1813,7 @@ mod_visual_server_meristic <- function(id, dataset,
           p <- p + ggplot2::stat_ellipse(
             aes(group = Group, fill = Group),
             color = NA,
-            type = "norm",
+            #type = "norm",
             level = 0.67,
             geom = "polygon",
             alpha = input$dapc_alpha_ellipse,
@@ -1988,7 +1988,7 @@ mod_visual_server_meristic <- function(id, dataset,
       
       if (isTRUE(input$dapc_ellipse)) {
         p <- p + ggplot2::stat_ellipse(ggplot2::aes(group = Group, fill = Group, text = NULL),
-                                       color = NA, type = "norm", level = 0.67, geom = "polygon",
+                                       color = NA, level = 0.67, geom = "polygon",
                                        alpha = input$dapc_alpha_ellipse %||% 0.3, show.legend = FALSE)
       }
       if (isTRUE(input$dapc_convex)) {
