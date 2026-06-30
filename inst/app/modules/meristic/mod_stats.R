@@ -98,47 +98,52 @@ mod_inferential_ui_meristic <- function(id) {
                          br(),
                          downloadButton(ns("download_all_permanova"), "Download All PERMANOVA Tables"),
                          hr(),
-                         h5("Interpreting Results Together:"),
+                         h5("Interpreting Results Together"),
                          
-                         p("PERMANOVA significance alone is not sufficient to conclude group divergence. The three analyses above",
-                           "should be interpreted jointly. The table below summarizes how combinations of results bear on",
-                           "evidence for significant morphological divergence between groups."),
+                         p("PERMANOVA results should not be interpreted using significance alone. Evidence for group divergence",
+                           "should be evaluated jointly using PERMANOVA (p-value + R²), betadisper, and centroid separation. R²",
+                           "represents effect size (how much variation is explained by group identity), while betadisper",
+                           "evaluates whether dispersion differences may bias interpretation."),
                          tags$p(
                            style = "font-size: 0.9em;",
-                           strong("Betadisper convention (note the counterintuitive direction):"), br(),
-                           "— ", strong("Homogeneous"), "(p > 0.05): groups have similar within-group spread — assumption of PERMANOVA met.", br(),
-                           "— ", strong("Heterogeneous"), "(p < 0.05): groups differ significantly in within-group spread — assumption of PERMANOVA violated.",  br(),
-                           "Unlike most tests in this module where significance is the target, a ", em("non-significant"),
-                           " betadisper result is the desirable outcome for clean and unambiguous PERMANOVA interpretation."
+                           strong("betadisper (dispersion check)"), br(),
+                           "Evaluates within-group spread:", br(),
+                           "— ", strong("Homogeneous"), "(p > 0.05): similar dispersion; PERMANOVA inference is reliable", br(),
+                           "— ", strong("Heterogeneous"), "(p < 0.05): unequal dispersion; may inflate or bias PERMANOVA results", br(),
+                           "Non-significant dispersion is preferred for clean interpretation."
                          ),
                          tags$table(
                            class = "table table-bordered table-condensed",
                            style = "font-size: 0.9em; margin-top: 10px;",
                            tags$thead(
                              tags$tr(
-                               tags$th("PERMANOVA"), tags$th("Betadisper"), tags$th("Centroid distance"), tags$th("Interpretation")
+                               tags$th("PERMANOVA"), tags$th("betadisper"), tags$th("R² (effect size)"), tags$th("Interpretation")
                              )
                            ),
                            tags$tbody(
                              tags$tr(
-                               tags$td("Significant"), tags$td("Non-significant (Homogeneous)"), tags$td("Large"),
-                               tags$td("Clean divergence — groups differ in location, not spread. Strongest evidence for divergence.")
+                               tags$td("Significant"), tags$td("Non-significant"), tags$td("High"),
+                               tags$td("Strong divergence — clear separation in multivariate space; best-case signal.")
                              ),
                              tags$tr(
-                               tags$td("Significant"), tags$td("Significant (Heterogeneous)"), tags$td("Large"),
-                               tags$td("Divergence likely real but complicated by unequal spread — interpret with caution.")
+                               tags$td("Significant"), tags$td("Non-significant"), tags$td("Moderate"),
+                               tags$td("Moderate divergence — real but partial separation among groups.")
                              ),
                              tags$tr(
-                               tags$td("Significant"), tags$td("Significant (Heterogeneous)"), tags$td("Small"),
-                               tags$td("Significance may be driven by dispersion differences, not centroid displacement — weak evidence for divergence.")
+                               tags$td("Significant"), tags$td("Significant"), tags$td("High"),
+                               tags$td("Strong signal but confounded by unequal dispersion; interpret with caution.")
                              ),
                              tags$tr(
-                               tags$td("Non-significant"), tags$td("Non-significant (Homogeneous)"), tags$td("Small"),
-                               tags$td("Groups are not distinguishable in multivariate trait space — no support for divergence.")
+                               tags$td("Significant"), tags$td("Significant"), tags$td("Low–Moderate"),
+                               tags$td("Weak structural support; significance likely influenced by dispersion.")
                              ),
                              tags$tr(
-                               tags$td("Non-significant"), tags$td("Significant (Heterogeneous)"), tags$td("Small"),
-                               tags$td("Groups overlap in centroid space but differ in variability — possibly one group is more morphologically variable than the other.")
+                               tags$td("Non-significant"), tags$td("Non-significant"), tags$td("Low"),
+                               tags$td("No evidence of group separation in multivariate space.")
+                             ),
+                             tags$tr(
+                               tags$td("Non-significant"), tags$td("Significant"), tags$td("Low"),
+                               tags$td("No centroid separation; differences driven by dispersion only.")
                              )
                            )
                          ),

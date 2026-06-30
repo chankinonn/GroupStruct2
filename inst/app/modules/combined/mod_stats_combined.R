@@ -129,47 +129,52 @@ mod_inferential_ui_combined <- function(id) {
                                               downloadButton(ns("download_all_permanova"), "Download All PERMANOVA Tables"),
                                               hr(),
                                               
-                                              h5("Interpreting Results Together:"),
+                                              h5("Interpreting Results Together"),
                                               
-                                              p("PERMANOVA significance alone is not sufficient to conclude group divergence. The three analyses above",
-                                                "should be interpreted jointly. The table below summarizes how combinations of results bear on",
-                                                "evidence for significant morphological divergence between groups."),
+                                              p("PERMANOVA results should not be interpreted using significance alone. Evidence for group divergence",
+                                                "should be evaluated jointly using PERMANOVA (p-value + R²), betadisper, and centroid separation. R²",
+                                                "represents effect size (how much variation is explained by group identity), while betadisper",
+                                                "evaluates whether dispersion differences may bias interpretation."),
                                               tags$p(
                                                 style = "font-size: 0.9em;",
-                                                strong("Betadisper convention (note the counterintuitive direction):"), br(),
-                                                "— ", strong("Homogeneous"), "(p > 0.05): groups have similar within-group spread — assumption of PERMANOVA met.", br(),
-                                                "— ", strong("Heterogeneous"), "(p < 0.05): groups differ significantly in within-group spread — assumption of PERMANOVA violated.", br(),
-                                                "Unlike most tests in this module where significance is the target, a ", em("non-significant"),
-                                                " betadisper result is the desirable outcome for clean and unambiguous PERMANOVA interpretation."
+                                                strong("betadisper (dispersion check)"), br(),
+                                                "Evaluates within-group spread:", br(),
+                                                "— ", strong("Homogeneous"), "(p > 0.05): similar dispersion; PERMANOVA inference is reliable", br(),
+                                                "— ", strong("Heterogeneous"), "(p < 0.05): unequal dispersion; may inflate or bias PERMANOVA results", br(),
+                                                "Non-significant dispersion is preferred for clean interpretation."
                                               ),
                                               tags$table(
                                                 class = "table table-bordered table-condensed",
                                                 style = "font-size: 0.9em; margin-top: 10px;",
                                                 tags$thead(
                                                   tags$tr(
-                                                    tags$th("PERMANOVA"), tags$th("Betadisper"), tags$th("Centroid distance"), tags$th("Interpretation")
+                                                    tags$th("PERMANOVA"), tags$th("betadisper"), tags$th("R² (effect size)"), tags$th("Interpretation")
                                                   )
                                                 ),
                                                 tags$tbody(
                                                   tags$tr(
-                                                    tags$td("Significant"), tags$td("Non-significant (Homogeneous)"), tags$td("Large"),
-                                                    tags$td("Clean divergence — groups differ in location, not spread. Strongest evidence for divergence.")
+                                                    tags$td("Significant"), tags$td("Non-significant"), tags$td("High"),
+                                                    tags$td("Strong divergence — clear separation in multivariate space; best-case signal.")
                                                   ),
                                                   tags$tr(
-                                                    tags$td("Significant"), tags$td("Significant (Heterogeneous)"), tags$td("Large"),
-                                                    tags$td("Divergence likely real but complicated by unequal spread — interpret with caution.")
+                                                    tags$td("Significant"), tags$td("Non-significant"), tags$td("Moderate"),
+                                                    tags$td("Moderate divergence — real but partial separation among groups.")
                                                   ),
                                                   tags$tr(
-                                                    tags$td("Significant"), tags$td("Significant (Heterogeneous)"), tags$td("Small"),
-                                                    tags$td("Significance may be driven by dispersion differences, not centroid displacement — weak evidence for divergence.")
+                                                    tags$td("Significant"), tags$td("Significant"), tags$td("High"),
+                                                    tags$td("Strong signal but confounded by unequal dispersion; interpret with caution.")
                                                   ),
                                                   tags$tr(
-                                                    tags$td("Non-significant"), tags$td("Non-significant (Homogeneous)"), tags$td("Small"),
-                                                    tags$td("Groups are not distinguishable in multivariate trait space — no support for divergence.")
+                                                    tags$td("Significant"), tags$td("Significant"), tags$td("Low–Moderate"),
+                                                    tags$td("Weak structural support; significance likely influenced by dispersion.")
                                                   ),
                                                   tags$tr(
-                                                    tags$td("Non-significant"), tags$td("Significant (Heterogeneous)"), tags$td("Small"),
-                                                    tags$td("Groups overlap in centroid space but differ in variability — possibly one group is more morphologically variable than the other.")
+                                                    tags$td("Non-significant"), tags$td("Non-significant"), tags$td("Low"),
+                                                    tags$td("No evidence of group separation in multivariate space.")
+                                                  ),
+                                                  tags$tr(
+                                                    tags$td("Non-significant"), tags$td("Significant"), tags$td("Low"),
+                                                    tags$td("No centroid separation; differences driven by dispersion only.")
                                                   )
                                                 )
                                               ),
@@ -245,11 +250,67 @@ mod_inferential_ui_combined <- function(id) {
                                                 tabPanel("Pairwise PERMANOVA", br(), DTOutput(ns("meristic_permanova_pairwise_results"))),
                                                 tabPanel("BetaDisper", br(), verbatimTextOutput(ns("meristic_betadisper_results"))),
                                                 tabPanel("Pairwise Dispersion", br(), DTOutput(ns("meristic_betadisper_tukey_results"))),
-                                                tabPanel("Centroid Distances", br(), DTOutput(ns("meristic_centroid_dist_results")))
+                                                tabPanel("Centroid Distances", br(), DTOutput(ns("meristic_centroid_dist_results"))),
+                                                tabPanel("Consolidated Summary",
+                                                         br(),
+                                                         p("Joint view of pairwise PERMANOVA and BetaDisper results, sorted by R² (descending)."),
+                                                         DTOutput(ns("meristic_consolidated_pairwise"))
+                                                )
                                               ),
                                               br(),
                                               downloadButton(ns("download_meristic_all_permanova"), "Download All PERMANOVA Tables"),
-                                              hr()
+                                              hr(),
+                                              
+                                              h5("Interpreting Results Together"),
+                                              
+                                              p("PERMANOVA results should not be interpreted using significance alone. Evidence for group divergence",
+                                                "should be evaluated jointly using PERMANOVA (p-value + R²), betadisper, and centroid separation. R²",
+                                                "represents effect size (how much variation is explained by group identity), while betadisper",
+                                                "evaluates whether dispersion differences may bias interpretation."),
+                                              tags$p(
+                                                style = "font-size: 0.9em;",
+                                                strong("betadisper (dispersion check)"), br(),
+                                                "Evaluates within-group spread:", br(),
+                                                "— ", strong("Homogeneous"), "(p > 0.05): similar dispersion; PERMANOVA inference is reliable", br(),
+                                                "— ", strong("Heterogeneous"), "(p < 0.05): unequal dispersion; may inflate or bias PERMANOVA results", br(),
+                                                "Non-significant dispersion is preferred for clean interpretation."
+                                              ),
+                                              tags$table(
+                                                class = "table table-bordered table-condensed",
+                                                style = "font-size: 0.9em; margin-top: 10px;",
+                                                tags$thead(
+                                                  tags$tr(
+                                                    tags$th("PERMANOVA"), tags$th("betadisper"), tags$th("R² (effect size)"), tags$th("Interpretation")
+                                                  )
+                                                ),
+                                                tags$tbody(
+                                                  tags$tr(
+                                                    tags$td("Significant"), tags$td("Non-significant"), tags$td("High"),
+                                                    tags$td("Strong divergence — clear separation in multivariate space; best-case signal.")
+                                                  ),
+                                                  tags$tr(
+                                                    tags$td("Significant"), tags$td("Non-significant"), tags$td("Moderate"),
+                                                    tags$td("Moderate divergence — real but partial separation among groups.")
+                                                  ),
+                                                  tags$tr(
+                                                    tags$td("Significant"), tags$td("Significant"), tags$td("High"),
+                                                    tags$td("Strong signal but confounded by unequal dispersion; interpret with caution.")
+                                                  ),
+                                                  tags$tr(
+                                                    tags$td("Significant"), tags$td("Significant"), tags$td("Low–Moderate"),
+                                                    tags$td("Weak structural support; significance likely influenced by dispersion.")
+                                                  ),
+                                                  tags$tr(
+                                                    tags$td("Non-significant"), tags$td("Non-significant"), tags$td("Low"),
+                                                    tags$td("No evidence of group separation in multivariate space.")
+                                                  ),
+                                                  tags$tr(
+                                                    tags$td("Non-significant"), tags$td("Significant"), tags$td("Low"),
+                                                    tags$td("No centroid separation; differences driven by dispersion only.")
+                                                  )
+                                                )
+                                              ),
+                                              br()
                                      )
                          )
                 )
@@ -1172,59 +1233,48 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
       } 
     }) 
     
-    # PERMANOVA 
+    # Helper function for pairwise PERMANOVA using adonis2
+    pairwise.adonis <- function(x, factors, sim.method = 'euclidean', p.adjust.m ='bonferroni', permutations = 50000) {
+      co = combn(unique(as.character(factors)),2)
+      pairs = c()
+      F.Model =c()
+      R2 = c()
+      p.value = c()
+      total_pairs <- ncol(co)
+      for(elem in 1:total_pairs){
+        grp1 = co[1,elem]
+        grp2 = co[2,elem]
+        x_subset = x[factors %in% c(grp1, grp2),, drop = FALSE]
+        factors_subset = factors[factors %in% c(grp1, grp2)]
+        factors_subset = droplevels(as.factor(factors_subset))
+        if (ncol(x_subset) > 0 && all(apply(x_subset, 2, function(col) length(unique(col)) == 1))) {
+          warning(paste("All traits in subset for", grp1, "vs", grp2, "are constant. Cannot compute distance matrix."))
+          pairs = c(pairs, paste(grp1, grp2, sep = '-'));
+          F.Model =c(F.Model, NA);
+          R2 = c(R2, NA);
+          p.value =c(p.value, NA);
+          next
+        }
+        x1 = vegan::vegdist(x_subset, method=sim.method)
+        ad = vegan::adonis2(x1 ~ factors_subset, permutations = permutations);
+        pairs = c(pairs, paste(grp1, grp2, sep = '-'));
+        F.Model =c(F.Model, ad$F[1]);
+        R2 = c(R2, ad$R2[1]);
+        p.value =c(p.value, ad$`Pr(>F)`[1]);
+      }
+      p.adjusted = p.adjust(p.value,method=p.adjust.m)
+      sig = c(rep('',length(p.adjusted)))
+      sig[p.adjusted <= 0.05] <-'.'
+      sig[p.adjusted <= 0.01] <-'*'
+      sig[p.adjusted <= 0.001] <-'**'
+      sig[p.adjusted <= 0.0001] <-'***'
+      pairw.res = data.frame(pairs,F.Model,R2,p.value,p.adjusted,sig)
+      return(pairw.res)
+    }
+    
+    # PERMANOVA
     observeEvent(input$main_tabs, {
       if (input$main_tabs == "Multivariate (PERMANOVA)") {
-        
-        # Helper function for pairwise.adonis, now using adonis2
-        pairwise.adonis <- function(x, factors, sim.method = 'euclidean', p.adjust.m ='bonferroni', permutations = 50000) {
-          co = combn(unique(as.character(factors)),2)
-          pairs = c()
-          F.Model =c()
-          R2 = c()
-          p.value = c()
-          
-          total_pairs <- ncol(co)
-          
-          for(elem in 1:total_pairs){
-            grp1 = co[1,elem]
-            grp2 = co[2,elem]
-            
-            x_subset = x[factors %in% c(grp1, grp2),, drop = FALSE]
-            factors_subset = factors[factors %in% c(grp1, grp2)]
-            
-            factors_subset = droplevels(as.factor(factors_subset))
-            
-            # Check for constant values within subsetted traits data
-            if (ncol(x_subset) > 0 && all(apply(x_subset, 2, function(col) length(unique(col)) == 1))) {
-              warning(paste("All traits in subset for", grp1, "vs", grp2, "are constant. Cannot compute distance matrix."))
-              pairs = c(pairs, paste(grp1, grp2, sep = '-'));
-              F.Model =c(F.Model, NA);
-              R2 = c(R2, NA);
-              p.value =c(p.value, NA);
-              next
-            }
-            
-            # Calculate distance matrix for the subsetted data
-            x1 = vegan::vegdist(x_subset, method=sim.method)
-            
-            ad = vegan::adonis2(x1 ~ factors_subset, permutations = permutations);
-            
-            pairs = c(pairs, paste(grp1, grp2, sep = '-'));
-            F.Model =c(F.Model, ad$F[1]);
-            R2 = c(R2, ad$R2[1]);
-            p.value =c(p.value, ad$`Pr(>F)`[1]);
-          }
-          p.adjusted = p.adjust(p.value,method=p.adjust.m)
-          sig = c(rep('',length(p.adjusted)))
-          sig[p.adjusted <= 0.05] <-'.'
-          sig[p.adjusted <= 0.01] <-'*'
-          sig[p.adjusted <= 0.001] <-'**'
-          sig[p.adjusted <= 0.0001] <-'***'
-          
-          pairw.res = data.frame(pairs,F.Model,R2,p.value,p.adjusted,sig)
-          return(pairw.res)
-        }
         
         # Observe for PERMANOVA
         observeEvent(input$run_permanova, {
@@ -2058,6 +2108,14 @@ mod_inferential_server_combined <- function(id, data_r, corrected_traits_r = NUL
       df <- meristic_centroid_dist_r()
       if (is.null(df)) df <- data.frame(Message = "Meristic centroid distances are not available.")
       datatable(df, options = list(dom = 'tip', pageLength = 25, scrollX = TRUE), rownames = FALSE)
+    })
+    output$meristic_consolidated_pairwise <- renderDT({
+      df <- meristic_consolidated_pairwise_r()
+      if (is.null(df) || nrow(df) == 0) {
+        return(datatable(data.frame(Message = "Consolidated table unavailable. Run both PERMANOVA and BetaDisper first."),
+                         options = list(dom = 't', paging = FALSE, searching = FALSE)))
+      }
+      datatable(df, rownames = FALSE, options = list(dom = 'tip', pageLength = 25, scrollX = TRUE))
     })
     output$download_meristic_all_permanova <- downloadHandler(
       filename = function() paste0("permanova_results_meristic_", Sys.Date(), ".zip"),
