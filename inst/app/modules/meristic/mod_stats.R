@@ -9,7 +9,7 @@ mod_inferential_ui_meristic <- function(id) {
                 tabPanel("Univariate",
                          br(),
                          h4("Univariate Analysis"),
-                         p("Perform univariate analyses to determine which traits are (or are not) statistically different between groups. This module automatically detects the number of groups, tests for assumptions of normality and homogeneity of variance, and selects the appropriate statistical tests (t-test or Wilcoxon/Mann-Whitney if only two groups are detected, ANOVA or Kruskal-Wallis if >2 groups, followed by the appropriate ad hoc tests)."),
+                         p("Perform univariate analyses to determine which trait means are (or are not) statistically different between groups. This module automatically detects the number of groups, tests for assumptions of normality and homogeneity of variance, and selects the appropriate statistical tests (t-test or Wilcoxon/Mann-Whitney if only two groups are detected, ANOVA or Kruskal-Wallis if >2 groups, followed by the appropriate ad hoc tests)."),
                          
                          br(), 
                          div(style = "white-space: nowrap;",

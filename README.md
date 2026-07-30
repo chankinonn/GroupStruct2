@@ -1,6 +1,10 @@
 # GroupStruct2
 
-## Latest Release
+## Minor Update
+
+30 July 2026 - Standardized the output tables for inferential statistics in the Mixed Data module.
+
+## Latest Major Release
 
 **v1.3.1** (May 2026) — Additional MFA-based analyses; a centralized data input module that accommodates more flexible data formatting; improved visualizations; added inferential statistics submodule for Mixed Data.
 
