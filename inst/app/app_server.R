@@ -457,18 +457,19 @@ app_server <- function(input, output, session) {
         "allometry_ui_1_combined", combined_data_list_r, combined_specimen_ids_r))
     }
     
-    mod_inferential_server_combined(
-      "stats_ui_1_combined",
-      data_r = reactive({
-        req(allometry_combined_output())
-        allometry_combined_output()$data()
-      }),
-      corrected_traits_r = reactive({
-        req(allometry_combined_output())
-        allometry_combined_output()$corrected_traits()
-      }),
-      raw_data_r = combined_data_df_r
-    )
+    # Mixed-data inferential statistics disabled.
+    # mod_inferential_server_combined(
+    #   "stats_ui_1_combined",
+    #   data_r = reactive({
+    #     req(allometry_combined_output())
+    #     allometry_combined_output()$data()
+    #   }),
+    #   corrected_traits_r = reactive({
+    #     req(allometry_combined_output())
+    #     allometry_combined_output()$corrected_traits()
+    #   }),
+    #   raw_data_r = combined_data_df_r
+    # )
     
     if (is.null(mfa_combined_module_output())) {
       mfa_combined_module_output(
@@ -552,7 +553,7 @@ app_server <- function(input, output, session) {
       if (dt %in% c("morphometric", "combined"))
         actionButton("go_allometry", "Allometric Correction", width = "100%"),
       
-      if (dt %in% c("meristic", "morphometric", "combined"))
+      if (dt %in% c("meristic", "morphometric"))
         actionButton("go_stats",   "Inferential Statistics", width = "100%"),
       
       if (dt == "morphometric")
@@ -620,7 +621,7 @@ app_server <- function(input, output, session) {
                              home = mod_home_ui_combined("home_ui_1_combined"),
                              summary = mod_summary_ui_combined("summary_ui_1_combined"),
                              allometry = mod_allometry_ui_combined("allometry_ui_1_combined"),
-                             stats = mod_inferential_ui_combined("stats_ui_1_combined"),
+                             # stats = mod_inferential_ui_combined("stats_ui_1_combined"),
                              mfa = mod_mfa_ui("mfa_ui_1_combined"),
                              mfa_delim = mod_mfa_delim_ui("mfa_delim_ui_1_combined"),
                              visual = mod_visual_ui_combined("visual_ui_1_combined"))
