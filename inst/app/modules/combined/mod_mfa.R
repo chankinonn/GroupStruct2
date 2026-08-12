@@ -101,9 +101,7 @@ mod_mfa_ui <- function(id) {
                            ),
                            tabPanel("Centroid Distances",
                                     br(),
-                                    p("Euclidean distances between group centroids in PCoA space (computed from the ",
-                                      code("betadisper"), " centroids). Larger values indicate greater separation,",
-                                      " complementing the PERMANOVA significance test with a magnitude measure."),
+                                    p("Euclidean distances between arithmetic group centroids calculated across the full MFA score space used for PERMANOVA. These multivariate distances may differ from centroid distances shown in the MFA visualization, which are calculated only from the two displayed dimensions."),
                                     DTOutput(ns("centroid_dist_results_mfa"))
                            ),
                            tabPanel("Consolidated Summary",
@@ -768,23 +766,44 @@ mod_mfa_server <- function(id, raw_combined_data_r, allometry_adjusted_data_r) {
       })
       betadisper_mfa_results_r(betadisper_capture)
       
-      # Centroid distances — pairwise Euclidean distances between group centroids in PCoA space
-      if (!is.null(betadisper_capture)) {
-        tryCatch({
-          centroids <- betadisper_capture$betadisper$centroids
-          centroid_dist_mat <- as.matrix(dist(centroids))
-          centroid_dist_mat <- round(centroid_dist_mat, 4)
-          centroid_dist_df <- as.data.frame(centroid_dist_mat)
-          centroid_dist_df <- cbind(Group = rownames(centroid_dist_df), centroid_dist_df)
-          rownames(centroid_dist_df) <- NULL
-          centroid_dist_mfa_r(centroid_dist_df)
-        }, error = function(e) {
-          showNotification(paste("Warning: could not compute centroid distances:", e$message), type = "warning")
-          centroid_dist_mfa_r(NULL)
-        })
-      } else {
+      # Centroid distances — pairwise Euclidean distances between arithmetic
+      # group centroids across the full MFA score space used for PERMANOVA
+      tryCatch({
+        centroid_df <- as.data.frame(mfa_scores)
+        centroid_df$Group <- group_factor
+        
+        centroids <- centroid_df %>%
+          dplyr::group_by(Group) %>%
+          dplyr::summarise(
+            dplyr::across(where(is.numeric), mean),
+            .groups = "drop"
+          )
+        
+        centroid_matrix <- as.matrix(
+          centroids[, setdiff(names(centroids), "Group"), drop = FALSE]
+        )
+        rownames(centroid_matrix) <- as.character(centroids$Group)
+        
+        centroid_dist_mat <- as.matrix(
+          stats::dist(centroid_matrix, method = "euclidean")
+        )
+        centroid_dist_mat <- round(centroid_dist_mat, 4)
+        
+        centroid_dist_df <- as.data.frame(centroid_dist_mat)
+        centroid_dist_df <- cbind(
+          Group = rownames(centroid_dist_df),
+          centroid_dist_df
+        )
+        rownames(centroid_dist_df) <- NULL
+        
+        centroid_dist_mfa_r(centroid_dist_df)
+      }, error = function(e) {
+        showNotification(
+          paste("Warning: could not compute centroid distances:", e$message),
+          type = "warning"
+        )
         centroid_dist_mfa_r(NULL)
-      }
+      })
       
       showNotification("PERMANOVA analysis complete. Results are displayed below.", type = "default", duration = 10)
     })

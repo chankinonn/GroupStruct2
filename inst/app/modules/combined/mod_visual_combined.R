@@ -260,7 +260,7 @@ mod_visual_ui_combined <- function(id) {
                                                            sliderInput(ns("mfa_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
                                                            sliderInput(ns("mfa_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
                                                            numericInput(ns("mfa_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
-                                                           helpText("Euclidean distances between centroids in 2D MFA space. Not equivalent to PERMANOVA distances.")
+                                                           helpText("Centroid distances shown here are calculated from the two MFA dimensions currently displayed. They represent separation in the plotted 2D space and may differ from the multivariate centroid distances reported in the PERMANOVA module.")
                                                          ),
                                                          checkboxInput(ns("mfa_mst"), "Show Minimum Spanning Tree", value = FALSE),
                                                          conditionalPanel(

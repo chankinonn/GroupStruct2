@@ -235,7 +235,7 @@ mod_visual_ui_meristic <- function(id) {
                                                            sliderInput(ns("pca_centroid_dist_width"), "Distance Line Width:", min = 0.1, max = 2, value = 0.8, step = 0.1, width = '150px'),
                                                            sliderInput(ns("pca_centroid_dist_alpha"), "Distance Line Transparency:", min = 0.1, max = 1, value = 0.8, step = 0.1, width = '150px'),
                                                            numericInput(ns("pca_centroid_dist_label_size"), "Distance Label Size:", value = 3, min = 1, max = 10, step = 0.5, width = '150px'),
-                                                           helpText("Distances shown are Euclidean distances between group centroids in the 2D PCA space of the currently selected axes. These are not equivalent to PERMANOVA distances, which are computed from the full multivariate dataset across all variables. Use these values for visual interpretation only.")
+                                                           helpText("Centroid distances shown here are calculated from the two PCA axes currently displayed. They represent separation in the plotted 2D space and may differ from the multivariate centroid distances reported in the PERMANOVA module.")
                                                          ),
                                                          checkboxInput(ns("pca_mst"), "Show Minimum Spanning Tree", value = FALSE),
                                                          conditionalPanel(

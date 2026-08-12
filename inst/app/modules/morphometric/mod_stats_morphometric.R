@@ -103,7 +103,7 @@ mod_inferential_ui_morphometric <- function(id) {
                            ),
                            tabPanel("Centroid Distances",
                                     br(),
-                                    p("Euclidean distances between group centroids in PCoA space. Larger values indicate greater separation."),
+                                    p("Euclidean distances between arithmetic group centroids calculated in the same multivariate data space used for PERMANOVA. If PCA scores are selected, distances are calculated across the PCA-score dimensions used in the analysis; otherwise, they are calculated in original trait space. These values may differ from centroid distances shown in the PCA visualization, which are based only on the two displayed axes."),
                                     DTOutput(ns("centroid_dist_results"))
                            ),
                            tabPanel("Consolidated Summary",
@@ -1123,23 +1123,36 @@ mod_inferential_server_morphometric <- function(id, data_r) {
           })
           betadisper_results_r(betadisper_capture)
           
-          # Centroid distances — pairwise Euclidean distances between group centroids in PCoA space
-          if (!is.null(betadisper_capture)) {
-            tryCatch({
-              centroids <- betadisper_capture$betadisper$centroids
-              centroid_dist_mat <- as.matrix(dist(centroids))
-              centroid_dist_mat <- round(centroid_dist_mat, 4)
-              centroid_dist_df <- as.data.frame(centroid_dist_mat)
-              centroid_dist_df <- cbind(Group = rownames(centroid_dist_df), centroid_dist_df)
-              rownames(centroid_dist_df) <- NULL
-              centroid_dist_r(centroid_dist_df)
-            }, error = function(e) {
-              showNotification(paste("Warning: could not compute centroid distances:", e$message), type = "warning")
-              centroid_dist_r(NULL)
-            })
-          } else {
+          # Centroid distances — pairwise Euclidean distances between arithmetic group centroids
+          # calculated in the same multivariate data space used for PERMANOVA.
+          # This is intentionally independent of betadisper(), which uses its own center
+          # definition for dispersion calculations.
+          tryCatch({
+            centroid_data <- as.data.frame(permanova_data_input)
+            centroid_data$.Group <- species_data_clean
+            
+            centroids <- centroid_data %>%
+              dplyr::group_by(.Group) %>%
+              dplyr::summarise(
+                dplyr::across(where(is.numeric), ~ mean(.x, na.rm = TRUE)),
+                .groups = "drop"
+              )
+            
+            centroid_mat <- as.matrix(
+              centroids %>% dplyr::select(-.Group)
+            )
+            rownames(centroid_mat) <- as.character(centroids$.Group)
+            
+            centroid_dist_mat <- as.matrix(stats::dist(centroid_mat, method = "euclidean"))
+            centroid_dist_mat <- round(centroid_dist_mat, 4)
+            centroid_dist_df <- as.data.frame(centroid_dist_mat)
+            centroid_dist_df <- cbind(Group = rownames(centroid_dist_df), centroid_dist_df)
+            rownames(centroid_dist_df) <- NULL
+            centroid_dist_r(centroid_dist_df)
+          }, error = function(e) {
+            showNotification(paste("Warning: could not compute centroid distances:", e$message), type = "warning")
             centroid_dist_r(NULL)
-          }
+          })
           
           showNotification("PERMANOVA analysis complete. Results are displayed below.", type = "default", duration = 10)
         })

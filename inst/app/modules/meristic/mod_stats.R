@@ -89,7 +89,7 @@ mod_inferential_ui_meristic <- function(id) {
                                     p(em(strong("Note:"), "Tukey HSD on within-group", strong("dispersion"), "— not a post-hoc test for group mean differences.")),
                                     DTOutput(ns("betadisper_tukey_results"))),
                            tabPanel("Centroid Distances", br(),
-                                    p("Euclidean distances between group centroids in PCoA space."),
+                                    p("Euclidean distances between arithmetic group centroids calculated in the same multivariate data space used for PERMANOVA. If PCA scores are selected, distances are calculated across the PCA-score dimensions used in the analysis; otherwise, they are calculated in original trait space. These values may differ from centroid distances shown in the PCA visualization, which are based only on the two displayed axes."),
                                     DTOutput(ns("centroid_dist_results"))),
                            tabPanel("Consolidated Summary", br(),
                                     p("Joint view of pairwise PERMANOVA and BetaDisper results, sorted by R2 (descending)."),
@@ -1073,23 +1073,44 @@ mod_inferential_server_meristic <- function(id, data_r) {
           })
           betadisper_results_r(betadisper_capture)
           
-          # Centroid distances — pairwise Euclidean distances between group centroids in PCoA space
-          if (!is.null(betadisper_capture)) {
-            tryCatch({
-              centroids <- betadisper_capture$betadisper$centroids
-              centroid_dist_mat <- as.matrix(dist(centroids))
-              centroid_dist_mat <- round(centroid_dist_mat, 4)
-              centroid_dist_df <- as.data.frame(centroid_dist_mat)
-              centroid_dist_df <- cbind(Group = rownames(centroid_dist_df), centroid_dist_df)
-              rownames(centroid_dist_df) <- NULL
-              centroid_dist_r(centroid_dist_df)
-            }, error = function(e) {
-              showNotification(paste("Warning: could not compute centroid distances:", e$message), type = "warning")
-              centroid_dist_r(NULL)
-            })
-          } else {
+          # Centroid distances — pairwise Euclidean distances between arithmetic
+          # group centroids in the same multivariate space used for PERMANOVA
+          tryCatch({
+            centroid_df <- as.data.frame(permanova_data_input)
+            centroid_df$Group <- species_data_clean
+            
+            centroids <- centroid_df %>%
+              dplyr::group_by(Group) %>%
+              dplyr::summarise(
+                dplyr::across(where(is.numeric), mean),
+                .groups = "drop"
+              )
+            
+            centroid_matrix <- as.matrix(
+              centroids[, setdiff(names(centroids), "Group"), drop = FALSE]
+            )
+            rownames(centroid_matrix) <- as.character(centroids$Group)
+            
+            centroid_dist_mat <- as.matrix(
+              stats::dist(centroid_matrix, method = "euclidean")
+            )
+            centroid_dist_mat <- round(centroid_dist_mat, 4)
+            
+            centroid_dist_df <- as.data.frame(centroid_dist_mat)
+            centroid_dist_df <- cbind(
+              Group = rownames(centroid_dist_df),
+              centroid_dist_df
+            )
+            rownames(centroid_dist_df) <- NULL
+            
+            centroid_dist_r(centroid_dist_df)
+          }, error = function(e) {
+            showNotification(
+              paste("Warning: could not compute centroid distances:", e$message),
+              type = "warning"
+            )
             centroid_dist_r(NULL)
-          }
+          })
           
           showNotification("PERMANOVA analysis complete. Results are displayed below.", type = "default", duration = 10)
         })
